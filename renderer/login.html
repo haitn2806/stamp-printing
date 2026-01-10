@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* ===== UNIFIED SELECT (APP STYLE) ===== */
+.select-ui {
+  width: 100%;
+  height: 44px;
+
+  border-radius: 14px;
+  padding: 0 44px 0 16px;
+
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+
+  color: #0f172a;
+  background: rgba(255,255,255,0.95);
+
+  border: 1px solid rgba(226,232,240,0.95);
+  outline: none;
+
+  /* remove native arrow */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  /* custom arrow */
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%),
+    linear-gradient(to right, rgba(226,232,240,.9), rgba(226,232,240,.9));
+
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%,
+    calc(100% - 42px) 50%;
+
+  background-size:
+    6px 6px,
+    6px 6px,
+    1px 60%;
+
+  background-repeat: no-repeat;
+
+  /* shadow giống input / button */
+  box-shadow:
+    0 4px 12px rgba(15,23,42,.12),
+    inset 0 1px 0 rgba(255,255,255,.65);
+
+
+}
+
+/* Hover */
+.select-ui:hover {
+  border-color: #94a3b8;
+}
+
+/* Focus */
+.select-ui:focus {
+  border-color: #0ea5e9;
+  box-shadow:
+    0 0 0 2px rgba(14,165,233,.35),
+    0 8px 22px rgba(14,165,233,.25);
+}
+
+/* Disabled */
+.select-ui:disabled {
+  background: rgba(241,245,249,1);
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+/* Option */
+.select-ui option {
+  background: white;
+  color: #0f172a;
+}
+
+/* ===== INPUT UI (UNIFIED) ===== */
+.input-ui {
+  width: 100%;
+  height: 44px;
+
+  border-radius: 14px;
+  padding: 0 16px;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  color: #0f172a;
+  background: rgba(255,255,255,0.95);
+
+  border: 1px solid rgba(226,232,240,0.95);
+  outline: none;
+
+  box-shadow:
+    0 4px 12px rgba(15,23,42,.12),
+    inset 0 1px 0 rgba(255,255,255,.65);
+
+  transition:
+    border-color .15s ease,
+    box-shadow .15s ease,
+    background .15s ease;
+}
+
+.input-ui:hover {
+  border-color: #94a3b8;
+}
+
+.input-ui:focus {
+  border-color: #0ea5e9;
+  box-shadow:
+    0 0 0 2px rgba(14,165,233,.35),
+    0 8px 22px rgba(14,165,233,.25);
+}
+
+
+  </style>
+</head>
+
+<body class="bg-slate-100">
+  <div class="h-full w-full flex items-center justify-center">
+    <div class="w-[420px] rounded-2xl bg-white shadow-2xl border border-slate-200">
+      
+      <!-- Header -->
+      <div class="rounded-t-2xl bg-gradient-to-r from-sky-600 to-indigo-600 px-8 py-6 text-white">
+        <h1 class="text-xl font-semibold tracking-wide" data-i18n="app.title">
+          Inspection Warehouse System
+        </h1>
+        <p class="mt-1 text-sm text-white/80" data-i18n="login.title">
+          <!-- Đăng nhập để tiếp tục -->
+        </p>
+      </div>
+
+      <!-- Form -->
+      <div class="px-8 py-8">
+        <div class="space-y-5">
+
+          <!-- Factory -->
+         
+
+          <!-- Username -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" data-i18n="login.username">
+             
+            </label>
+           <input id="username" class="input-ui" placeholder="_" />
+          </div>
+
+          <!-- Password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" data-i18n="login.password">
+              
+            </label>
+          <input id="password" type="password" class="input-ui" placeholder="••••••••" />
+          </div>
+
+<div id="factory-wrapper" class="hidden">
+  <label class="block text-sm font-medium text-slate-700 mb-1"  data-i18n="login.password">
+    
+  </label>
+  <select
+    id="factory"
+    class="select-ui">
+  </select>
+</div>
+          <!-- Remember -->
+          <div class="flex items-center justify-between text-sm">
+            <label class="flex items-center gap-2 text-slate-600" >
+              <input type="checkbox" id="remember"
+                     class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500" >
+            <span data-i18n="auth.remember"></span>
+            </label>
+            <span class="text-slate-400 select-none">
+              v1.0.0
+            </span>
+          </div>
+
+          <!-- Error -->
+        <p id="login-msg" class="hidden text-sm"></p>
+<div id="loading"
+     class="hidden mt-3 flex items-center justify-center gap-2 text-sky-600 text-sm">
+  <svg class="h-5 w-5 animate-spin"
+       viewBox="0 0 24 24"
+       fill="none">
+    <circle class="opacity-25"
+            cx="12" cy="12" r="10"
+            stroke="currentColor"
+            stroke-width="4"></circle>
+    <path class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+  </svg>
+  Checking account...
+</div>
+          <!-- Button -->
+   <button
+  id="btnLogin"
+  class="mt-2 h-11 w-full rounded-xl bg-sky-600
+         text-white font-semibold tracking-wide
+         hover:bg-sky-700 transition
+         disabled:opacity-50 disabled:cursor-not-allowed"
+  disabled data-i18n="auth.login"
+>
+  Enter System
+</button>
+
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="rounded-b-2xl border-t border-slate-200 px-8 py-4 text-center text-xs text-slate-500">
+        © 2025 Inspection Warehouse Application
+      </div>
+    </div>
+  </div>
+<script src="./js/i18n.js"></script>
+<script>
+   const FACTORY_LABEL_MAP = {
+  GL1: 'lianying',
+  GL2: 'lianshun1',
+  GL3: 'lianshun2',
+  GL4: 'cambodia',
+};
+let timer = null;
+let lastKey = '';
+
+function showLoading(show) {
+  const el = document.getElementById('loading');
+  if (!el) return;
+  el.classList.toggle('hidden', !show);
+}
+
+const userInput = document.getElementById('username');
+const passInput = document.getElementById('password');
+const factoryWrapper = document.getElementById('factory-wrapper');
+const factorySelect = document.getElementById('factory');
+const msg = document.getElementById('login-msg');
+
+function showMsg(text, ok = false) {
+  msg.textContent = text;
+  msg.className = ok
+    ? 'text-sm text-green-600 mt-3'
+    : 'text-sm text-red-600 mt-3';
+  msg.classList.remove('hidden');
+}
+
+function hideMsg() {
+  msg.classList.add('hidden');
+}
+
+async function autoLoginCheck() {
+  const user = userInput.value.trim();
+  const pass = passInput.value.trim();
+
+  if (!user || !pass) return;
+
+  hideMsg();
+  factoryWrapper.classList.add('hidden');
+  showLoading(true);
+
+  try {
+    const res = await window.kbAPI.login({ user, password: pass });
+
+    showLoading(false);
+
+if (!res?.success) {
+  showMsg(`❌ ${res.message || 'Đăng nhập thất bại'}`);
+  return;
+}
+
+    // show factory
+factoryWrapper.classList.remove('hidden');
+
+// enable button
+btnLogin.disabled = false;
+
+    factorySelect.innerHTML =
+      '<option value="">-- Select Factory --</option>' +
+      res.factories.map(f => `
+        <option value="${f.factory_extcode}">
+          ${FACTORY_LABEL_MAP[f.factory_extcode] || f.factory_extcode}
+        </option>
+      `).join('');
+
+    factoryWrapper.classList.remove('hidden');
+
+
+
+  } catch (e) {
+    showLoading(false);
+    showMsg('❌ Login error');
+    console.error(e);
+  }
+}
+
+
+// debounce 0.5s khi gõ password
+passInput.addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(autoLoginCheck, 500);
+});
+
+factorySelect.addEventListener('change', () => {
+  btnLogin.disabled = !factorySelect.value;
+});
+
+
+btnLogin.addEventListener('click', () => {
+  const user = userInput.value.trim();
+  const factory = factorySelect.value;
+  
+  const remember = document.getElementById('remember')?.checked;
+
+  console.log(remember);
+
+  if (!factory) {
+    showMsg('⚠️ Please select factory');
+    return;
+  }
+
+  window.kbAPI.loginSuccess({
+    user,
+    factory,
+    remember
+  });
+});
+
+function handleEnter() {
+  const user = userInput.value.trim();
+  const factory = factorySelect.value;
+  const remember = document.querySelector('input[type="checkbox"]')?.checked;
+
+  if (!factory) {
+    showMsg('Please select factory');
+    return;
+  }
+
+  window.kbAPI.loginSuccess({
+    user,
+    factory,
+    remember
+  });
+}
+document.addEventListener('DOMContentLoaded', async () => {
+  const lang = localStorage.getItem('app_lang') || 'en';
+
+  await window.i18n.loadLang(lang);
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    el.textContent = window.i18n.t(key);
+  });
+});
+
+
+</script>
+
+
+</body>
+</html>

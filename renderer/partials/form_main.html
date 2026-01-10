@@ -1,0 +1,1246 @@
+<style>
+  #btn-open-printer-settings{
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.16),
+    0 2px 6px rgba(15, 23, 42, 0.10);
+  transition: box-shadow .2s ease, transform .12s ease;
+}
+
+#btn-open-printer-settings:hover{
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.22),
+    0 4px 10px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+#btn-open-printer-settings:active{
+  transform: translateY(0px);
+  box-shadow:
+    0 3px 10px rgba(15, 23, 42, 0.22) inset;
+}
+/* Select language đẹp hơn (áp dụng cho select hoặc class bạn muốn) */
+.language-select {
+  @apply w-full h-11 md:h-12
+         rounded-xl
+         border border-slate-300
+         bg-white
+         px-4 pr-10
+         text-base text-slate-800
+         shadow-sm
+         outline-none
+         transition
+         cursor-pointer;
+}
+
+/* hover/focus giống hệ của bạn */
+.language-select:hover {
+  @apply bg-slate-50 border-slate-400;
+}
+
+.language-select:focus {
+  @apply ring-2 ring-sky-500/40 border-sky-500;
+}
+
+/* OPTION: giới hạn tuỳ OS, nhưng vẫn set được nền + chữ + padding (nhiều OS chỉ ăn 1 phần) */
+.language-select option {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 12px;            /* ⚠️ có OS không ăn padding */
+  background-color: #ffffff;      /* thường ăn */
+  color: #0f172a;                 /* thường ăn */
+}
+
+/* Option khi được chọn (Windows/Electron đa số ăn) */
+.language-select option:checked {
+  background: linear-gradient(
+    135deg,
+    rgba(14,165,233,.18),
+    rgba(99,102,241,.18)
+  );
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* ===== PRINTER SETTING BLOCK ===== */
+/* ===== PRINTER SETTING ===== */
+.printer-setting {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #f8fafc 100%
+  );
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.08),
+    0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.printer-setting label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ===== SELECT ===== */
+.printer-select {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid #cbd5f5;
+  background-color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  appearance: none;
+
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+
+  box-shadow: 0 1px 2px rgba(15,23,42,.06);
+  transition: all .15s ease;
+}
+
+.printer-select:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.printer-select:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow:
+    0 0 0 3px rgba(56,189,248,.25),
+    0 2px 6px rgba(15,23,42,.08);
+}
+
+/* OPTION */
+.printer-select option {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.printer-select option:checked {
+  background: linear-gradient(
+    135deg,
+    rgba(56,189,248,.25),
+    rgba(99,102,241,.25)
+  );
+  font-weight: 600;
+}
+
+/* ===== DEFAULT BADGE ===== */
+.printer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0369a1;
+  background: rgba(56,189,248,.15);
+  border-radius: 999px;
+}
+
+/* Excel icon to rõ */
+.excel-icon {
+  width: 22px;
+  height: 22px;
+
+  border-radius: 6px;
+  box-shadow:
+    0 3px 8px rgba(22,163,74,.45);
+
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease;
+}
+
+/* hover nổi lên */
+.toolbar-btn:hover .excel-icon {
+  transform: translateY(-1px) scale(1.08);
+  box-shadow:
+    0 8px 18px rgba(22,163,74,.55);
+}
+
+/* text nhỏ hơn icon */
+.toolbar-btn span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ============================= */
+/* PO MULTI SELECT – CLEAN STYLE */
+/* ============================= */
+
+#bill-code-select {
+  width: 100%;
+  min-height: 120px;
+  padding: 6px;
+  border-radius: 14px;
+
+  border: 1px solid #e5e7eb; /* gray-200 */
+  background: #ffffff;
+
+  font-size: 14px;
+  line-height: 1.4;
+
+  outline: none;
+  box-shadow:
+    inset 0 1px 2px rgba(15,23,42,.08),
+    0 1px 0 rgba(255,255,255,.6);
+
+  transition: border .15s ease, box-shadow .15s ease;
+}
+#bill-code-select option {
+  padding: 8px 12px;
+  margin: 4px 0;
+
+  border-radius: 10px;
+  cursor: pointer;
+
+  background: transparent;
+  color: #0f172a; /* slate-900 */
+
+  transition:
+    background .12s ease,
+    color .12s ease,
+    transform .05s ease;
+}
+#bill-code-select:focus {
+  border-color: #0ea5e9; /* sky-500 */
+  box-shadow:
+    0 0 0 3px rgba(14,165,233,.25),
+    inset 0 1px 2px rgba(15,23,42,.08);
+}
+
+#bill-code-select option:checked {
+  background: linear-gradient(
+    135deg,
+    #0ea5e9,
+    #0284c7
+  );
+  color: #ffffff;
+  font-weight: 600;
+}
+#bill-code-select option:active {
+  transform: scale(.98);
+}
+
+#bill-code-select option:checked::before {
+  content: "✓ ";
+  font-weight: bold;
+}
+</style>
+<body class="bg-slate-100">
+  <!-- SETTINGS MODAL BACKDROP -->
+<div id="settings-modal" class="settings-modal hidden">
+  <div class="settings-panel">
+
+    <!-- LEFT -->
+    <div class="settings-left">
+      <div class="avatar-wrap">
+      <img src="./assets/img/avatar.jpg" id="avatar">
+      </div>
+      <div class="user-name"></div>
+      <div class="user-role">QC Inspector</div>
+    </div>
+
+<!-- RIGHT -->
+<div class="settings-right">
+  <h3 class="settings-title" data-i18n="settings.title">Settings</h3>
+
+  <!-- ===== THEME ===== -->
+  <div class="settings-group ">
+    <div class="settings-group-header">
+      <div class="settings-group-title a">
+        <svg class="icon icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.364-6.364-1.414 1.414M8.05 16.95l-1.414 1.414m0-11.314L8.05 8.05m8.9 8.9 1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+        </svg>
+        <div>
+          <div class="settings-label" data-i18n="settings.appearance">Appearance</div>
+          <div class="settings-desc">Light or dark mode (Will be updated in the next version)</div>
+        </div>
+      </div>
+
+      <!-- Toggle -->
+      <label class="theme-toggle">
+        <input type="checkbox" id="theme-toggle-input">
+        <span class="theme-slider">
+          <svg class="moon" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+          </svg>
+          <svg class="sun" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 4.5V6m0 12v1.5m7.5-7.5H18m-12 0H4.5"/>
+          </svg>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <!-- ===== LANGUAGE ===== -->
+
+<div class="settings-group">
+  <div class="settings-group-header">
+    <div class="settings-group-title">
+      <!-- Globe icon -->
+      <svg xmlns="http://www.w3.org/2000/svg"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.8"
+           stroke-linecap="round"
+           stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18"/>
+        <path d="M12 3a15 15 0 0 1 0 18"/>
+        <path d="M12 3a15 15 0 0 0 0 18"/>
+      </svg>
+
+      <div>
+        <div class="settings-label" data-i18n="settings.language">Language</div>
+        <div class="settings-desc">
+          Select application language
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px">
+    <select id="lang-select" class="select-ui w-full">
+      <option value="en">🇺🇸 English</option>
+      <option value="vi">🇻🇳 Tiếng Việt</option>
+      <option value="zh">🇨🇳 中文</option>
+      <option value="km">🇰🇭 ខ្មែរ</option>
+    </select>
+  </div>
+</div>
+  <!-- ===== PRINTER ===== -->
+<div class="settings-group">
+  <div class="settings-group-header">
+    <div class="settings-group-title">
+      <!-- Printer icon -->
+      <svg xmlns="http://www.w3.org/2000/svg"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.8"
+           stroke-linecap="round"
+           stroke-linejoin="round">
+        <path d="M6 9V3h12v6"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <path d="M6 14h12v7H6z"/>
+      </svg>
+
+      <div>
+        <div class="settings-label" data-i18n="settings.default_printer">Default Printer</div>
+        <div class="settings-desc">
+          This printer will be used for all silent print jobs
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <select id="printer-select" class="select-ui w-full">
+      <option value="">— Select a printer —</option>
+    </select>
+
+    <!-- default badge -->
+    <div id="printer-default-badge"
+         class="mt-2 hidden inline-flex items-center gap-1
+                rounded-lg bg-amber-50 px-2 py-1
+                text-xs font-medium text-amber-700">
+      ⭐ System default printer
+    </div>
+  </div>
+</div>
+
+
+  <div class="settings-group">
+    <div class="settings-group-header">
+      <div class="settings-group-title">
+        <!-- printer icon -->
+        <svg xmlns="http://www.w3.org/2000/svg"
+             viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="1.8"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+          <path d="M6 9V3h12v6"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <path d="M6 14h12v7H6z"/>
+        </svg>
+
+        <div>
+          <div class="settings-label" data-i18n="settings.setting_printer">Setting Printer</div>
+          <div class="settings-desc">Open system printer settings</div>
+        </div>
+      </div>
+
+      <button id="btn-open-printer-settings" type="button"
+              class="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium" data-i18n="btn.open">
+        Open
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== ACTION ===== -->
+  <div class="settings-actions">
+    <button class="btn btn-logout-danger" onclick="logout()" data-i18n="btn.logout">
+      Logout
+    </button>
+  </div>
+</div>
+
+
+    <!-- CLOSE -->
+    <button class="settings-close" id="settings-close">
+      ✕
+    </button>
+  </div>
+</div>
+
+  <form id="item-check-form" class="text-upscale">
+    <!-- Modal PO -->
+    <div id="po-modal" class="hidden">
+      <div class="modal-content">
+        <span class="close-btn" id="po-modal-close">&times;</span>
+        <div id="po-modal-content">Mã PO:</div>
+      </div>
+    </div>
+
+    <div class="inspection-wrapper">
+      <input type="hidden" name="RM_type" id="rm-type-field" value="A" />
+
+      <!-- HEADER -->
+      <div class="inspection-header">
+        <div class="mx-auto max-w-7xl px-4 py-6 md:px-6">
+          <div
+            class="mb-2 flex flex-col gap-3 px-5 md:flex-row md:items-center md:justify-between"
+          >
+            <!-- LEFT: Title -->
+            <h1 class="inspection-title" data-i18n="title_name">Receiving Inspection</h1>
+
+            <!-- RIGHT: Logout -->
+         <div class="relative" id="settings-dropdown-wrap">
+  <!-- SETTINGS BUTTON -->
+<button id="settings-btn" class="settings-btn" type="button">
+  <svg xmlns="http://www.w3.org/2000/svg"
+       viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="1.8"
+       stroke-linecap="round"
+       stroke-linejoin="round">
+    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.51 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.51-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.02a1.7 1.7 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.51 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.02a1.7 1.7 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.51 1z"/>
+  </svg>
+  <span data-i18n="settings.title">Settings</span>
+</button>
+
+
+  <!-- DROPDOWN -->
+
+  </div>
+</div>
+
+          </div>
+
+          <!-- Toolbar -->
+          
+        </div>
+      </div>
+<div class="app-toolbar">
+  <div class="app-toolbar-inner">
+    <div class="app-toolbar-row">
+
+<button id="sidebar-toggle" type="button" class="toolbar-btn">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M9 12h6M9 16h6M5 8h14M5 20h14M5 4h14" />
+  </svg>
+  <span data-i18n="nav.report"></span>
+</button>
+
+<button id="btn-new" type="button" class="toolbar-btn">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M12 4v16m8-8H4" />
+  </svg>
+  <span  data-i18n="nav.create">Create</span>
+</button>
+
+<button id="btn-history" type="button" class="toolbar-btn">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M12 8v4l3 3m6-3a9 9 0 11-9-9 9 9 0 019 9z" />
+  </svg>
+  <span data-i18n="nav.history">History</span>
+</button>
+
+
+<button id="btn-qc-tool" class="toolbar-btn toolbar-btn-primary">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M6 9V4h12v5M6 14h12v6H6zM6 12h12" />
+  </svg>
+  <span data-i18n="nav.qc_label">QC Label</span>
+</button>
+
+<button id="btn-export-excel" type="button" class="toolbar-btn">
+ <svg viewBox="0 0 24 24"
+       class="h-4 w-4 excel-icon"
+       xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="18" height="18" rx="3"
+          fill="#16A34A"/>
+    <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z"
+          fill="white"/>
+  </svg>
+  <span  data-i18n="btn.export_excel">Export Excel</span>
+</button>
+
+<button id="btn-export-deckers" type="button" class="toolbar-btn">
+  <svg viewBox="0 0 24 24"
+       class="h-4 w-4 excel-icon"
+       xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="18" height="18" rx="3"
+          fill="#16A34A"/>
+    <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z"
+          fill="white"/>
+  </svg>
+  <span data-i18n="btn.export_deckers">Deckers Excel Decker</span>
+</button>
+
+<button type="submit" class="toolbar-btn toolbar-btn-primary">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M17 16v5H7v-5M12 12v9M4 7h16l-2-3H6L4 7z" />
+  </svg>
+  <span data-i18n="btn.save"></span>
+</button>
+
+    </div>
+  </div>
+</div>
+
+
+      <!-- BODY -->
+      <div class="inspection-body pb-20">
+        <div class="mx-auto max-w-7xl px-4 py-6 md:px-6">
+          <!-- 1 Basic Info -->
+          <div class="section-card">
+            <h2
+              class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2"
+            >
+              <span class="text-sky-600" >●</span>
+              1️⃣ <span data-i18n="inspection.number" class="text-sky-600">Mã phiếu kiểm tra</span>
+            </h2>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-slate-600" data-i18n="inspection.number"
+                  ></label
+                >
+                <input
+                  type="text"
+                  name="RI_no"
+                  id="RI_no"
+                  readonly
+                  class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="container.number"
+                  ></label>
+                
+                <div class="input-wrap relative">
+                  <input
+                    type="text"
+                    id="tc-code-input"
+                    name="ERP_tc_code"
+                    placeholder="_"
+                    autocomplete="off"
+                    class="block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                  <div
+                    class="loader hidden absolute right-2 top-1/2 -translate-y-1/2"
+                  ></div>
+                </div>
+
+                <input
+                  type="hidden"
+                  id="tc-code-hidden"
+                  name="ERP_tc_code_hidden"
+                />
+                <input
+                  type="hidden"
+                  id="bill-code-hidden"
+                  name="ERP_po_no_hidden"
+                />
+              </div>
+
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="purchase.order"
+                  ></label
+                >
+                <div class="input-wrap relative">
+                  <input
+                    type="text"
+                    id="bill-code-input"
+                    name="ERP_po_no"
+                    placeholder="_"
+                    autocomplete="off"
+                    class="block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                  <div id="po-loader" class="loader-po hidden"></div>
+                </div>
+
+                <div id="po-tooltip" class="custom-po-tooltip"></div>
+
+                <select
+                  id="bill-code-select"
+                  multiple
+                  size="4"
+                  class="hidden w-full min-h-[100px] max-h-[105px] rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 overflow-y-auto"
+                ></select>
+              </div>
+
+              <div
+                id="po-selected-display"
+                class="text-sm hidden text-sky-700 font-medium min-w-[120px] pt-2"
+              ></div>
+
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700"  data-i18n="quantity.supplier"
+                  ></label
+                >
+                <input
+                  type="number"
+                  id="po-purchase-qty-display"
+                  readonly
+                  min="0"
+                  step="0.01"
+                 name="RM_po_qty"
+                  value="0"
+                  class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm"
+                />
+                <input type="hidden" name="RM_po_qty" id="po-purchase-qty" />
+
+                <div class="mt-3">
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700"  data-i18n="quantity.container"
+                    ></label
+                  >
+                  <input
+                    type="number"
+                    id="container-qty-display"
+                    min="0"
+                    step="0.01"
+                    name="RM_container_qty"
+                    value="0"
+                    class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 px-3 py-2 text-base shadow-sm"
+                  />
+<input
+  type="hidden"
+  name="RM_container_qty"
+  id="container-qty"
+/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2 Material Info -->
+          <div class="section-card">
+    <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
+     <span class="text-sky-600">●</span>
+              2️⃣    <span class="text-sky-600" data-i18n="section.material_info"></span>
+            </h2>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+              <div class="xl:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="Brand"
+                  >Brand Name</label
+                >
+                <select
+                  name="RI_brand_name"
+                  id="brand_name_select"
+class="select-ui"                >
+                  <option value="">--</option>
+                </select>
+                <input
+                  type="hidden"
+                  name="RI_custbrand_id"
+                  id="RI_custbrand_id"
+                />
+                <input type="hidden" name="RI_brand_code" id="RI_brand_code" />
+              </div>
+
+              <div class="xl:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="material"
+                  >Material</label
+                >
+                <select
+                  name="RI_mat_code"
+                  id="mat_codeone"
+class="select-ui"                >
+                  <option value="">--</option>
+                </select>
+              </div>
+
+              <div class="xl:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="manufacturer"
+                  >Manufacturer</label
+                >
+                <select
+                  name="RI_vend_code"
+                  id="vend_code_select"
+class="select-ui"                >
+                  <option value="">--</option>
+                </select>
+                <input type="hidden" name="RI_vend_name" id="vend_name_input" />
+              </div>
+
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="delivery.date"
+                  >Delivery Date</label
+                >
+                <input
+                  type="date"
+                  name="RI_date"
+                  id="RI_date"
+ class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white">              </div>
+
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700"  data-i18n="transportation.method"
+                  >Transportation Method</label
+                >
+                <select
+                  name="RI_shippingway"
+                  id="shippingway_select"
+class="select-ui"                >
+                  <option value="">--</option>
+                  <option value="Sea">SEA</option>
+                  <option value="Land">LAND</option>
+                  <option value="Air">AIR</option>
+                  <option value="Courier">COURIER</option>
+                  <option value="Carrier">CARRIER</option>
+                </select>
+              </div>
+
+              <div class="xl:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="inspection.notes"
+                  >Inspection Notes</label
+                >
+                <input
+                  type="text"
+                  name="RI_note"
+                  class="block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div class="xl:col-span-1">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="material.old_code"
+                  >Material old code</label
+                >
+                <input
+                  type="text"
+                  id="mat_oldcode"
+                  name="RI_mat_oldcode"
+                  class="block w-full h-11 md:h-12 rounded-xl border border-gray-200 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm"
+                />
+              </div>
+
+              <div class="xl:col-span-1 flex items-end">
+                <label class="fix-toggle">
+  <input type="checkbox" name="RI_ischanged" />
+  <span class="fix-slider"></span>
+  <span class="fix-label" data-i18n="fix">Fix</span>
+</label>
+              </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="material.cn_name"
+                  >Material Chinese Name</label
+                >
+                <input
+                  readonly
+                  type="text"
+                  name="RI_mat_name"
+                  id="RI_mat_name"
+                  class="block w-full h-11 md:h-12 rounded-xl border border-gray-200 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="material.en_name"
+                  >Material English Name</label
+                >
+                <input
+                  readonly
+                  type="text"
+                  name="RI_mat_ename"
+                  id="RI_mat_ename"
+                  class="block w-full h-11 md:h-12 rounded-xl border border-gray-200 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 Spec -->
+          <div class="section-card">
+            <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
+     <span class="text-sky-600">●</span>
+              3️⃣ <span class="text-sky-600" data-i18n="section.specification">Thông số kỹ thuật</span>     
+            </h2>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="thickness.spec"
+                  >Thickness Spec</label
+                >
+                <input
+                  name="RI_thickness_spec"
+                  class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="thickness.actual"
+                  >Actual Thickness</label
+                >
+                <input
+                  name="RI_thickness_actual"
+                  class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="hardness.spec"
+                  >Hardness Spec</label
+                >
+                <input
+                  name="RI_hardness_spec"
+                  class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white"
+                />
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="hardness.actual"
+                  >Actual Hardness</label
+                >
+                <input
+                  name="RI_hardness_actual"
+                  class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Material Grade (A-F render bằng JS) -->
+          <div class="section-card">
+      <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
+     <span class="text-sky-600">●</span>
+              4️⃣ <span class="text-sky-600" data-i18n="material.grade">Material Grade </span> 
+            </h2>
+
+            <div
+              class="overflow-x-auto rounded-xl border border-slate-200 bg-white"
+            >
+              <table class="min-w-full table-auto text-xs md:text-sm">
+                <thead class="sticky top-0 bg-slate-100 text-slate-700 text-sm">
+                  <tr class="border-b border-gray-200">
+                    <th class="px-4 py-2 min-w-[110px] text-base" data-i18n="level">Level</th>
+                    <th class="px-4 py-2 min-w-[110px] text-base" data-i18n="reference.rate"> 
+                      Reference Rate
+                    </th>
+                    <th class="px-4 py-2 min-w-[130px] text-base" data-i18n="usage.rate">
+                      Usage Rate
+                    </th>
+                    <th class="px-4 py-2 min-w-[130px] text-base" data-i18n="inspection.quantity">
+                      Inspection Quantity
+                    </th>
+                    <th class="px-4 py-2 min-w-[170px] text-base" data-i18n="inspection.percentage">
+                      Percentage
+                    </th>
+                    <th class="px-4 py-2 min-w-[170px] text-base" data-i18n="inspection.weighted_avg">
+                      Weighted Average
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody id="grade-tbody">
+                  <!-- Rows will be dynamically added here -->
+                </tbody>
+
+                <tbody>
+                  <tr
+                    class="bg-amber-100 text-slate-800 font-semibold text-gray-900 text-base"
+                  >
+                    <td class="px-4 py-2 text-center" colspan="3" data-i18n="inspection.usable_total">
+                      Usable Total
+                    </td>
+                    <td class="px-4 py-2"><span id="sum-qty">0</span></td>
+                    <td class="px-4 py-2" data-i18n="inspection.total">Total</td>
+                    <td class="px-4 py-2"><span id="sum-weighted">0</span></td>
+                  </tr>
+
+                  <tr class="bg-blue-50 text-base">
+                    <td class="px-4 py-2 font-medium text-gray-900">
+                      R_Reject
+                    </td>
+                    <td class="px-4 py-2 text-gray-700">Reject</td>
+                    <td class="px-4 py-2 text-gray-700"><span data-i18n="below"></span> 70%</td>
+                    <td class="px-4 py-2">
+                      <input
+                        readonly
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        name="RI_R_qty"
+                        value="0"
+                        class="qty-readonly block w-40 h-11 md:h-12 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-right shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </td>
+                    <td class="px-4 py-2"></td>
+                    <td class="px-4 py-2"></td>
+                  </tr>
+
+                  <tr
+                    class="bg-amber-100 text-slate-800 font-semibold text-gray-900 text-base"
+                  >
+                    <td class="px-4 py-2 text-center" colspan="5" data-i18n="inspection.total_inspected">
+                      Total Inspected
+                    </td>
+                    <td class="px-4 py-2">
+                      <span id="sum-total-shipment">0</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        
+<!-- 5 + 6 Defect & Handling -->
+<div class="section-card mt-6">
+  <div class="grid grid-cols-2 gap-6">
+
+    <!-- ================= LEFT: DEFECT LIST ================= -->
+    <div class="rounded-2xl bg-white shadow-xl border border-slate-200 p-6">
+      <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
+        <span class="text-sky-600">●</span>
+        5️⃣    <span class="text-sky-600" data-i18n="section.defect_list"> Danh sách lỗi</span> 
+      </h2>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <table class="min-w-full table-auto text-sm">
+          <thead class="bg-slate-100 text-slate-700 text-center font-semibold">
+            <tr>
+              <th class="px-4 py-2 border-b" data-i18n="reason">Reason</th>
+              <th class="px-4 py-2 border-b" data-i18n="footage">Footage</th>
+              <th class="px-4 py-2 border-b" data-i18n="rate">Rate</th>
+              <th class="px-4 py-2 border-b" data-i18n="rejected.reason">Rejected Season</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <!-- Stitching Color -->
+            <tr class="text-center">
+              <td class="px-4 py-2 border-b" data-i18n="color">Stitching Color</td>
+              <td class="px-4 py-2 border-b">
+                <input type="number" step="0.01" id="colorQty"
+                  class="input text-right" />
+              </td>
+              <td class="px-4 py-2 border-b">
+                <span id="colorRate">0%</span>
+              </td>
+              <td class="px-4 py-2 border-b">
+                <input type="text"
+                  class="input" />
+              </td>
+            </tr>
+
+            <!-- Character -->
+            <tr class="text-center bg-slate-50">
+              <td class="px-4 py-2 border-b" data-i18n="character">Character</td>
+              <td class="px-4 py-2 border-b">
+                <input type="number" step="0.01" id="characterQty"
+                  class="input text-right" />
+              </td>
+              <td class="px-4 py-2 border-b">
+                <span id="characterRate">0%</span>
+              </td>
+              <td class="px-4 py-2 border-b">
+                <input type="text"
+                  class="input" />
+              </td>
+            </tr>
+
+            <!-- Other -->
+            <tr class="text-center">
+              <td class="px-4 py-2 border-b" data-i18n="other">Other</td>
+              <td class="px-4 py-2 border-b">
+                <input type="number" step="0.01" id="otherQty"
+                  class="input text-right" />
+              </td>
+              <td class="px-4 py-2 border-b">
+                <span id="otherRate">0%</span>
+              </td>
+              <td class="px-4 py-2 border-b">
+                <input type="text"
+                  class="input" />
+              </td>
+            </tr>
+
+            <!-- TOTAL -->
+            <tr class="bg-amber-100 text-slate-800 font-semibold text-center">
+              <td class="px-4 py-2 border-t" colspan="2" data-i18n="defective.total">
+                Defective Total  
+              </td>
+              <td class="px-4 py-2 border-t" colspan="2">
+                <span id="totalDefect">0</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= RIGHT: HANDLING METHOD ================= -->
+    <div class="rounded-2xl bg-white shadow-xl border border-slate-200 p-6 flex flex-col">
+      <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
+        <span class="text-sky-600">●</span>
+        6️⃣ <span data-i18n="handling.method" class="text-sky-600">Handling Method</span>
+      </h2>
+
+      <!-- Type -->
+      <div class="mb-4 flex items-center gap-6">
+        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700"  >
+          <input type="radio" name="remark_type" value="text" checked
+            class="h-4 w-4 text-sky-600 focus:ring-sky-500"  data-i18n="input.typed">
+          Input
+        </label>
+
+        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="radio" name="remark_type" value="sign"
+            class="h-4 w-4 text-sky-600 focus:ring-sky-500" data-i18n="input.handwritten">
+          Handwritten
+        </label>
+      </div>
+
+      <!-- Text -->
+      <div id="remark-textarea-block" class="flex-1">
+        <textarea id="RI_remark" rows="14"
+          class="textarea h-full"
+          placeholder="Nhập phương án xử lý..."></textarea>
+      </div>
+
+      <!-- Sign -->
+      <div id="remark-sign-block" class="hidden mt-4">
+        <div class="rounded-xl border border-slate-300 p-2">
+          <canvas id="remark-sign-canvas"
+            class="h-[260px] w-full rounded-lg bg-white"></canvas>
+        </div>
+
+        <div class="mt-3 flex justify-end">
+          <button type="button"
+            class="btn">
+            Xóa chữ ký
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+          <!-- 7 Signatures -->
+          <div
+            class="section-card"
+          >
+   <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
+     <span class="text-sky-600">●</span>
+    7️⃣  <span class="text-sky-600" data-i18n="section.signatures">Chữ ký</span>
+  </h2>
+
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div
+                class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <label
+                  class="mb-3 block text-center text-sm font-medium text-gray-700"  data-i18n="role.director"
+                  >Director</label
+                >
+                <div class="flex flex-col items-center gap-3">
+<button
+  type="button"
+  data-sign="manager"
+  class="btn-sign inline-flex h-11 items-center gap-2
+         rounded-xl border border-slate-300
+         bg-slate-50 hover:bg-slate-100
+         px-4 text-sm font-medium text-slate-700
+         shadow-sm transition
+         hover:shadow-md
+         focus:outline-none focus:ring-2 focus:ring-sky-500"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       class="h-4 w-4 text-sky-600"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor">
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M16.862 3.487a2.25 2.25 0 113.182 3.182L7.5 19.213 3 21l1.787-4.5L16.862 3.487z"/>
+  </svg>
+  <span>Sign</span>
+                  </button>
+                  <img
+                    id="sign-preview-manager"
+                    style="
+                      display: none;
+                      width: 120px;
+                      border: 1px solid #e5e7eb;
+                      margin-top: 2px;
+                    "
+                    class="mx-auto rounded-md shadow-sm"
+                  />
+                  <input
+                    type="hidden"
+                    name="RI_manager_sign"
+                    id="sign-field-manager"
+                  />
+                </div>
+              </div>
+
+              <div
+                class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <label
+                  class="mb-3 block text-center text-sm font-medium text-gray-700"  data-i18n="role.clerk"
+                  >Clerk</label
+                >
+                <div class="flex flex-col items-center gap-3">
+<button
+  type="button"
+  data-sign="storekeeper"
+  class="btn-sign inline-flex h-11 items-center gap-2
+         rounded-xl border border-slate-300
+         bg-slate-50 hover:bg-slate-100
+         px-4 text-sm font-medium text-slate-700
+         shadow-sm transition
+         hover:shadow-md
+         focus:outline-none focus:ring-2 focus:ring-sky-500"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       class="h-4 w-4 text-sky-600"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor">
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M16.862 3.487a2.25 2.25 0 113.182 3.182L7.5 19.213 3 21l1.787-4.5L16.862 3.487z"/>
+  </svg>
+  <span>Sign</span>
+                  </button>
+                  <img
+                    id="sign-preview-storekeeper"
+                    style="
+                      display: none;
+                      width: 120px;
+                      border: 1px solid #e5e7eb;
+                      margin-top: 2px;
+                    "
+                    class="mx-auto rounded-md shadow-sm"
+                  />
+                  <input
+                    type="hidden"
+                    name="RI_storekeeper_sign"
+                    id="sign-field-storekeeper"
+                  />
+                </div>
+              </div>
+
+              <div
+                class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <label
+                  class="mb-3 block text-center text-sm font-medium text-gray-700" data-i18n="role.qc"
+                  >QC</label
+                >
+                <div class="flex flex-col items-center gap-3">
+<button
+  type="button"
+  data-sign="inspector"
+  class="btn-sign inline-flex h-11 items-center gap-2
+         rounded-xl border border-slate-300
+         bg-slate-50 hover:bg-slate-100
+         px-4 text-sm font-medium text-slate-700
+         shadow-sm transition
+         hover:shadow-md
+         focus:outline-none focus:ring-2 focus:ring-sky-500"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       class="h-4 w-4 text-sky-600"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor">
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M16.862 3.487a2.25 2.25 0 113.182 3.182L7.5 19.213 3 21l1.787-4.5L16.862 3.487z"/>
+  </svg>
+  <span>Sign</span>
+                  </button>
+                  <img
+                    id="sign-preview-inspector"
+                    style="
+                      display: none;
+                      width: 120px;
+                      border: 1px solid #e5e7eb;
+                      margin-top: 2px;
+                    "
+                    class="mx-auto rounded-md shadow-sm"
+                  />
+                  <input
+                    type="hidden"
+                    name="RI_inspector_sign"
+                    id="sign-field-inspector"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <input type="hidden" name="history_data" id="history_data" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</body>

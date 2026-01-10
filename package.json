@@ -1,0 +1,63 @@
+{
+  "name": "kb-electron",
+  "version": "0.0.4",
+  "main": "main.js",
+  "author": "阿海",
+  "type": "commonjs",
+  "scripts": {
+    "css:dev": "tailwindcss -i ./renderer/assets/style.css -o ./renderer/dist/style.css --watch",
+    "css:build": "tailwindcss -i ./renderer/assets/style.css -o ./renderer/dist/style.css --minify",
+    "dev": "electron .",
+    "predist": "npm run css:build",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.inspection.warehouse",
+    "productName": "inspection Warehouse",
+    "asar": true,
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "db.js",
+      "session.js",
+      "session.json",
+      "renderer/**/*",
+      "dist/style.css",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "./renderer/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": false
+    },
+    "directories": {
+      "output": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^26.0.12",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
+    "jsbarcode": "^3.12.1",
+    "mssql": "^12.2.0"
+  }
+}
