@@ -335,35 +335,23 @@ function setRIButtonsEnabled(enabled) {
 
 
 
-function toDateInputValue(v) {
-  if (!v) return '';
-
-  // Nếu là Date object
-  if (v instanceof Date && !isNaN(v)) {
-    return v.toISOString().slice(0, 10); // YYYY-MM-DD
+function convertDateString(dateString) {
+  // Tạo đối tượng Date từ chuỗi ngày
+  const date = new Date(dateString);
+  
+  // Kiểm tra nếu ngày không hợp lệ
+  if (isNaN(date)) {
+    console.error("Invalid date string");
+    return "";
   }
-
-  const s = String(v).trim();
-
-  // Match kiểu "2025-12-16" hoặc "2025-12-16 00:00:00.000" hoặc "2025-12-16T..."
-  const m = s.match(/(\d{4}-\d{2}-\d{2})/);
-  if (m) return m[1];
-
-  // Nếu lỡ trả về "12/16/2025" hoặc "16/12/2025"
-  const m2 = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (m2) {
-    let a = +m2[1], b = +m2[2], y = m2[3];
-    // placeholder mm/dd => ưu tiên mm/dd, nhưng nếu a>12 thì hiểu là dd/mm
-    let mm = a, dd = b;
-    if (a > 12) { dd = a; mm = b; }
-    return `${y}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-  }
-
-  // Fallback parse (đổi " " -> "T" để JS parse được)
-  const d = new Date(s.replace(' ', 'T'));
-  if (!isNaN(d)) return d.toISOString().slice(0, 10);
-
-  return '';
+  
+  // Lấy năm, tháng và ngày với định dạng "yyyy-MM-dd"
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');  // Tháng từ 0 đến 11, phải cộng thêm 1
+  const dd = String(date.getDate()).padStart(2, '0');  // Đảm bảo ngày có 2 chữ số
+  
+  // Trả về giá trị theo định dạng "yyyy-MM-dd"
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 
@@ -390,6 +378,9 @@ if (cbFix) {
       toastError("Không tìm thấy dữ liệu");
       return;
     }
+  const riDate = convertDateString(data?.inspection?.RI_date) || '';
+  const riii = document.getElementById("RI_date");
+  if (riii) riii.value = riDate;
 
     // Fill inputs theo name=""
     Object.keys(data.inspection).forEach((key) => {
@@ -401,7 +392,7 @@ if (cbFix) {
       // ✅ 1) Checkbox: chỉ xử lý nếu input hiện tại là checkbox
       // ✅ 2) Date input: convert format DB -> YYYY-MM-DD
       if (input.type === "date") {
-        input.value = toDateInputValue(val);
+        input.value = convertDateString(val);
         input.dispatchEvent(new Event("change", { bubbles: true }));
         return;
       }
@@ -1982,6 +1973,36 @@ document.addEventListener('click', async (e) => {
 });
 
 
+function showLoading(text = "Loading...", percent = 0, hint = "") {
+  const modal = document.getElementById("modal-loading");
+  const t = document.getElementById("qc-loading-text");
+  const bar = document.getElementById("qc-progress-bar");
+  const p = document.getElementById("qc-progress-percent");
+  const h = document.getElementById("qc-progress-hint");
+
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  if (t) t.textContent = text;
+  setLoadingProgress(percent, hint);
+}
+
+function hideLoading() {
+  const modal = document.getElementById("modal-loading");
+  if (!modal) return;
+  modal.classList.add("hidden");
+}
+
+function setLoadingProgress(percent = 0, hint = "") {
+  const bar = document.getElementById("qc-progress-bar");
+  const p = document.getElementById("qc-progress-percent");
+  const h = document.getElementById("qc-progress-hint");
+
+  const v = Math.max(0, Math.min(100, Number(percent) || 0));
+  if (bar) bar.style.width = `${v}%`;
+  if (p) p.textContent = `${Math.round(v)}%`;
+  if (h) h.textContent = hint || "";
+}
 
 
 

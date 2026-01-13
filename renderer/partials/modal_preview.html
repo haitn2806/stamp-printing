@@ -428,16 +428,40 @@
     inset 0 1px 0 rgba(255,255,255,.35),
     0 2px 6px rgba(15,23,42,.35);
 }
+.qc-loading-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:0px 10px 20px 10px;
+  border-radius:16px;
+  background: rgba(255,255,255,.85);
+  box-shadow: 0 10px 30px rgba(15,23,42,.25);
+}
+
+#qc-loading-gif{
+  width: 150px;   /* chỉnh theo gif */
+  height: 150px;  /* chỉnh theo gif */
+  object-fit: contain;
+}
+
+.qc-loading-text{
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+}
 
 </style>
 <div id="modal-loading"
-     class="fixed inset-0 hidden flex items-center justify-center
-            bg-black/40 backdrop-blur-sm z-[100000]">
-  <div class="text-center">
-    <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500 border-solid mx-auto mb-3"></div>
-    <p class="text-blue-600 font-semibold text-lg">Loading...</p>
+     class="fixed inset-0  flex items-center justify-center
+            bg-black/40 backdrop-blur-sm z-[100000] hidden">
+  <div class="qc-loading-box">
+    <img id="qc-loading-gif" src="./assets/loading.gif" alt="Loading" />
+    <div class="qc-loading-text" data-i18n="loading"></div>
   </div>
 </div>
+
 <div id="modal-preview"
   class="fixed inset-0 z-50 hidden flex bg-black/50 items-center justify-center">
   <div id="modal-wrap"

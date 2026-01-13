@@ -116,5 +116,6 @@
   "app.title": "Hệ thống kiểm tra kho",
   "auth.remember": "Ghi nhớ đăng nhập",
   "auth.login": "Đăng nhập",
-  "app.footer.copyright": "© 2025 Ứng dụng quản lý & kiểm tra kho"
+  "app.footer.copyright": "© 2025 Ứng dụng quản lý & kiểm tra kho",
+  "loading":"Đang xử lý..."
 }

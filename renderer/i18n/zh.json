@@ -82,6 +82,7 @@
 
   "quantity.supplier": "供应商交货数量",
   "quantity.container": "货柜数量",
+"loading":"加载中...",
 
   "fix": "已處理的皮料",
   "fixed": "处理",

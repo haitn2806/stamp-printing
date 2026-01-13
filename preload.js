@@ -15,15 +15,15 @@ function getRidPrefix() {
   const DD = pad(d.getDate());
   const hh = pad(d.getHours());
   const mm = pad(d.getMinutes());
-  return `RID${yy}${MM}${DD}${hh}${mm}`;
+  const ss = pad(d.getSeconds());
+return `RID${yy}${MM}${DD}${hh}${mm}${ss}`;
+
 }
 
 function generateRidOffline() {
-  const now = Date.now();
   const prefix = getRidPrefix();
 
-  // reset nếu khác phút hoặc > 3s
-  if (prefix !== __RID_LAST_PREFIX__ || now - __RID_LAST_TIME__ > 3000) {
+  if (prefix !== __RID_LAST_PREFIX__) {
     __RID_LAST_PREFIX__ = prefix;
     __RID_LAST_SERIAL__ = 1;
   } else {
@@ -31,10 +31,9 @@ function generateRidOffline() {
   }
 
   if (__RID_LAST_SERIAL__ > 99) {
-    throw new Error('RID vượt quá 99 trong cùng thời gian');
+    throw new Error("RID vượt quá 99 trong cùng thời gian");
   }
 
-  __RID_LAST_TIME__ = now;
   return `${prefix}${pad(__RID_LAST_SERIAL__)}`;
 }
 

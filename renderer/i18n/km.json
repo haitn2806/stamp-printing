@@ -81,7 +81,7 @@
 
   "quantity.supplier": "បរិមាណដឹកជញ្ជូនរបស់អ្នកផ្គត់ផ្គង់",
   "quantity.container": "បរិមាណធុង",
-
+"loading":"Processing...",
   "fix": "FIX",
   "fixed": "បានដោះស្រាយ",
    "material":"Material",

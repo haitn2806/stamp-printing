@@ -4,6 +4,50 @@
 
   // ===== QC PREVIEW - Electron version =====
   window.__CREATING_NEW_RID__ = false;
+
+  const RANK_MAP = {
+  A: "A(A/I)",
+  B: "B(A/II)",
+  C: "C(B/III)",
+  D: "D(B/IV)",
+  E: "E(C/V)",
+  F: "F(D/VI)",
+  R: "R",
+};
+
+function formatRankColor(rank, color) {
+  const r = (rank || "").toUpperCase();
+  const label = RANK_MAP[r] || r;
+  return label + (color ? String(color) : "");
+}
+
+// input có thể là: "A(A/I)23", "A23", "A(A/I) 23", "R 6 log"
+// input: "F(C/V)23IT", "F23IT", "F(D/VI) 23IT", "R 6 log"...
+function parseRankColor(input) {
+  const s = String(input || "").trim();
+
+  // rank: chữ đầu tiên A-F hoặc R
+  const rank = (s.match(/^[A-FR]/i)?.[0] || "").toUpperCase();
+
+  // Nếu có "(...)" thì color là phần sau dấu ")"
+  const closeParenIdx = s.lastIndexOf(")");
+  let color = "";
+
+  if (closeParenIdx !== -1) {
+    color = s.slice(closeParenIdx + 1).trim();     // ✅ "23IT"
+  } else if (rank) {
+    color = s.slice(1).trim();                     // ✅ "23IT" (case "F23IT")
+  } else {
+    color = s.trim();
+  }
+
+  // optional: remove space trong color (nếu user nhập "23 IT")
+  color = color.replace(/\s+/g, "");
+
+  return { rank, color };
+}
+
+
 async function silentPrintCurrentRID() {
   // ❌ KHÔNG show loading
   // ❌ KHÔNG lock input
@@ -28,17 +72,25 @@ async function silentPrintCurrentRID() {
   let isCreatingRID = false; // bạn có dùng ở openPreviewModal
   window.__FAST_MODE__ = false; // bạn có dùng trong saveRID
 
-  function syncRidIndexes() {
-    const buttons = Array.from(
-      document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
-    );
+function syncRidIndexes() {
+  const buttons = Array.from(
+    document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+  );
 
-    buttons.forEach((btn, idx) => {
-      const index = idx + 1;
-      btn.textContent = index;
-      btn.dataset.index = index; // ⭐ QUAN TRỌNG
-    });
-  }
+  buttons.forEach((btn, idx) => {
+    const displayIndex = String(idx + 1);
+
+    // index hiển thị (thay đổi theo list)
+    btn.textContent = displayIndex;
+    btn.dataset.index = displayIndex;
+
+    // remarkIndex: chỉ set lần đầu (đóng băng)
+    if (!btn.dataset.remarkIndex) {
+      btn.dataset.remarkIndex = displayIndex;
+    }
+  });
+}
+
 
   function toYMD(v) {
   if (!v) return "";
@@ -139,7 +191,9 @@ clone.querySelectorAll('.editing-mode').forEach(el =>
     lockAllInputs(true);
   }
 
-  
+  function hasDraftRID() {
+  return !!document.querySelector('#rid-items button[data-draft="1"]');
+}
 
 function getSavedPrinterName() {
   return localStorage.getItem("QC_PRINTER_NAME") || null;
@@ -546,22 +600,24 @@ function setActiveRidIndex(btn) {
     }
 
     // Nếu chưa có RID_no -> generate mới (Electron)
-    let finalRID = ridNo;
-    if (!finalRID) {
-      if (!window.kbAPI?.generateRid) {
-        window.Swal?.fire
-          ? showToastWarning("❌ kbAPI.generateRid chưa có", "", "error")
-          : showToastWarning("kbAPI.generateRid chưa có");
-        return;
-      }
-      const gen = await window.kbAPI.generateRid();
-      finalRID = gen?.rid_no || gen?.RID_no || "";
-      if (!finalRID) {
-        window.Swal?.fire
-          ? showToastWarning("❌ Không generate được RID", "", "error")
-          : showToastWarning("Không generate được RID");
-        return;
-      }
+  let finalRID = ridNo;
+
+if (!finalRID) {
+  if (!window.kbAPI?.generateRid) {
+    showToastWarning("kbAPI.generateRid chưa có");
+    return;
+  }
+
+  // ✅ TRUYỀN RI_NO ĐỂ KHÔNG BỊ TRÙNG / SAI NGỮ CẢNH
+  const gen = await window.kbAPI.generateRid({ ri_no: riNo });
+  finalRID = gen?.rid_no || gen?.RID_no || "";
+
+  if (!finalRID) {
+    showToastWarning("Không generate được RID");
+    return;
+  }
+
+
     }
 
     const saveBtn = event?.target || document.getElementById("btn-save-rid");
@@ -582,19 +638,21 @@ const labDateInput =
 const finalLabDate = labDateInput || riDate || null;
 
 
-      let rid_rank = "",
-        rid_color = "";
-      if (rankColorVal) {
-        rid_rank = rankColorVal.charAt(0).toUpperCase();
-        rid_color = rankColorVal.slice(1);
-      }
+// ✅ parse đúng như Laravel: rank = chữ đầu, color = số cuối
+const { rank: rid_rank, color: rid_color } = parseRankColor(rankColorVal);
+// (optional) nếu bạn muốn chặn case nhập rank mà không có số color:
+if (rid_rank && !rid_color && rid_rank !== "R") {
+  // tùy rule của bạn, nếu A-F bắt buộc có color
+  // showToastWarning("Thiếu số color (vd: A(A/I)23)");
+  // return;
+}
+
 
       document
         .querySelector("#preview-barcode")
         ?.setAttribute("data-rid", finalRID);
-      const activeBtn = document.querySelector("#rid-items button.rid-active");
-
-      const currentIndex = activeBtn?.dataset?.index || "";
+  const activeBtn = document.querySelector("#rid-items button.rid-active");
+const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
 
       const records = [];
 
@@ -614,7 +672,7 @@ const finalLabDate = labDateInput || riDate || null;
           RID_rank: rid_rank,
           RID_color: rid_color,
          RID_LabDate: finalLabDate || null,
-          RID_remark: String(currentIndex || ""),
+          RID_remark: String(remarkIndex  || ""),
         });
       }
 
@@ -686,7 +744,10 @@ const shouldFastCreate = isFast && hasQty;
       // reload list RID nếu là RID mới (giữ logic bạn)
       if (isNewRID) {
         await window.loadRIDList?.(riNo, false);
-
+// if (hasDraftRID()) {
+//   showToastWarning("⚠️ Còn tem chưa lưu – FAST MODE bị chặn");
+//   return;
+// }
         if (!shouldFastCreate) {
           const btn = document.getElementById(`rid-btn-${finalRID}`);
           if (btn) {
@@ -698,43 +759,6 @@ const shouldFastCreate = isFast && hasQty;
         updateTotalQty();
       }
 
-// ===== FAST MODE =====
-// ===== FAST MODE =====
-if (shouldFastCreate) {
-  let htmlToPrint = null;
-  let deviceName = null;
-
-  // 1) Chụp snapshot tem hiện tại TRƯỚC khi reset UI
-  if (autoPrint && isSilentPrint()) {
-    await new Promise(r => requestAnimationFrame(r));
-    await new Promise(r => requestAnimationFrame(r));
-    htmlToPrint = buildPrintableHtmlSnapshot();
-    deviceName = getSavedPrinterName?.() || null;
-  }
-
-  // 2) Tạo tem mới (reset UI)
-  window.__FAST_CREATING__ = true;
-  await createNewRID();
-  window.__FAST_CREATING__ = false;
-
-  // 3) In bằng snapshot đã chụp (không phụ thuộc UI hiện tại)
-  if (htmlToPrint) {
-    window.kbAPI.printHtml({
-      html: htmlToPrint,
-      silent: true,
-      title: "QC - Silent Print",
-      ...(deviceName ? { deviceName } : {})
-    }).catch(err => {
-      console.error(err);
-      showToastError("Silent print failed");
-    });
-  }
-
-  return;
-}
-
-
-// ===== NORMAL MODE =====
 if (autoPrint) {
   if (isSilentPrint()) {
     await silentPrintCurrentRID();
@@ -742,6 +766,13 @@ if (autoPrint) {
     await window.printCurrentLabelDirect?.();
   }
 }
+// ===== FAST MODE =====
+if (shouldFastCreate) {
+  await createNewRID();
+}
+
+// ===== NORMAL MODE =====
+
 
 
       window.__FAST_MODE__ = false;
@@ -1002,11 +1033,11 @@ async function printHtmlViaElectron(html, options = {}) {
       return;
     }
 
-    if (hasUnsavedRID && !window.__FAST_CREATING__) {
-      window.__CREATING_NEW_RID__ = false;
-      console.log("lưu tem rồi mới tạo");
-      return;
-    }
+if (hasDraftRID()) {
+  showToastWarning("⚠️ Còn tem chưa lưu – vui lòng lưu trước khi tạo tem mới");
+  window.__CREATING_NEW_RID__ = false;
+  return;
+}
 
     if (isCreatingRID) {
       Swal.fire(`⚠️ Đang tạo tem, vui lòng đợi!`, "", "warning");
@@ -1047,6 +1078,26 @@ async function printHtmlViaElectron(html, options = {}) {
         Swal.fire(`❌ Không thể tạo RID_no mới!`, "", "warning");
         return;
       }
+      const existed = document.getElementById(`rid-btn-${newRID}`);
+if (existed) {
+  // chỉ active lại, tuyệt đối không append thêm
+  setActiveRidButton(existed);
+  setActiveRidIndex(existed);
+  scrollRidToView(existed);
+
+  clearBarcode();
+  renderBarcode?.("#preview-barcode", newRID);
+
+  window.__CREATING_NEW_RID__ = false;
+  isCreatingRID = false;
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset._oldHtml;
+    delete btn.dataset._oldHtml;
+  }
+  return;
+}
 
       const listContainer = document.getElementById("rid-items");
       if (!listContainer) return;
@@ -1083,7 +1134,7 @@ if (labEl && date) {
 
       // ✅ CHỈ SAU KHI APPEND → SYNC
       syncRidIndexes();
-
+newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       newBtn.scrollIntoView({ behavior: "smooth", block: "center" });
 
       setActiveRidButton(newBtn);
@@ -1206,7 +1257,6 @@ if (labEl && date) {
       showPrintProgress(`🖨 Đang in ${k + 1} / ${indexList.length} — ${ridNo}`);
 
       await loadRIDDetail(ridNo, riNo);
-      await loadRIDDetail(ridNo, riNo);
       await nextFrame(2); // ✅ chờ DOM render xong
 
 pagesHtml += clonePreviewToPrintable(
@@ -1287,16 +1337,21 @@ pagesHtml += clonePreviewToPrintable(
   // =========================
 async function loadRIDDetail(ridNo, riNo) {
   if (window.__CREATING_NEW_RID__) return;
-    const data = await window.kbAPI.getRidDetail({ rid_no: ridNo, ri_no: riNo });
-  let pendingLabDate = ""; // ✅ khai báo rõ
+
+  let pendingLabDate = "";
+
+  // lấy RI_date ngay từ đầu (fallback)
+  const riDate = toYMD(document.querySelector('[name="RI_date"]')?.value);
 
   try {
+    // fetch trước
+    const data = await window.kbAPI.getRidDetail({ rid_no: ridNo, ri_no: riNo });
+
     // disable tabs while loading
     document.querySelectorAll("#rid-items button").forEach((btn) => {
       btn.disabled = true;
       btn.classList.add("disabled");
     });
-
     lockAllInputs(true);
 
     // reset qty + rank
@@ -1317,22 +1372,21 @@ async function loadRIDDetail(ridNo, riNo) {
     const previewTotalEl = document.getElementById("preview-total");
     if (previewTotalEl) previewTotalEl.textContent = "0.0";
 
-    // ✅ lấy RI_date 1 lần
-    const riDate =
-      (document.querySelector('[name="RI_date"]')?.value || "")
-        .toString()
-        .slice(0, 10);
+    // ✅ lấy LabDate từ nhiều khả năng (top-level hoặc record[0])
+    const labFromApi =
+      data?.RID_LabDate ??
+      data?.records?.[0]?.RID_LabDate ??
+      "";
 
-    // IPC get detail
+    pendingLabDate = toYMD(labFromApi) || riDate;
 
-
-    console.log("RID_LabDate raw:", data.RID_LabDate);
-console.log("RID_LabDate parsed:", data.RID_LabDate ? String(data.RID_LabDate).slice(0,10) : "");
-
-    // ✅ CASE: chưa có dữ liệu => dùng RI_date
+    // CASE: chưa có dữ liệu
     if (!data?.success || !Array.isArray(data.records) || data.records.length === 0) {
-      pendingLabDate = riDate;
-      hasUnsavedRID = false;
+     const activeBtn = document.querySelector("#rid-items button.rid-active");
+
+if (!activeBtn?.dataset?.draft) {
+  hasUnsavedRID = false;
+}
       return;
     }
 
@@ -1346,42 +1400,38 @@ console.log("RID_LabDate parsed:", data.RID_LabDate ? String(data.RID_LabDate).s
     updateTotalQty?.();
 
     // rankcolor
-    if (rankEl) rankEl.value = (data.RID_rank || "") + (data.RID_color || "");
-
-    // ✅ pending lab date: ưu tiên RID_LabDate, fallback RI_date
-    pendingLabDate = data.RID_LabDate
-      ? String(data.RID_LabDate).slice(0, 10)
-      : riDate;
+if (rankEl) {
+  rankEl.value = formatRankColor(data?.RID_rank || "", data?.RID_color || "");
+}
 
     hasUnsavedRID = false;
-
   } catch (err) {
     console.error("Lỗi khi load RID:", err);
-
   } finally {
     // enable tabs
     document.querySelectorAll("#rid-items button").forEach((btn) => {
       btn.disabled = false;
       btn.classList.remove("disabled");
     });
-
     lockAllInputs(false);
 
-    // ✅ SET date SAU unlock để chắc chắn UI repaint
+    // ✅ set date sau khi unlock - MUST là YYYY-MM-DD
     requestAnimationFrame(() => {
-      const riDate = (document.querySelector('[name="RI_date"]')?.value || "").slice(0, 10);
-    const labEl = document.getElementById("RID_LabDate");
-    const labDate = toYMD(data.RID_LabDate) || riDate;
-if (labEl) {
-  labEl.value = labDate;
-  labEl.dispatchEvent(new Event("input", { bubbles: true }));
-  labEl.dispatchEvent(new Event("change", { bubbles: true }));
-}
-    });
-  }
+      const labEl = document.getElementById("RID_LabDate");
+      const finalDate = pendingLabDate || riDate;
 
-  enableEditMode?.();
+      if (labEl) {
+        labEl.value = finalDate; // đã là YYYY-MM-DD
+        labEl.dispatchEvent(new Event("input", { bubbles: true }));
+        labEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+
+    enableEditMode?.();
+  }
 }
+
+
 
   window.loadRIDDetail = loadRIDDetail;
 
@@ -1840,7 +1890,7 @@ await window.kbAPI.printHtml({
       }
     });
 
-    // click nền đen để đóng
+    // // click nền đen để đóng
     // document.addEventListener("click", (e) => {
     //   if (e.target?.id === "modal-preview") hidePreviewModal();
     // });
@@ -1953,7 +2003,14 @@ await window.kbAPI.printHtml({
     if (!el) return;
 
     const popupMap = {
-      F: { 1: "log", 2: "IT",3:"VET" },
+      F: {
+        1: "VET",
+        2: "VO",
+        3: "NHIEU",
+        4: "NHAN",
+        5: "LD",
+        6: "log",
+      },
       R: {
         1: "VET",
         2: "VO",

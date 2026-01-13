@@ -81,7 +81,7 @@
 
   "quantity.supplier": "Supplier Delivery Quantity",
   "quantity.container": "Container Quantity",
-
+"loading":"Processing",
   "fix": "FIX",
   "fixed": "FIXED",
   "material":"Material",
