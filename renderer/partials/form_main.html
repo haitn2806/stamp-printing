@@ -1,4 +1,78 @@
 <style>
+
+/* ===== FACTORY BADGE BASE ===== */
+.user-factory {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  padding: 8px 18px;          /* ↑ */
+  border-radius: 999px;
+
+  color: #fff;
+  font-size: 14px;            /* ↑ */
+  font-weight: 700;           /* ↑ */
+  letter-spacing: .02em;
+
+  background: linear-gradient(135deg, rgba(2,132,199,.95), rgba(79,70,229,.95));
+
+  box-shadow:
+    0 8px 22px rgba(15,23,42,.38),      /* ↑ */
+    inset 0 1px 0 rgba(255,255,255,.35);
+
+  overflow: hidden;
+  animation: uf-glow 3.5s ease-in-out infinite;
+}
+
+/* shimmer chạy */
+.user-factory::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255,255,255,.35),
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: uf-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* animation */
+@keyframes uf-shimmer {
+  0%   { transform: translateX(-100%); }
+  40%  { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes uf-glow {
+  0%,100% {
+    box-shadow:
+      0 6px 18px rgba(15,23,42,.35),
+      inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  50% {
+    box-shadow:
+      0 8px 26px rgba(56,189,248,.55),
+      inset 0 1px 0 rgba(255,255,255,.45);
+  }
+}
+
+/* dot */
+/* .user-factory::before{
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.35);
+} */
+
+
+
   #btn-open-printer-settings{
   box-shadow:
     0 6px 16px rgba(15, 23, 42, 0.16),
@@ -243,7 +317,226 @@
 #bill-code-select option:checked::before {
   content: "✓ ";
   font-weight: bold;
+}/* =========================
+   QC HOTKEYS MODAL (EXTRA)
+   ========================= */
+
+/* backdrop: reuse settings-modal, but ensure center */
+#qc-hotkeys-modal.settings-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;               /* hidden default */
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(8px);
 }
+#qc-hotkeys-modal.settings-modal.flex{ display:flex; }
+#qc-hotkeys-modal.settings-modal.hidden{ display:none; }
+
+/* panel */
+#qc-hotkeys-modal .settings-panel2{
+  width: min(760px, 96vw);
+  max-height: min(82vh, 760px);
+  overflow: auto;
+  border-radius: 22px;
+  background: linear-gradient(180deg,#ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(226,232,240,.95);
+  box-shadow:
+    0 24px 70px rgba(15,23,42,.24),
+    0 10px 22px rgba(15,23,42,.14);
+  position: relative;
+  padding: 18px 18px 16px;
+}
+
+/* header */
+#qc-hotkeys-modal .settings-title{
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: .2px;
+}
+#qc-hotkeys-modal .settings-desc{
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* close button */
+  
+/* grid container */
+#qc-hotkey-grid{
+  margin-top: 14px;
+}
+
+/* card */
+#qc-hotkey-grid > div{
+  border-radius: 16px;
+  border: 1px solid rgba(226,232,240,.95);
+  background: #ffffff;
+  padding: 12px 12px 10px;
+  box-shadow:
+    0 6px 16px rgba(15,23,42,.06),
+    0 2px 6px rgba(15,23,42,.05);
+  transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease;
+}
+#qc-hotkey-grid > div:hover{
+  transform: translateY(-1px);
+  border-color: rgba(148,163,184,.9);
+  box-shadow:
+    0 10px 22px rgba(15,23,42,.10),
+    0 4px 10px rgba(15,23,42,.06);
+}
+
+/* "Key 1" title */
+#qc-hotkey-grid > div > div:first-child{
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+/* select (if you already have .select-ui, keep this minimal) */
+#qc-hotkey-grid select.select-ui{
+  width: 100%;
+  height: 44px;
+  border-radius: 14px;
+}
+
+/* actions row */
+#qc-hotkeys-modal .settings-actions{
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226,232,240,.9);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* buttons inside qc modal */
+
+.qc-hr{ margin:16px 0; border:0; border-top:1px solid rgba(226,232,240,.9); }
+
+.qc-plus-head{
+  display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;
+}
+.qc-plus-actions{ display:flex; gap:8px; align-items:center; }
+
+.qc-plus-grid{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:10px;
+}
+#qc-failtype-grid > div{
+  border-radius:16px;
+  border:1px solid rgba(226,232,240,.95);
+  background:#fff;
+  padding:12px;
+  box-shadow: 0 6px 16px rgba(15,23,42,.06), 0 2px 6px rgba(15,23,42,.05);
+}
+#qc-failtype-grid input{
+  width:100%;
+  height:44px;
+  border-radius:14px;
+  border:1px solid rgba(226,232,240,.95);
+  padding:0 14px;
+}
+
+#btn-reset-qc-failtype{
+  white-space: nowrap;   /* 🔥 không cho xuống dòng */
+
+}
+/* ===== INSPECTION TITLE – SAME EFFECT AS FACTORY ===== */
+.inspection-title{
+  position: relative;
+  display: inline-block;
+
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: .4px;
+
+  color: #ffffff;              /* 🔥 text trắng thật */
+
+  text-shadow:
+    0 10px 24px rgba(56,189,248,.45),
+    0 4px 10px rgba(99,102,241,.35);
+
+  overflow: hidden;
+}
+
+.qc-close-wrap{
+  position: sticky;
+  top: 0;
+  z-index: 60;
+     
+
+  display: flex;
+  justify-content: flex-end;
+}
+/* Chrome, Edge, Safari */
+#qc-hotkeys-modal .settings-panel2::-webkit-scrollbar{
+  width: 0;
+  height: 0;
+}
+
+/* Firefox */
+#qc-hotkeys-modal .settings-panel2{
+  scrollbar-width: none;
+}
+
+/* IE / old Edge */
+#qc-hotkeys-modal .settings-panel2{
+  -ms-overflow-style: none;
+}
+
+#qc-hotkeys-close{
+   right: -5px !important;
+    top: -5px !important;
+}
+
+/* ===== LOGOUT SEPARATOR ===== */
+.settings-actions{
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(226,232,240,.9);
+}
+
+#user-factory2{
+  font-size: 16px;
+  padding: 4px 10px;
+  line-height: 1.2;
+  border-radius: 999px;   /* pill */
+  margin-top: 9px;
+  position: relative;
+  top: 2px;
+}
+
+#user-factory2 button,
+#user-factory2 .btn{
+  font-size: 16px;
+  padding: 6px 12px;
+  height: 28px;
+  border-radius: 999px;   /* pill */
+  position: relative;
+  top: 1px;
+}
+
+/* responsive: force 2 cols on small */
+@media (max-width: 520px){
+  #qc-hotkey-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  #qc-hotkeys-modal .settings-panel2{
+    padding: 14px 14px 12px;
+    border-radius: 18px;
+  }
+}
+
+
 </style>
 <body class="bg-slate-100">
   <!-- SETTINGS MODAL BACKDROP -->
@@ -253,9 +546,10 @@
     <!-- LEFT -->
     <div class="settings-left">
       <div class="avatar-wrap">
-      <img src="./assets/img/avatar.jpg" id="avatar">
+      <img src="./assets/img/avatar.gif" id="avatar">
       </div>
       <div class="user-name"></div>
+      <div class="user-factory" id="user-factory"></div>
       <div class="user-role">QC Inspector</div>
     </div>
 
@@ -334,6 +628,35 @@
     </select>
   </div>
 </div>
+
+<!-- ===== QC HOTKEYS (OPEN MODAL) ===== -->
+<div class="settings-group">
+  <div class="settings-group-header">
+    <div class="settings-group-title">
+      <svg xmlns="http://www.w3.org/2000/svg"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 7h16M4 12h16M4 17h16"/>
+      </svg>
+      <div>
+        <div class="settings-label" data-i18n="hotkey">QC Hotkeys</div>
+        <div class="settings-desc" data-i18n="qc.hotkeys.title">Customize number keys → Rank</div>
+      </div>
+    </div>
+
+   <button id="btn-open-qc-hotkeys" type="button" class="btn">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <rect x="2" y="6" width="20" height="12" rx="2" ry="2"/>
+    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01"/>
+    <path d="M6 14h12"/>
+  </svg>
+  <span data-i18n="btn.open">Open</span>
+</button>
+  </div>
+</div>
+
+
   <!-- ===== PRINTER ===== -->
 <div class="settings-group">
   <div class="settings-group-header">
@@ -381,7 +704,7 @@
       <div class="settings-group-title">
         <!-- printer icon -->
         <svg xmlns="http://www.w3.org/2000/svg"
-             viewBox="0 0 24 24"
+             viewBox="0 0 24 24"  
              fill="none"
              stroke="currentColor"
              stroke-width="1.8"
@@ -398,18 +721,30 @@
         </div>
       </div>
 
-      <button id="btn-open-printer-settings" type="button"
-              class="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium" data-i18n="btn.open">
-        Open
-      </button>
+    <button id="btn-open-printer-settings" type="button" class="btn">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M14 3h7v7m0-7L10 14"/>
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M5 5v14h14"/>
+  </svg>
+  <span data-i18n="btn.open">Open</span>
+</button>
     </div>
   </div>
 
   <!-- ===== ACTION ===== -->
   <div class="settings-actions">
-    <button class="btn btn-logout-danger" onclick="logout()" data-i18n="btn.logout">
-      Logout
-    </button>
+  <button class="btn btn-logout-danger" onclick="logout()">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"/>
+  </svg>
+  <span data-i18n="btn.logout">Logout</span>
+</button>
+
   </div>
 </div>
 
@@ -418,6 +753,82 @@
     <button class="settings-close" id="settings-close">
       ✕
     </button>
+  </div>
+</div>
+<!-- QC HOTKEYS MODAL -->
+<div id="qc-hotkeys-modal" class="settings-modal hidden">
+  <div class="settings-panel2" style="max-width:720px; width:min(720px, 92vw);">
+  <div class="qc-close-wrap">
+  <button id="qc-hotkeys-close" class="settings-close">✕</button>
+</div>
+    <div class="settings-right" style="width:100%">
+      <h3 class="settings-title">QC Hotkeys</h3>
+      <div data-i18n="qc.hotkeys.desc" class="settings-desc" style="margin-top:-6px">Map keys 1–7 to Rank</div>
+
+      <div id="qc-hotkey-grid" class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+       <div class="settings-actions" style="justify-content:flex-end; gap:8px">
+        <button id="btn-reset-qc-hotkeys" type="button" 
+                class="btn">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M4 4v6h6"/>
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M20 20v-6h-6"/>
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M9 20a7 7 0 007-7M15 4a7 7 0 00-7 7"/>
+  </svg>
+  <span data-i18n="qc.hotkeys.reset">Reset</span>
+        </button>
+        <!-- <button id="btn-close-qc-hotkeys" type="button" data-i18n="btn.close"
+                class="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium">
+          Close
+        </button> -->
+      </div>
+<hr class="qc-hr">
+
+<div class="qc-plus-head">
+  <div>
+    <div data-i18n="qc.failtype.title" class="settings-label">Failtype (+)</div>
+    <div data-i18n="qc.failtype.desc" class="settings-desc">Press “+” in tem → popup 1–6 theo Rank</div>
+  </div>
+
+  <div class="qc-plus-actions">
+    <select id="qc-failtype-rank" class="select-ui">
+      <option value="F">F(D/VI)</option>
+      <option value="R">R</option>
+      <option value="A">A(A/I)</option>
+      <option value="B">B(A/II)</option>
+      <option value="C">C(B/III)</option>
+      <option value="D">D(B/IV)</option>
+      <option value="E">E(C/V)</option>
+    </select>
+
+            <button id="btn-reset-qc-failtype" type="button" 
+                class="btn">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M4 4v6h6"/>
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M20 20v-6h-6"/>
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M9 20a7 7 0 007-7M15 4a7 7 0 00-7 7"/>
+  </svg>
+  <span data-i18n="qc.hotkeys.reset">Reset</span>
+        </button>
+  </div>
+</div>
+
+<div id="qc-failtype-grid" class="qc-plus-grid"></div>
+
+
+<div id="qc-failtype-grid" style="margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px"></div>
+
+     
+    </div>
+
+    
   </div>
 </div>
 
@@ -440,7 +851,10 @@
             class="mb-2 flex flex-col gap-3 px-5 md:flex-row md:items-center md:justify-between"
           >
             <!-- LEFT: Title -->
-            <h1 class="inspection-title" data-i18n="title_name">Receiving Inspection</h1>
+           <div class="flex items-center gap-3">
+  <h1 class="inspection-title" data-i18n="title_name">Receiving Inspection</h1>
+  <div class="user-factory flex items-center" id="user-factory2"></div>
+</div>
 
             <!-- RIGHT: Logout -->
          <div class="relative" id="settings-dropdown-wrap">

@@ -85,8 +85,23 @@
 .select-ui option {
   background: white;
   color: #0f172a;
+  font-size: 16px; /* Tăng kích thước chữ */
+  padding: 12px 16px; /* Tăng khoảng cách cho option */
+  height: 50px; /* Tăng chiều cao */
+  line-height: 1.5; /* Cải thiện sự dễ dàng trong việc đọc */
 }
 
+/* Hover effect for options */
+.select-ui option:hover {
+  background-color: #e0f7fa;
+  color: #00695c;
+}
+
+/* Selected option */
+.select-ui option:checked {
+  background-color: #0ea5e9;
+  color: white;
+}
 /* ===== INPUT UI (UNIFIED) ===== */
 .input-ui {
   width: 100%;
@@ -127,6 +142,7 @@
 
 
   </style>
+
 </head>
 
 <body class="bg-slate-100">
@@ -166,15 +182,18 @@
           <input id="password" type="password" class="input-ui" placeholder="••••••••" />
           </div>
 
-<div id="factory-wrapper" class="hidden">
-  <label class="block text-sm font-medium text-slate-700 mb-1"  data-i18n="login.password">
-    
-  </label>
-  <select
-    id="factory"
-    class="select-ui">
+          <div id="layout-box" class="hidden">
+               <label class="block text-sm font-medium text-slate-700 mb-1" data-i18n="material">
+              
+            </label>
+  <select id="layoutSelect" class="select-ui">
+    <option value="leather" selected data-i18n="prelogin.type1">Da</option>
+    <option value="fabric" disabled data-i18n="prelogin.type2"> Vải</option>
+    <option value="accessory" disabled data-i18n="prelogin.type3">Phụ liệu</option>
   </select>
 </div>
+
+
           <!-- Remember -->
           <div class="flex items-center justify-between text-sm">
             <label class="flex items-center gap-2 text-slate-600" >
@@ -221,12 +240,26 @@
 
       <!-- Footer -->
       <div class="rounded-b-2xl border-t border-slate-200 px-8 py-4 text-center text-xs text-slate-500">
-        © 2025 Inspection Warehouse Application
+        © 2026 Inspection Warehouse Application
       </div>
     </div>
   </div>
 <script src="./js/i18n.js"></script>
 <script>
+   let preFactory = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const lang = localStorage.getItem('app_lang') || 'en';
+  await window.i18n.loadLang(lang);
+
+  const ctx = await window.kbAPI.getAppContext();
+  preFactory = ctx?.factory;
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    el.textContent = window.i18n.t(key);
+  });
+});
    const FACTORY_LABEL_MAP = {
   GL1: 'lianying',
   GL2: 'lianshun1',
@@ -244,8 +277,7 @@ function showLoading(show) {
 
 const userInput = document.getElementById('username');
 const passInput = document.getElementById('password');
-const factoryWrapper = document.getElementById('factory-wrapper');
-const factorySelect = document.getElementById('factory');
+
 const msg = document.getElementById('login-msg');
 
 function showMsg(text, ok = false) {
@@ -260,51 +292,40 @@ function hideMsg() {
   msg.classList.add('hidden');
 }
 
+let lastLoginRes = null;
+
 async function autoLoginCheck() {
   const user = userInput.value.trim();
   const pass = passInput.value.trim();
-
   if (!user || !pass) return;
 
   hideMsg();
-  factoryWrapper.classList.add('hidden');
   showLoading(true);
 
-  try {
-    const res = await window.kbAPI.login({ user, password: pass });
+  const res = await window.kbAPI.login({ user, password: pass });
+  showLoading(false);
 
-    showLoading(false);
-
-if (!res?.success) {
-  showMsg(`❌ ${res.message || 'Đăng nhập thất bại'}`);
-  return;
-}
-
-    // show factory
-factoryWrapper.classList.remove('hidden');
-
-// enable button
-btnLogin.disabled = false;
-
-    factorySelect.innerHTML =
-      '<option value="">-- Select Factory --</option>' +
-      res.factories.map(f => `
-        <option value="${f.factory_extcode}">
-          ${FACTORY_LABEL_MAP[f.factory_extcode] || f.factory_extcode}
-        </option>
-      `).join('');
-
-    factoryWrapper.classList.remove('hidden');
-
-
-
-  } catch (e) {
-    showLoading(false);
-    showMsg('❌ Login error');
-    console.error(e);
+  if (!res?.success) {
+    showMsg(`❌ ${res.message || 'Đăng nhập thất bại'}`);
+    return;
   }
+
+  lastLoginRes = res;
+
+  // Hiển thị dropdown layout
+  document.getElementById('layout-box').classList.remove('hidden');
+  
+  // Kiểm tra nếu layout có giá trị hợp lệ (mặc định là Da)
+  btnLogin.disabled = !layoutSelect.value; // Chỉ enable khi layout đã chọn
+
 }
 
+
+const layoutSelect = document.getElementById('layoutSelect');
+
+layoutSelect.addEventListener('change', () => {
+  btnLogin.disabled = !layoutSelect.value;
+});
 
 // debounce 0.5s khi gõ password
 passInput.addEventListener('input', () => {
@@ -312,57 +333,28 @@ passInput.addEventListener('input', () => {
   timer = setTimeout(autoLoginCheck, 500);
 });
 
-factorySelect.addEventListener('change', () => {
-  btnLogin.disabled = !factorySelect.value;
-});
 
-
-btnLogin.addEventListener('click', () => {
+btnLogin.addEventListener('click', async () => {
   const user = userInput.value.trim();
-  const factory = factorySelect.value;
-  
-  const remember = document.getElementById('remember')?.checked;
+  const password = passInput.value;
+  const remember = !!document.getElementById('remember')?.checked;
 
-  console.log(remember);
-
-  if (!factory) {
-    showMsg('⚠️ Please select factory');
+  if (!preFactory) {
+    showMsg('Missing factory context');
     return;
   }
 
-  window.kbAPI.loginSuccess({
-    user,
-    factory,
-    remember
-  });
-});
-
-function handleEnter() {
-  const user = userInput.value.trim();
-  const factory = factorySelect.value;
-  const remember = document.querySelector('input[type="checkbox"]')?.checked;
-
-  if (!factory) {
-    showMsg('Please select factory');
-    return;
-  }
+  const res = await window.kbAPI.login({ user, password });
 
   window.kbAPI.loginSuccess({
     user,
-    factory,
-    remember
-  });
-}
-document.addEventListener('DOMContentLoaded', async () => {
-  const lang = localStorage.getItem('app_lang') || 'en';
-
-  await window.i18n.loadLang(lang);
-
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.dataset.i18n;
-    el.textContent = window.i18n.t(key);
+    factory: preFactory,   // 🔥 TỪ PRELOGIN
+    remember,
+    employee_name: String(res?.employee_name || '')
   });
 });
+
+
 
 
 </script>

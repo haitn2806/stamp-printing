@@ -1,6 +1,53 @@
 
 (() => {
-  console.log('=-=-=-=-=-')
+
+   const FACTORY_NAME = {
+  GL1: 'LianYing',
+  GL2: 'LianShun 1',
+  GL3: 'LianShun 2',
+  GL4: 'KHRU'
+};
+
+async function renderUserFactory() {
+  try {
+    const ctx = await window.kbAPI.getAppContext(); // { lang, factory }
+    const f = ctx?.factory || '';
+    const el = document.getElementById('user-factory');
+    const el2 = document.getElementById('user-factory2');
+    if (!el) return;
+    if (!el2) return;
+
+    const name = FACTORY_NAME[f] || f || '—';
+
+
+    el.innerHTML = `<span>Factory ${name}</span>`;
+    el2.innerHTML = `<span>${name}</span>`;
+  } catch (e) {
+    console.error('[renderUserFactory]', e);
+  }
+}
+
+
+
+
+function lockTC_PO() {
+  const tcInput  = document.getElementById('tc-code-input');
+  const poInput  = document.getElementById('bill-code-input');
+  const poSelect = document.getElementById('bill-code-select');
+
+  [tcInput, poInput].forEach(el => {
+    if (!el) return;
+    el.readOnly = true;
+    el.disabled = true;
+    el.classList.add('bg-gray-100','cursor-not-allowed');
+  });
+
+  if (poSelect) {
+    poSelect.disabled = true;
+    poSelect.classList.add('opacity-60','pointer-events-none');
+  }
+}
+
 let materialData = [];
 let lastFetchKey = "";   // ✅ PHẢI CÓ
 
@@ -358,6 +405,7 @@ function convertDateString(dateString) {
 async function loadInspectionDetail(ri_no) {
   clearInterval(window.__RI_AUTO_TIMER__);
   DETAIL_MODE = true;
+  lockTC_PO();
   setLoading(true);
 
   try {
@@ -1801,16 +1849,16 @@ document.getElementById('btn-new')?.addEventListener('click', () => {
   lastFetchKey = "";
   location.reload();
 });
+
 async function initUserInfo() {
+  console.log('===================')
   try {
-    if (!window.kbAPI?.getRememberedLogin) return;
+    // if (!window.kbAPI?.getRememberedLogin) return;
 
-    const user = await window.kbAPI.getRememberedLogin();
-
-    if (user?.user) {
-      const el = document.querySelector('.user-name');
-      if (el) el.textContent = user.user;
-    }
+     const info = await window.kbAPI.getUserInfo();
+     console.log(info,'infoooo')
+document.querySelector('.user-name').textContent =
+  info?.employee_name || info?.user || '';
   } catch (err) {
     console.error('Cannot load user', err);
   }
@@ -1884,8 +1932,277 @@ function initLanguageSelect() {
   });
 }
 
+const RANK_MAP = {
+  A: "A(A/I)",
+  B: "B(A/II)",
+  C: "C(B/III)",
+  D: "D(B/IV)",
+  E: "E(C/V)",
+  F: "F(D/VI)",
+  R: "R",
+};
+
+const QC_HOTKEY_STORE = "QC_RANK_HOTKEYS_V1";
+const QC_KEYS = ["1","2","3","4","5","6","7"];
+const QC_HOTKEY_DEFAULT = { "1":"A","2":"B","3":"C","4":"D","5":"E","6":"F","7":"R" };
+
+function loadQcHotkeys() {
+  try {
+    const raw = localStorage.getItem(QC_HOTKEY_STORE);
+    const obj = raw ? JSON.parse(raw) : null;
+    const out = { ...QC_HOTKEY_DEFAULT };
+    if (obj && typeof obj === "object") {
+      QC_KEYS.forEach(k => {
+        const v = String(obj[k] || "").toUpperCase();
+        if (["A","B","C","D","E","F","R",""].includes(v)) out[k] = v;
+      });
+    }
+    return out;
+  } catch {
+    return { ...QC_HOTKEY_DEFAULT };
+  }
+}
+function saveQcHotkeys(map) {
+  localStorage.setItem(QC_HOTKEY_STORE, JSON.stringify(map));
+}
+
+function openQcHotkeysModal() {
+  const m = document.getElementById("qc-hotkeys-modal");
+  if (!m) return;
+
+  renderQcHotkeyGrid();
+
+  bindFailtypeUI(); // <-- THÊM
+  const sel = document.getElementById("qc-failtype-rank");
+  if (sel) renderFailtypeUI(sel.value || "F");
+
+  m.classList.remove("hidden");
+  m.classList.add("flex");
+}
+
+function closeQcHotkeysModal() {
+  const m = document.getElementById("qc-hotkeys-modal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.classList.remove("flex");
+}
+
+function renderQcHotkeyGrid() {
+  const grid = document.getElementById("qc-hotkey-grid");
+  if (!grid) return;
+
+  const hk = loadQcHotkeys();
+  const ranks = ["A","B","C","D","E","F","R"];
+
+  grid.innerHTML = "";
+  QC_KEYS.forEach((key) => {
+    const card = document.createElement("div");
+    card.className = "rounded-xl border border-slate-200 bg-white p-3";
+
+    const title = document.createElement("div");
+    title.className = "text-sm font-semibold text-slate-700 mb-2";
+    title.textContent = `Key ${key}`;
+
+    const sel = document.createElement("select");
+    sel.className = "select-ui w-full";
+    sel.dataset.key = key;
+
+    const off = document.createElement("option");
+    off.value = "";
+   off.textContent = t("qc.hotkeys.off");  
+    sel.appendChild(off);
+
+    ranks.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r;
+      opt.textContent = RANK_MAP[r] || r;
+      sel.appendChild(opt);
+    });
+
+    sel.value = hk[key] || "";
+
+    sel.addEventListener("change", () => {
+      const cur = loadQcHotkeys();
+      cur[key] = (sel.value || "").toUpperCase();
+      saveQcHotkeys(cur);
+    });
+
+    card.appendChild(title);
+    card.appendChild(sel);
+    grid.appendChild(card);
+  });
+}
+
+function bindQcHotkeysModal() {
+  if (window.__QC_HOTKEY_MODAL_INIT__) return;
+  window.__QC_HOTKEY_MODAL_INIT__ = true;
+
+  document.getElementById("btn-open-qc-hotkeys")
+    ?.addEventListener("click", openQcHotkeysModal);
+
+  // document.getElementById("btn-close-qc-hotkeys")
+  //   ?.addEventListener("click", closeQcHotkeysModal);
+
+  document.getElementById("qc-hotkeys-close")
+    ?.addEventListener("click", closeQcHotkeysModal);
+
+  document.getElementById("btn-reset-qc-hotkeys")
+    ?.addEventListener("click", () => {
+      saveQcHotkeys({ ...QC_HOTKEY_DEFAULT });
+      renderQcHotkeyGrid();
+    });
+
+  // click backdrop to close
+  // document.getElementById("qc-hotkeys-modal")
+  //   ?.addEventListener("click", (e) => {
+  //     if (e.target?.id === "qc-hotkeys-modal") closeQcHotkeysModal();
+  //   });
+
+  // ESC to close
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const m = document.getElementById("qc-hotkeys-modal");
+      if (m && !m.classList.contains("hidden")) closeQcHotkeysModal();
+    }
+  });
+}
+function renderQcHotkeySettings() {
+  const grid = document.getElementById("qc-hotkey-grid");
+  if (!grid) return;
+
+  const hk = loadQcHotkeys();
+  grid.innerHTML = "";
+
+  const ranks = ["A","B","C","D","E","F","R"];
+
+  for (let i = 1; i <= 7; i++) {
+    const key = String(i);
+
+    const wrap = document.createElement("div");
+    wrap.className = "rounded-xl border border-slate-200 bg-white p-3";
+
+    const label = document.createElement("div");
+    label.className = "text-sm font-semibold text-slate-700 mb-2";
+    label.textContent = `Key ${key}`;
+
+    const sel = document.createElement("select");
+    sel.className = "select-ui w-full qc-hotkey-select";
+    sel.dataset.key = key;
+
+    const optOff = document.createElement("option");
+    optOff.value = "";
+    optOff.textContent = "— Off —";
+    sel.appendChild(optOff);
+
+    ranks.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r;
+      opt.textContent = RANK_MAP[r] || r; // show A(A/I)...
+      sel.appendChild(opt);
+    });
+
+    sel.value = hk[key] || "";
+
+    sel.addEventListener("change", () => {
+      const cur = loadQcHotkeys();
+      cur[key] = (sel.value || "").toUpperCase();
+      saveQcHotkeys(cur);
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(sel);
+    grid.appendChild(wrap);
+  }
+
+  const btnReset = document.getElementById("btn-reset-qc-hotkeys");
+  btnReset?.addEventListener("click", () => {
+    saveQcHotkeys({ ...QC_HOTKEY_DEFAULT });
+    renderQcHotkeySettings();
+  }, { once: true });
+}
+const QC_FAILTYPE_STORE = "QC_FAILTYPE_MAP_V1";
+const QC_FAILTYPE_DEFAULT = {
+  F: { 1:"VET", 2:"VO", 3:"NHIEU", 4:"NHAN", 5:"LD", 6:"log" },
+  R: { 1:"VET", 2:"VO", 3:"NHIEU", 4:"NHAN", 5:"LD", 6:"log" },
+};
+
+function loadFailtypeMap(){
+  try{
+    const raw = localStorage.getItem(QC_FAILTYPE_STORE);
+    const obj = raw ? JSON.parse(raw) : null;
+    return (obj && typeof obj==="object") ? obj : structuredClone(QC_FAILTYPE_DEFAULT);
+  }catch{
+    return structuredClone(QC_FAILTYPE_DEFAULT);
+  }
+}
+function saveFailtypeMap(map){
+  localStorage.setItem(QC_FAILTYPE_STORE, JSON.stringify(map));
+}
+
+function renderFailtypeUI(rank){
+  const grid = document.getElementById("qc-failtype-grid");
+  if(!grid) return;
+
+  const m = loadFailtypeMap();
+  const r = (rank||"F").toUpperCase();
+  const cur = m[r] || {};
+
+  grid.innerHTML = "";
+  for(let k=1;k<=6;k++){
+    const wrap = document.createElement("div");
+    wrap.style.border = "1px solid rgba(226,232,240,.95)";
+    wrap.style.borderRadius = "14px";
+    wrap.style.background = "#fff";
+    wrap.style.padding = "10px";
+
+    const label = document.createElement("div");
+    label.textContent = `Key ${k}`;
+    label.style.fontSize = "12px";
+    label.style.fontWeight = "800";
+    label.style.color = "#0f172a";
+    label.style.marginBottom = "6px";
+
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.value = cur[k] || "";
+    inp.placeholder = "VD: log";
+    inp.className = "input-ui";         // reuse style
+    inp.style.height = "44px";
+    inp.style.width = "100%";
+    inp.style.padding = "0 14px";
+
+    inp.addEventListener("input", () => {
+      const all = loadFailtypeMap();
+      all[r] = all[r] || {};
+      all[r][k] = String(inp.value||"").trim();
+      saveFailtypeMap(all);
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(inp);
+    grid.appendChild(wrap);
+  }
+}
+
+function bindFailtypeUI(){
+  const sel = document.getElementById("qc-failtype-rank");
+  if(!sel) return;
+
+  sel.addEventListener("change", ()=> renderFailtypeUI(sel.value));
+  renderFailtypeUI(sel.value || "F");
+
+  document.getElementById("btn-reset-qc-failtype")?.addEventListener("click", ()=>{
+    localStorage.setItem(QC_FAILTYPE_STORE, JSON.stringify(QC_FAILTYPE_DEFAULT));
+    renderFailtypeUI(sel.value || "F");
+  });
+}
+
 
 window.addEventListener("app:ready", async() => {
+  renderUserFactory();
+ bindQcHotkeysModal(); 
+  renderQcHotkeySettings();
+
   // 🚫 Form mới → disable toàn bộ nút phụ
 setRIButtonsEnabled(false);
 
@@ -1924,7 +2241,7 @@ themeToggle.addEventListener('change', () => {
   initLabelLang();
   ensureModalInBody();
 
-initUserInfo();
+  initUserInfo();
   renderMaterialGradeTable();
   bindMaterialGradeEvents();
   updateTotalsAndPercent();
@@ -1971,6 +2288,8 @@ document.addEventListener('click', async (e) => {
     showToastError?.('Cannot open printer settings');
   }
 });
+
+
 
 
 function showLoading(text = "Loading...", percent = 0, hint = "") {

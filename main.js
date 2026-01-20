@@ -13,7 +13,8 @@ const ExcelJS = require('exceljs');
 
 
 let rememberedUser = null;
-
+let rememberedEmployeeName = null;
+ipcMain.handle('get-app-context', () => global.__APP_CONTEXT__);
 function mustEnv(name) {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
@@ -27,29 +28,69 @@ require("dotenv").config({
     : path.join(__dirname, ".env"),
 });
 // Lấy thông tin cấu hình từ biến môi trường
-const dbConfig = {
-  user: mustEnv("DB_USER"), // Lấy từ biến môi trường
-  password: mustEnv("DB_PASSWORD") ,
-  server: mustEnv("DB_SERVER") ,
-  database: mustEnv("DB_DATABASE") ,
-  options: {
-    encrypt: process.env.DB_ENCRYPT === 'true', // Đảm bảo rằng biến này là kiểu boolean
-    trustServerCertificate: true, // Tin tưởng chứng chỉ máy chủ
+function getMainDbConfigByFactory(factory) {
+  const base = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    options: {
+      encrypt: process.env.DB_ENCRYPT === 'true',
+      trustServerCertificate: true,
+    },
+  };
+
+  switch (factory) {
+    case 'GL1':
+      return { ...base, server: process.env.DB_GL1_SERVER, database: process.env.DB_GL1_DATABASE };
+    case 'GL2':
+      return { ...base, server: process.env.DB_GL2_SERVER, database: process.env.DB_GL2_DATABASE };
+    case 'GL3':
+      return { ...base, server: process.env.DB_GL3_SERVER, database: process.env.DB_GL3_DATABASE };
+    case 'GL4':
+      return { ...base, server: process.env.DB_GL4_SERVER, database: process.env.DB_GL4_DATABASE };
+    default:
+      throw new Error('Invalid factory');
   }
-};
+}
+
+function mustFactory() {
+  const f = global.__APP_CONTEXT__?.factory;
+  if (!f) throw new Error('Missing factory (prelogin not done?)');
+  return f;
+}
+
+async function getMainDb() {
+  const factory = mustFactory();
+  const cfg = getMainDbConfigByFactory(factory);
+  return await getMainPool(factory, cfg); // ✅ theo db.js mới
+}
 
 
 
-const dbLoginConfig = {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER,
-  database: process.env.DB_DATABASE_LOGIN,    // ✅ DB LOGIN
-  options: {
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: true,
-  },
-};
+
+function getLoginDbConfigByFactory(factory) {
+  const base = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    options: {
+      encrypt: process.env.DB_ENCRYPT === 'true',
+      trustServerCertificate: true,
+    },
+  };
+
+  switch (factory) {
+    case 'GL1':
+      return { ...base, server: process.env.DB_GL1_SERVER, database: process.env.DB_DATABASE_LOGIN };
+    case 'GL2':
+      return { ...base, server: process.env.DB_GL2_SERVER, database: process.env.DB_DATABASE_LOGIN };
+    case 'GL3':
+      return { ...base, server: process.env.DB_GL3_SERVER, database: process.env.DB_DATABASE_LOGIN };
+    case 'GL4':
+      return { ...base, server: process.env.DB_GL4_SERVER, database: process.env.DB_DATABASE_LOGIN };
+    default:
+      throw new Error('Invalid factory');
+  }
+}
+
 // Nếu bạn muốn lưu SQLite: dùng better-sqlite3 hoặc sqlite3.
 // Demo này lưu JSON cho dễ.
 
@@ -92,7 +133,7 @@ function bindInput(req, key, value) {
 // Hàm lấy dữ liệu cho sidebar từ SQL Server
 async function getSidebarInspections(rmType = 'A', limit = 500) {
   try {
-    const pool = await sql.connect(dbConfig);
+    const pool = await getMainDb();
 
 
     // Kiểm tra rmType và xử lý giá trị hợp lệ
@@ -128,12 +169,29 @@ async function getSidebarInspections(rmType = 'A', limit = 500) {
 
 
 
-let splashWin;
-let mainWin = null;
-let loginWin = null;
+let splashWin=null;
+let preLoginWin=null;
+let loginWin=null;
+let mainWin=null;
 
 
 
+function createPreLoginWindow() {
+  preLoginWin = new BrowserWindow({
+    width: 600,
+    height: 700,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: false
+    }
+  });
+
+  preLoginWin.loadFile(
+    path.join(__dirname, "renderer", "prelogin.html")
+  );
+}
 
 function createSplashWindow() {
   splashWin = new BrowserWindow({
@@ -155,7 +213,7 @@ function createLoginWindow() {
     height: 700,
     resizable: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+       preload: path.join(__dirname, 'preload.js'), // 🔥 BẮT BUỘC
       contextIsolation: true,
        sandbox: false,  
     },
@@ -177,15 +235,21 @@ function createMainWindow(payload) {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-       sandbox: false,  
+      sandbox: false,
     },
   });
 
-  mainWin.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  const layout = payload?.layout || 'leather';
 
-  mainWin.on('closed', () => {
-    mainWin = null;
-  });
+  const map = {
+    leather: 'index.html',
+    fabric: 'index_fabric.html',
+    accessory: 'index_accessory.html',
+  };
+
+  mainWin.loadFile(
+    path.join(__dirname, 'renderer', map[layout] || 'index.html')
+  );
 }
 
 
@@ -193,20 +257,51 @@ app.whenReady().then(() => {
   createSplashWindow();
 
   setTimeout(() => {
-    const session = loadSession();
-
     splashWin?.close();
     splashWin = null;
 
-    if (session?.remember) {
-       rememberedUser = session.user; // 🔥 THÊM DÒNG NÀY
-      console.log('✅ Auto login:', session);
-      createMainWindow(session);
-    } else {
-      createLoginWindow();
-    }
-  }, 1500); // splash 1.5s
+    const session = loadSession();
+    console.log(session,'ssssssss');
+
+if (session?.remember && session.factory) {
+  global.__APP_CONTEXT__ = {
+    lang: session.lang || 'en',   // 🔥 FIX
+    factory: session.factory
+  };
+
+  rememberedUser = session.user;
+  rememberedEmployeeName =
+    session.employee_name || session.user;
+
+  createMainWindow(session);
+} else {
+  createPreLoginWindow();
+}
+  }, 2000);
 });
+
+
+ipcMain.handle('prelogin:done', (e, data) => {
+  console.log('[PRELOGIN]', data); // { lang, factory }
+  global.__APP_CONTEXT__ = data; // { lang, factory }
+
+  preLoginWin?.close();
+  preLoginWin = null;
+
+  const session = loadSession();
+
+  if (session?.remember) {
+    rememberedUser = session.user;
+    rememberedEmployeeName =
+      session.employee_name || session.user;
+
+    createMainWindow(session);
+  } else {
+    createLoginWindow();
+  }
+});
+
+
 
 
 app.on("window-all-closed", () => {
@@ -219,43 +314,44 @@ app.on('before-quit', async () => {
 });
 
 ipcMain.on('kb:login-success', (e, payload) => {
-  const { user, factory, remember } = payload;
-   rememberedUser = user;
+  const { user, factory, remember, employee_name, layout } = payload;
 
-  console.log('[LOGIN SUCCESS]', payload);
+  rememberedUser = user;
+  rememberedEmployeeName = employee_name;
 
   if (remember) {
-    saveSession({ user, factory, remember: true });
-
-    // 🔥 TEST NGAY
-    const saved = loadSession();
-    console.log('[SESSION SAVED]', saved);
+    saveSession({
+      user,
+      factory,
+      layout,           // 🔥 LƯU LUÔN
+      employee_name,
+      remember: true
+    });
   }
 
-  createMainWindow({ user, factory });
+  createMainWindow({ user, factory, employee_name, layout });
   loginWin?.close();
 });
+
+
 ipcMain.handle('kb:get-remember', async () => {
   if (!rememberedUser) return null;
   return { user: rememberedUser };
 });
 
 
-ipcMain.on('kb:logout', () => {
-  console.log('[LOGOUT]');
- rememberedUser = null;
+ipcMain.on('kb:logout', async () => {
+  rememberedUser = null;
   clearSession();
 
-  // 🔥 ĐÓNG INDEX TRƯỚC
-  if (mainWin) {
-    mainWin.close();
-    mainWin = null;
-  }
+  if (mainWin) { mainWin.close(); mainWin = null; }
+  if (loginWin) { loginWin.close(); loginWin = null; } // optional
 
-  // 🔥 MỞ LOGIN
-  createLoginWindow();
+  // reset context nếu muốn user chọn lại
+  global.__APP_CONTEXT__ = null;
+
+  createPreLoginWindow(); // ✅ logout quay về prelogin
 });
-
 
 
   ipcMain.handle('get-sidebar-inspections', async (event,rmType, limit ) => {
@@ -276,7 +372,7 @@ ipcMain.handle('kb:getColor', async (e, { ri_no, mat_code }) => {
       throw new Error('Missing ri_no or mat_code');
     }
 
-    const pool = await sql.connect(dbConfig);
+    const pool = await getMainDb();
 
     const query = `
       SELECT TOP 1
@@ -304,13 +400,16 @@ ipcMain.handle('kb:getColor', async (e, { ri_no, mat_code }) => {
   }
 });
 
-
 ipcMain.handle('kb:login', async (e, { user, password }) => {
+
   try {
-          if (!user || !password) {
-      return { success: false, code: 'VALIDATION', message: 'Vui lòng nhập tài khoản và mật khẩu.' };
+    if (!user || !password) {
+      return { success: false, code: 'VALIDATION', message: 'Thiếu user/password' };
     }
-    const pool = await getLoginPool(dbLoginConfig);
+
+const factory = mustFactory();
+const pool = await getLoginPool(getLoginDbConfigByFactory(factory));
+
 
     const rs = await pool.request()
       .input('user', sql.NVarChar, user)
@@ -318,6 +417,9 @@ ipcMain.handle('kb:login', async (e, { user, password }) => {
       .query(`
         SELECT
           ts_user.user_code,
+          e.employee_name,
+          d.dept_code,
+          d.dept_name,
           f.factory_code,
           f.factory_extcode
         FROM ts_user
@@ -328,39 +430,51 @@ ipcMain.handle('kb:login', async (e, { user, password }) => {
         WHERE ts_user.user_code = @user
           AND ts_user.user_password = @password
           AND f.factory_extcode IN ('GL1','GL2','GL3','GL4')
-        ORDER BY f.factory_extcode
+        ORDER BY f.factory_extcode ASC
       `);
 
-    if (!rs.recordset.length) {
-      return { success: false };
-    }
+    if (!rs.recordset.length) return { success: false };
+
+    const { user_code, employee_name, dept_code, dept_name } = rs.recordset[0];
 
     const factories = [
       ...new Map(
         rs.recordset.map(r => [
           r.factory_extcode,
-          {
-            factory_code: r.factory_code,
-            factory_extcode: r.factory_extcode
-          }
+          { factory_code: r.factory_code, factory_extcode: r.factory_extcode }
         ])
       ).values()
     ];
 
+    const factoriCheck = [
+  ...new Set(rs.recordset.map(r => r.factory_extcode))
+];
+
+    
+    console.log(factory,'factoryfactoryfactory')
+    console.log(factoriCheck,'factoriesfactories')
+
+    
+    if (!factoriCheck.includes(factory)) {
+  return {
+    success: false,
+    code: 'NO_PERMISSION',
+    message: 'Bạn không có quyền truy cập nhà máy này'
+  };
+}
+
     return {
       success: true,
-      user: rs.recordset[0].user_code,
+      user: user_code,
+      employee_name,
+      dept: { dept_code, dept_name },
       factories
     };
 
- } catch (err) {
-  console.error('[LOGIN ERROR]', err);
-  return {
-    success: false,
-    code: err?.code || 'DB_ERROR',
-    message: err?.message || String(err)
-  };
-}
+  } catch (err) {
+    console.error('[LOGIN ERROR]', err);
+    return { success: false, code: err?.code || 'DB_ERROR', message: err?.message };
+  }
 });
 
 
@@ -369,7 +483,7 @@ ipcMain.handle('kb:login', async (e, { user, password }) => {
 ipcMain.handle('kb:saveInspection', async (e, input) => {
   try {
 
-    const pool = await getMainPool(dbConfig);
+    const pool = await getMainDb();
 
     // ===== 1️⃣ xử lý remarkType =====
     if (input.remark_type === 'sign') {
@@ -483,7 +597,7 @@ ipcMain.handle('kb:getRidList', async (e, { ri_no }) => {
       throw new Error('Missing ri_no');
     }
 
-    const pool = await getMainPool(dbConfig);
+    const pool = await getMainDb();
 
     const query = `
       SELECT DISTINCT RID_no
@@ -520,7 +634,7 @@ ipcMain.handle('get-inspection-detail', async (event, riNo) => {
       throw new Error('Invalid RI_no');
     }
 
-    const pool = await getMainPool(dbConfig);
+    const pool = await getMainDb();
 
     // Lấy thông tin bản kiểm tra từ bảng dv_RM_inspection
     const inspectionQuery = `
@@ -829,7 +943,7 @@ ipcMain.handle('kb:searchTC', async (e, tcCode) => {
 
     const companyCode = process.env.COMPANY_CODE; // 👈 giống getCompanyCode()
 
-const pool = await getMainPool(dbConfig);
+const pool = await getMainDb();
     // ⚠️ OPENQUERY không bind param được → phải escape
     const tc = tcCode.replace(/'/g, "''");
     const cc = companyCode.replace(/'/g, "''");
@@ -910,7 +1024,7 @@ ipcMain.handle('kb:deleteRid', async (e, { RI_no, RID_no }) => {
     };
   }
 
-  const pool = await getMainPool(dbConfig);
+  const pool = await getMainDb();
   const tx = new sql.Transaction(pool);
 
   try {
@@ -1025,7 +1139,7 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
     return { success: true };
   }
 
-  const pool = await getMainPool(dbConfig);
+  const pool = await getMainDb();
   const tx = new sql.Transaction(pool);
 
   try {
@@ -1042,6 +1156,7 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         .input('RI_no', sql.NVarChar, r.RI_no)
         .input('RID_no', sql.NVarChar, r.RID_no)
         .input('RID_seqno', sql.Int, r.RID_seqno);
+        
 
       const old = await keyReq.query(`
         SELECT *
@@ -1060,6 +1175,7 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         .input('RID_qty', sql.Decimal(18, 2), r.RID_qty || 0)
         .input('RID_rank', sql.NVarChar, r.RID_rank || null)
         .input('RID_color', sql.NVarChar, r.RID_color || null)
+        .input('RID_Failtype', sql.NVarChar, r.RID_Failtype || null)
         .input('RID_LabDate', sql.Date, r.RID_LabDate || null)
         .input('RID_remark', sql.NVarChar, r.RID_remark || null)
         .input('user', sql.NVarChar, userName);
@@ -1084,12 +1200,12 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         await req.query(`
           INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspectiondet (
             RI_no, RID_no, RID_seqno,
-            RID_qty, RID_rank, RID_color, RID_LabDate, RID_remark,
+            RID_qty, RID_rank, RID_color, RID_Failtype, RID_LabDate, RID_remark,
             isactive, created, user_name_created
           )
           VALUES (
             @RI_no, @RID_no, @RID_seqno,
-            @RID_qty, @RID_rank, @RID_color, @RID_LabDate, @RID_remark,
+            @RID_qty, @RID_rank, @RID_color,@RID_Failtype, @RID_LabDate, @RID_remark,
             'Y', GETDATE(), @user
           )
         `);
@@ -1180,7 +1296,7 @@ ipcMain.handle('kb:generateRid', async (e, { ri_no }) => {
 
 ipcMain.handle('kb:getRidDetail', async (e, { rid_no, ri_no }) => {
   try {
-const pool = await getMainPool(dbConfig);
+const pool = await getMainDb();
     const query = `
       SELECT *
       FROM dv_RM_inspectiondet
@@ -1198,7 +1314,8 @@ const pool = await getMainPool(dbConfig);
       records: result.recordset,
       RID_rank: result.recordset[0]?.RID_rank || '',
       RID_color: result.recordset[0]?.RID_color || '',
-      RID_LabDate: result.recordset[0]?.RID_LabDate || ''
+      RID_LabDate: result.recordset[0]?.RID_LabDate || '',
+      RID_Failtype: result.recordset[0]?.RID_Failtype || ''
     };
 
   } catch (err) {
@@ -1301,7 +1418,7 @@ ipcMain.handle('kb:saveHistory', async (e, { ri_no, records }) => {
     throw new Error('Invalid history payload');
   }
 
-  const pool = await getMainPool(dbConfig);
+  const pool = await getMainDb();
   const tx = new sql.Transaction(pool);
 
   try {
@@ -1382,7 +1499,7 @@ ipcMain.handle('kb:saveHistory', async (e, { ri_no, records }) => {
 });
 ipcMain.handle('kb:search-po', async (event, poNo) => {
   if (!poNo) return [];
-  const pool = await getMainPool(dbConfig);
+  const pool = await getMainDb();
   const companyCode = process.env.COMPANY_CODE; // 👈 giống getCompanyCode()
   const cc = companyCode.replace(/'/g, "''");
   const po = poNo.replace(/'/g, "''");
@@ -1444,7 +1561,7 @@ FROM OPENQUERY([DV_SERVER_ERP], '
 
 
 async function deactivateInspection(ri_no, userName) {
-  const pool = await getMainPool(dbConfig);
+  const pool = await getMainDb();
   const tx = new sql.Transaction(pool);
 
   try {
@@ -1567,7 +1684,7 @@ ipcMain.handle('get-po-qty-combined', async (event, params) => {
   let pattern = `_${mat_code}`.replace(/'/g, "''");
   pattern = `''${pattern}''`;
 
-const pool = await getMainPool(dbConfig);
+const pool = await getMainDb();
   // ======================
   // 1) PURCHASE QTY
   // ======================
@@ -1633,5 +1750,12 @@ const pool = await getMainPool(dbConfig);
       purchase_qty: Number(purchaseQty),
       container_qty: Number(containerQty),
     },
+  };
+});
+
+ipcMain.handle('kb:get-user-info', async () => {
+  return {
+    user: rememberedUser,
+    employee_name: rememberedEmployeeName
   };
 });

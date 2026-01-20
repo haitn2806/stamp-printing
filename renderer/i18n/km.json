@@ -78,9 +78,16 @@
 
   "qc.label": "ស្លាកត្រួតពិនិត្យគុណភាព",
   "qc.tool": "ស្លាក QC",
-
+  "qc.hotkeys.title": "កំណត់ប៊ូតុងលេខ → Rank",
+  "qc.hotkeys.desc": "ចុច 1–7 ក្នុង Defect & Grading ដើម្បីកំណត់ Rank",
+  "qc.hotkeys.reset": "កំណត់ឡើងវិញ",
+  "qc.hotkeys.close": "បិទ",
+  "qc.hotkeys.key": "គ្រាប់ចុច",
+  "qc.hotkeys.off": "— បិទ —",
   "quantity.supplier": "បរិមាណដឹកជញ្ជូនរបស់អ្នកផ្គត់ផ្គង់",
   "quantity.container": "បរិមាណធុង",
+    "qc.failtype.title": "Failtype (+)",
+  "qc.failtype.desc": "ចុច “+” ក្នុងស្លាក → popup 1–6 តាម Rank",
 "loading":"Processing...",
   "fix": "FIX",
   "fixed": "បានដោះស្រាយ",
@@ -113,8 +120,16 @@
   "qc.silent_print": "បោះពុម្ពស្ងាត់",
     "qc.save_and_print": "រក្សាទុក និងបោះពុម្ព",
   "qc.sheet_no": "សន្លឹក",
-    "app.title": "ប្រព័ន្ធត្រួតពិនិត្យឃ្លាំង",
+    "app.title": "ប្រព័ន្ធឃ្លាំងសម្ភារៈ",
+    "app.titleOn": "ពិនិត្យទំនិញស្បែកចូលឃ្លាំង",
   "auth.remember": "ចងចាំការចូល",
   "auth.login": "ចូលប្រើ",
-  "app.footer.copyright": "© 2025 កម្មវិធីត្រួតពិនិត្យឃ្លាំង"
+  "app.footer.copyright": "© 2026 កម្មវិធីត្រួតពិនិត្យឃ្លាំង",
+  "hotkey": "គ្រាប់ចុចផ្លូវកាត់ QC",
+  "prelogin.subtitle": "ជ្រើសរើសភាសា និងរោងចក្រ",
+  "common.continue": "បន្ត",
+  "prelogin.factory":"រោងចក្រ",
+     "prelogin.type1":"ពិនិត្យទំនិញស្បែកចូលឃ្លាំង",
+   "prelogin.type2":"ពិនិត្យសម្ភារៈក្រណាត់ និង PU ចូលឃ្លាំង",
+   "prelogin.type3":"ការត្រួតពិនិត្យគុណភាពមុនដាក់ទំនិញរងបន្ទុកចូលឃ្លាំង"
 }

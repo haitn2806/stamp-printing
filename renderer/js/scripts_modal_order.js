@@ -5,6 +5,28 @@
   // ===== QC PREVIEW - Electron version =====
   window.__CREATING_NEW_RID__ = false;
 
+  let __PRINT_LOADING_DEPTH__ = 0;
+
+function beginPrintLoading() {
+  __PRINT_LOADING_DEPTH__++;
+  showFormLoading();          // dùng overlay hiện có
+}
+
+function endPrintLoading() {
+  __PRINT_LOADING_DEPTH__ = Math.max(0, __PRINT_LOADING_DEPTH__ - 1);
+  if (__PRINT_LOADING_DEPTH__ === 0) hideFormLoading();
+}
+
+  function isActiveLastRID() {
+  const btns = Array.from(
+    document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+  );
+  if (!btns.length) return false;
+
+  const active = document.querySelector('#rid-items button.rid-active');
+  return active === btns[btns.length - 1];
+}
+
   const RANK_MAP = {
   A: "A(A/I)",
   B: "B(A/II)",
@@ -15,56 +37,54 @@
   R: "R",
 };
 
-function formatRankColor(rank, color) {
+function formatRankColor(rank, color, failtype) {
   const r = (rank || "").toUpperCase();
   const label = RANK_MAP[r] || r;
-  return label + (color ? String(color) : "");
+  return label + (color ? String(color) : "") + (failtype ? String(failtype) : "");
 }
+
 
 // input có thể là: "A(A/I)23", "A23", "A(A/I) 23", "R 6 log"
 // input: "F(C/V)23IT", "F23IT", "F(D/VI) 23IT", "R 6 log"...
 function parseRankColor(input) {
   const s = String(input || "").trim();
 
-  // rank: chữ đầu tiên A-F hoặc R
   const rank = (s.match(/^[A-FR]/i)?.[0] || "").toUpperCase();
 
-  // Nếu có "(...)" thì color là phần sau dấu ")"
   const closeParenIdx = s.lastIndexOf(")");
-  let color = "";
+  let tail = "";
+  if (closeParenIdx !== -1) tail = s.slice(closeParenIdx + 1);
+  else if (rank) tail = s.slice(1);
+  else tail = s;
 
-  if (closeParenIdx !== -1) {
-    color = s.slice(closeParenIdx + 1).trim();     // ✅ "23IT"
-  } else if (rank) {
-    color = s.slice(1).trim();                     // ✅ "23IT" (case "F23IT")
-  } else {
-    color = s.trim();
-  }
+  tail = tail.trim().replace(/\s+/g, ""); // "3log", "6log", "23IT"...
 
-  // optional: remove space trong color (nếu user nhập "23 IT")
-  color = color.replace(/\s+/g, "");
+  const m = tail.match(/^(\d+)(.*)$/);    // digits + rest
+  const color = m ? m[1] : "";
+  const failtype = m ? (m[2] || "") : tail;
 
-  return { rank, color };
+  return { rank, color, failtype };
 }
 
 
-async function silentPrintCurrentRID() {
-  // ❌ KHÔNG show loading
-  // ❌ KHÔNG lock input
 
+async function silentPrintCurrentRID() {
   await new Promise(r => requestAnimationFrame(r));
   await new Promise(r => requestAnimationFrame(r));
 
   const html = buildPrintableHtmlSnapshot();
   if (!html) throw new Error("Printable HTML empty");
 
+  const deviceName = getSavedPrinterName?.();
+
   await window.kbAPI.printHtml({
     html,
     silent: true,
     title: "QC - Silent Print",
-    deviceName: getSavedPrinterName?.()
+    ...(deviceName ? { deviceName } : {})
   });
 }
+
 
 
   let currentRINo = null;
@@ -269,8 +289,13 @@ function lockAllInputs(lock) {
     // update index
     const idx = btn.dataset.index || btn.textContent.trim();
 
-    const footer = document.getElementById("preview-label-index");
-    if (footer) footer.textContent = idx;
+   const footer = document.getElementById("preview-label-index");
+if (footer) {
+  footer.textContent =
+    __EMPLOYEE_NAME__
+      ? `${idx} – ${__EMPLOYEE_NAME__}`
+      : idx;
+}
 
     document
       .querySelectorAll("[data-live-index]")
@@ -302,6 +327,36 @@ function lockAllInputs(lock) {
       ?.classList.remove("editing-mode");
   }
 
+function getMonthForStamp(){
+  const lab = document.getElementById('RID_LabDate')?.value?.trim();
+  const ri  = document.querySelector('[name="RI_date"]')?.value?.trim();
+  const s = lab || ri;
+  if(!s) return new Date().getMonth()+1;
+  const m = String(s).match(/^\d{4}-(\d{2})-\d{2}/);
+  return m ? parseInt(m[1],10) : (new Date(s).getMonth()+1);
+}
+
+function renderMonthStamp(){
+  const root = document.getElementById('preview-content') || document.querySelector('.preview-content');
+  if(!root) return;
+
+  const seal = root.querySelector('.seal-box');
+  if(!seal) return;
+
+  const month = getMonthForStamp();
+  seal.innerHTML = `<div class="month-seal month-${month}">${month}</div>`;
+}
+
+function bindMonthStamp(){
+  const lab = document.getElementById('RID_LabDate');
+  const rer = () => renderMonthStamp();
+  lab?.addEventListener('input', rer);
+  lab?.addEventListener('change', rer);
+  rer();
+}
+
+
+
   function getRidIndex(btn) {
     return btn?.dataset?.index || btn?.textContent?.trim() || "";
   }
@@ -313,7 +368,12 @@ function setActiveRidIndex(btn) {
 
   // footer
   const footer = document.getElementById("preview-label-index");
-  if (footer) footer.textContent = idx;
+if (footer) {
+  footer.textContent =
+    __EMPLOYEE_NAME__
+      ? `${idx} – ${__EMPLOYEE_NAME__}`
+      : idx;
+}
 
   // header
   const headerIdx = document.getElementById("preview-header-index");
@@ -639,8 +699,8 @@ const finalLabDate = labDateInput || riDate || null;
 
 
 // ✅ parse đúng như Laravel: rank = chữ đầu, color = số cuối
-const { rank: rid_rank, color: rid_color } = parseRankColor(rankColorVal);
-// (optional) nếu bạn muốn chặn case nhập rank mà không có số color:
+const { rank: rid_rank, color: rid_color, failtype: rid_failtype } =
+  parseRankColor(rankColorVal);// (optional) nếu bạn muốn chặn case nhập rank mà không có số color:
 if (rid_rank && !rid_color && rid_rank !== "R") {
   // tùy rule của bạn, nếu A-F bắt buộc có color
   // showToastWarning("Thiếu số color (vd: A(A/I)23)");
@@ -671,6 +731,7 @@ const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index
           RID_date: new Date().toISOString(),
           RID_rank: rid_rank,
           RID_color: rid_color,
+            RID_Failtype: rid_failtype,   // NEW
          RID_LabDate: finalLabDate || null,
           RID_remark: String(remarkIndex  || ""),
         });
@@ -739,7 +800,7 @@ if (btn) delete btn.dataset.draft;
       }
 
      const isFast = !!document.getElementById("mode-fast")?.checked;
-const shouldFastCreate = isFast && hasQty;
+const shouldFastCreate = isFast && hasQty && isActiveLastRID();
 
       // reload list RID nếu là RID mới (giữ logic bạn)
       if (isNewRID) {
@@ -760,10 +821,12 @@ const shouldFastCreate = isFast && hasQty;
       }
 
 if (autoPrint) {
-  if (isSilentPrint()) {
-    await silentPrintCurrentRID();
-  } else {
-    await window.printCurrentLabelDirect?.();
+  try {
+    if (isSilentPrint()) await silentPrintCurrentRID();
+    else await window.printCurrentLabelDirect?.();
+  } catch (e) {
+    console.error("Print failed:", e);
+    showToastError("In thất bại (đã lưu thành công)");
   }
 }
 // ===== FAST MODE =====
@@ -857,7 +920,7 @@ async function printHtmlViaElectron(html, options = {}) {
     typeof options.silent === "boolean"
       ? options.silent
       : isSilentPrint();
-
+  beginPrintLoading();
   // 🔥 CHỈ SHOW PROGRESS KHI silent
   if (silent) {
     showPrintProgress("🖨 Đang gửi lệnh in...");
@@ -877,6 +940,8 @@ async function printHtmlViaElectron(html, options = {}) {
   } catch (e) {
     hidePrintProgress(0);
     throw e;
+  } finally {
+    endPrintLoading();
   }
 }
 
@@ -1400,9 +1465,9 @@ if (!activeBtn?.dataset?.draft) {
     updateTotalQty?.();
 
     // rankcolor
+    console.log(data,'data');
 if (rankEl) {
-  rankEl.value = formatRankColor(data?.RID_rank || "", data?.RID_color || "");
-}
+rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failtype);}
 
     hasUnsavedRID = false;
   } catch (err) {
@@ -1896,16 +1961,16 @@ await window.kbAPI.printHtml({
     // });
   }
 
-  window.toggleRidColumn = function toggleRidColumn() {
-    document.getElementById("modal-wrap")?.classList.toggle("hide-rid");
-  };
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#btn-toggle-rid");
-    if (!btn) return;
+  // window.toggleRidColumn = function toggleRidColumn() {
+  //   document.getElementById("modal-wrap")?.classList.toggle("hide-rid");
+  // };
+  // document.addEventListener("click", (e) => { 
+  //   const btn = e.target.closest("#btn-toggle-rid");
+  //   if (!btn) return;
 
-    e.preventDefault();
-    toggleRidColumn();
-  });
+  //   e.preventDefault();
+  //   toggleRidColumn();
+  // });
 
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("#btn-create-rid");
@@ -1996,40 +2061,54 @@ await window.kbAPI.printHtml({
     });
   }
 
-  window.addEventListener("app:ready", () => {
+  
+
+  window.addEventListener("app:ready", async() => {
+
+    const QC_HOTKEY_STORE = "QC_RANK_HOTKEYS_V1";
+const QC_HOTKEY_DEFAULT = { "1":"A","2":"B","3":"C","4":"D","5":"E","6":"F","7":"R" };
+
+function loadQcHotkeys(){
+  try{
+    const raw = localStorage.getItem(QC_HOTKEY_STORE);
+    const obj = raw ? JSON.parse(raw) : null;
+    const out = { ...QC_HOTKEY_DEFAULT };
+    if (obj && typeof obj === "object"){
+      Object.keys(out).forEach(k=>{
+        const v = String(obj[k]||"").toUpperCase();
+        if (["A","B","C","D","E","F","R",""].includes(v)) out[k]=v;
+      });
+    }
+    return out;
+  }catch{
+    return { ...QC_HOTKEY_DEFAULT };
+  }
+}
+
+const QC_FAILTYPE_STORE = "QC_FAILTYPE_MAP_V1";
+const QC_FAILTYPE_DEFAULT = {
+  F: { 1:"VET", 2:"VO", 3:"NHIEU", 4:"NHAN", 5:"LD", 6:"log" },
+  R: { 1:"VET", 2:"VO", 3:"NHIEU", 4:"NHAN", 5:"LD", 6:"log" },
+};
+
+function loadFailtypeMap(){
+  try{
+    const raw = localStorage.getItem(QC_FAILTYPE_STORE);
+    const obj = raw ? JSON.parse(raw) : null;
+    return (obj && typeof obj==="object") ? obj : structuredClone(QC_FAILTYPE_DEFAULT);
+  }catch{
+    return structuredClone(QC_FAILTYPE_DEFAULT);
+  }
+}
+
+    const info = await window.kbAPI.getUserInfo();
+window.__EMPLOYEE_NAME__ = info?.employee_name || '';
      bindQtyLiveUpdate();
     bindDeleteRidButton();
     const el = document.getElementById("RID_rankcolor");
     if (!el) return;
 
-    const popupMap = {
-      F: {
-        1: "VET",
-        2: "VO",
-        3: "NHIEU",
-        4: "NHAN",
-        5: "LD",
-        6: "log",
-      },
-      R: {
-        1: "VET",
-        2: "VO",
-        3: "NHIEU",
-        4: "NHAN",
-        5: "LD",
-        6: "log",
-      },
-    };
-
-    const map = {
-      1: "A(A/I)",
-      2: "B(A/II)",
-      3: "C(B/III)",
-      4: "D(B/IV)",
-      5: "E(C/V)",
-      6: "F(D/VI)",
-      7: "R",
-    };
+    
     let popup = null;
     let activeDisplayMap = null;
 
@@ -2064,7 +2143,7 @@ await window.kbAPI.printHtml({
         b.textContent = `${k}: ${displayMap[k]}`;
         b.style.width = "100%";
         b.onclick = () => {
-          el.value += ` ${displayMap[k]}`;
+el.value += String(displayMap[k] || "");   // ✅ không space
           closePopup();
         };
         popup.appendChild(b);
@@ -2085,32 +2164,38 @@ await window.kbAPI.printHtml({
         return;
       }
 
-      if (e.key === "+") {
-        e.preventDefault();
-        const firstChar = el.value.charAt(0);
-        if (popupMap[firstChar]) createPopup(popupMap[firstChar]);
-        return;
-      }
+if (e.key === "+") {
+  e.preventDefault();
+  const { rank } = parseRankColor(el.value);     // ✅ lấy rank thật
+  const m = loadFailtypeMap();
+  const displayMap = m?.[rank];
+  if (displayMap) createPopup(displayMap);
+  return;
+}
+
 
       if (popup && activeDisplayMap?.[e.key]) {
         e.preventDefault();
-        el.value += ` ${activeDisplayMap[e.key]}`;
+el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
         closePopup();
         return;
       }
 
-      if (map[e.key]) {
-        const v = el.value;
-        const allSelected =
-          el.selectionStart === 0 && el.selectionEnd === v.length;
-        if (!v || allSelected) {
-          e.preventDefault();
-          el.value = map[e.key];
-          requestAnimationFrame(() =>
-            el.setSelectionRange(el.value.length, el.value.length)
-          );
-        }
-      }
+     if (/^[1-7]$/.test(e.key)) {
+  const hk = loadQcHotkeys();      // luôn đọc mới => đổi trong modal là ăn liền
+  const rank = hk[e.key];          // "A".."R" hoặc ""
+  if (rank) {
+    const v = el.value;
+    const allSelected = el.selectionStart === 0 && el.selectionEnd === v.length;
+    if (!v || allSelected) {
+      e.preventDefault();
+      el.value = RANK_MAP[rank] || rank; // set "A(A/I)"...
+      requestAnimationFrame(() =>
+        el.setSelectionRange(el.value.length, el.value.length)
+      );
+    }
+  }
+}
     });
 
     document.addEventListener("click", (e) => {
@@ -2123,7 +2208,7 @@ await window.kbAPI.printHtml({
     // bind các nút cần DOM sẵn
     bindQcToolButtons?.();
     bindPickPrintButton?.();
-
+bindMonthStamp();
     // sync sign preview (lúc partial đã gắn)
     const srcImg = document.getElementById("sign-preview-inspector");
     const destImg = document.getElementById("preview-sign-inspector");

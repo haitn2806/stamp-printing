@@ -571,6 +571,82 @@ html, body, .table-scroll, textarea, select {
     background: linear-gradient(180deg, #eef2ff, #f8fafc);
   }
 
+  #preview-content .month-box,
+.preview-content .month-box{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:2px;
+  padding:3px;
+}
+
+#preview-content .month-dot,
+.preview-content .month-dot{
+  border:1px solid #000;
+  border-radius:999px;
+  aspect-ratio:1/1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:10px;
+  line-height:1;
+}
+
+#preview-content .month-dot.is-active,
+.preview-content .month-dot.is-active{
+  outline:2px solid #000;
+  outline-offset:1px;
+}
+
+#preview-content .month-box,
+.preview-content .month-box { display:none !important; }
+
+/* tem tháng (1 cái) */
+/* ===== PREVIEW: month seal đẹp (màu + bóng nhẹ) ===== */
+#preview-content .seal-box,
+.preview-content .seal-box{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#preview-content .month-seal,
+.preview-content .month-seal{
+  width:85%;
+  aspect-ratio:1/1;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.25);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-weight:1000;
+  font-size:100px;
+  line-height:1;
+
+  /* “đẹp” */
+  box-shadow:
+    0 10px 22px rgba(15,23,42,.22),
+    inset 0 2px 0 rgba(255,255,255,.55);
+  text-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+
+/* Color map: dùng gradient + màu chữ hợp lý */
+.month-1  { background:linear-gradient(135deg,#f9e27d,#f2c94c); color:#111; }
+.month-2  { background:linear-gradient(135deg,#ffffff,#e5e7eb); color:#111; }
+.month-3  { background:linear-gradient(135deg,#7a3e2b,#4e2418); color:#fff; }
+.month-4  { background:linear-gradient(135deg,#ff4fa3,#c81e6a); color:#fff; }
+.month-5  { background:linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
+.month-6  { background:linear-gradient(135deg,#c8a26b,#8a6a3f); color:#fff; }
+.month-7  { background:linear-gradient(135deg,#bdbdbd,#6b7280); color:#fff; }
+.month-8  { background:linear-gradient(135deg,#34d399,#16a34a); color:#08140c; }
+.month-9  { background:linear-gradient(135deg,#e0f2fe,#93c5fd); color:#0b1220; }
+.month-10 { background:linear-gradient(135deg,#ff5a5a,#b91c1c); color:#fff; }
+.month-11 { background:linear-gradient(135deg,#a5b4fc,#6366f1); color:#0b1020; }
+.month-12 { background:linear-gradient(135deg,#ffd166,#f59e0b); color:#111; }
+
   /* input mềm hơn */
   #preview-content.soft .cell input[type="text"],
   #preview-content.soft .cell input[type="date"]{
@@ -1081,7 +1157,7 @@ background-position:
   position: relative;
   width: 750px;
   max-width: calc(100vw - 32px);
-  height: 620px;
+  height: 724px;
 
   display: grid;
   grid-template-columns: 240px 1fr;
@@ -1113,8 +1189,8 @@ background-position:
 }
 
 .avatar-wrap {
-  width: 96px;
-  height: 96px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid rgba(255,255,255,.5);

@@ -44,8 +44,13 @@ contextBridge.exposeInMainWorld('APP', {
 // Expose a safe API to renderer process
 contextBridge.exposeInMainWorld("kbAPI", {
 
-  
-  //login
+preloginDone: (data) =>
+  ipcRenderer.invoke('prelogin:done', data),
+
+  getAppContext: () =>
+    ipcRenderer.invoke('get-app-context'),
+
+  //login  
     generateRid: () => {
     const rid_no = generateRidOffline();
     return { rid_no };
@@ -56,6 +61,7 @@ printHtml: (data) => ipcRenderer.invoke("print-html", data),
   login: (payload) => ipcRenderer.invoke("kb:login", payload),
   loginSuccess: (user) => ipcRenderer.send("kb:login-success", user),
   getRememberedLogin: () => ipcRenderer.invoke("kb:get-remember"),
+  getUserInfo: () => ipcRenderer.invoke('kb:get-user-info'),
   clearRemember: () => ipcRenderer.send("kb:clear-remember"),
   logout: () => ipcRenderer.send('kb:logout'),
 openPrinterSettings: () => ipcRenderer.invoke('kb:open-printer-settings'),

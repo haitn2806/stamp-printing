@@ -1,0 +1,223 @@
+ <title>Application Inspection Warehouse</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+   .card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(226,232,240,.9);
+  box-shadow: 0 6px 18px rgba(15,23,42,.08);
+}
+
+.card h3 {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 12px;
+}
+
+label {
+  cursor: pointer;
+}
+
+label input {
+  display: none;
+}
+
+label span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 500;
+
+  background: rgba(255,255,255,0.95);
+  color: #0f172a;
+
+  border: 1px solid rgba(226,232,240,.95);
+  box-shadow:
+    0 4px 12px rgba(15,23,42,.12),
+    inset 0 1px 0 rgba(255,255,255,.65);
+
+  transition: all .15s ease;
+}
+
+label span:hover {
+  border-color: #94a3b8;
+}
+
+label input:checked + span {
+  background: linear-gradient(135deg,#0ea5e9,#6366f1);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow:
+    0 8px 22px rgba(14,165,233,.35),
+    inset 0 1px 0 rgba(255,255,255,.35);
+}
+
+/* Button giống login */
+.btn-primary {
+  margin-top: 8px;
+  height: 44px;
+  width: 100%;
+  border-radius: 14px;
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: .02em;
+  transition: background .15s ease;
+}
+
+.btn-primary:hover {
+  background: #0369a1;
+}
+/* radio disabled: whole option look disabled */
+.opt:has(input:disabled) {
+  opacity: .45;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+/* stop hover/active effects if you have any */
+.opt:has(input:disabled):hover,
+.opt:has(input:disabled):active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* make label text + dot also disabled-feel */
+.opt input:disabled + span {
+  cursor: not-allowed;
+}
+
+/* if you custom style radio, ensure it looks disabled */
+.opt input:disabled {
+  cursor: not-allowed;
+}
+.opt.is-disabled { opacity:.45; cursor:not-allowed; filter:grayscale(1); }
+.opt.is-disabled:hover { transform:none !important; box-shadow:none !important; }
+.opt.is-disabled input, .opt.is-disabled span { cursor:not-allowed; }
+
+</style>
+<body class="bg-slate-100">
+  <div class="h-full w-full flex items-center justify-center">
+    <div class="w-[420px] rounded-2xl bg-white shadow-2xl border border-slate-200">
+
+      <!-- Header giống login -->
+      <div class="rounded-t-2xl bg-gradient-to-r from-sky-600 to-indigo-600 px-8 py-6 text-white">
+        <h1 class="text-xl font-semibold tracking-wide" data-i18n="app.title">Inspection Warehouse System</h1>
+        <p class="mt-1 text-sm text-white/80"data-i18n="prelogin.subtitle">Select language & factory</p>
+      </div>
+
+      <!-- Content -->
+      <div class="px-8 py-8 space-y-6">
+
+        <!-- Language -->
+        <div class="card">
+          <h3 data-i18n="settings.language">Language</h3>
+          <div class="grid">
+            <label><input type="radio" name="lang" value="en" checked><span>English</span></label>
+            <label><input type="radio" name="lang" value="vi"><span>Tiếng Việt</span></label>
+            <label><input type="radio" name="lang" value="zh"><span>中文</span></label>
+            <label><input type="radio" name="lang" value="km"><span>ភាសាខ្មែរ</span></label>
+          </div>
+        </div>
+
+        <!-- Factory -->
+        <div class="card">
+          <h3 data-i18n="prelogin.factory">Factory</h3>
+          <div class="grid">
+            <!-- Factory -->
+<label class="opt">
+  <input type="radio" name="factory" value="GL1" checked>
+  <span>LianYing</span>
+</label>
+
+<label class="opt is-disabled">
+  <input type="radio" name="factory" value="GL2" class="disable" disabled>
+  <span>LianShun 1</span>
+</label>
+
+<label class="opt">
+  <input type="radio" name="factory" value="GL3" >
+  <span>LianShun 2</span>
+</label>
+
+<label class="opt">
+  <input type="radio" name="factory" value="GL4">
+  <span>KHRU</span>
+</label>
+          </div>
+        </div>
+
+        <button id="btn-continue" class="btn-primary" data-i18n="common.continue">
+          Continue
+        </button>
+      </div>
+
+      <!-- Footer -->
+      <div class="rounded-b-2xl border-t border-slate-200 px-8 py-4 text-center text-xs text-slate-500">
+        © 2026 Inspection Warehouse Application
+      </div>
+    </div>
+  </div>
+</body>
+<script src="./js/i18n.js"></script>
+<script>
+async function applyLang(lang) {
+  await window.i18n.loadLang(lang);
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = window.i18n.t(el.dataset.i18n);
+  });
+
+  localStorage.setItem('app_lang', lang);
+}
+
+// init khi mở màn
+document.addEventListener('DOMContentLoaded', async () => {
+  const saved = localStorage.getItem('app_lang') || 'en';
+  const radio = document.querySelector(`input[name="lang"][value="${saved}"]`);
+  if (radio) radio.checked = true;
+  await applyLang(saved);
+});
+
+// change language ngay khi click radio
+document.querySelectorAll('input[name="lang"]').forEach(r => {
+  r.addEventListener('change', e => {
+    applyLang(e.target.value);
+  });
+});
+
+// continue
+document.getElementById('btn-continue').onclick = () => {
+  const langVal = document.querySelector('input[name="lang"]:checked')?.value || 'en';
+  const factoryVal = document.querySelector('input[name="factory"]:checked')?.value || 'GL1';
+  kbAPI.preloginDone({ lang: langVal, factory: factoryVal });
+};
+</script>
+
+<script>
+const lang = document.querySelector('input[name="lang"]:checked');
+const factory = document.querySelector('input[name="factory"]:checked');
+
+document.getElementById('btn-continue').onclick = () => {
+  const langVal = document.querySelector('input[name="lang"]:checked')?.value || 'en';
+  const factoryVal = document.querySelector('input[name="factory"]:checked')?.value || 'GL1';
+
+  localStorage.setItem('app_lang', langVal);
+  localStorage.setItem('factory', factoryVal);
+
+  kbAPI.preloginDone({ lang: langVal, factory: factoryVal });
+};
+</script>
