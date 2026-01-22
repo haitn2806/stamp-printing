@@ -172,7 +172,7 @@ clone.querySelectorAll('.editing-mode').forEach(el =>
     el.replaceWith(span);
   });
 
-  const css = document.getElementById('qc-print-style')?.textContent || '';
+  const css = document.getElementById('qc-print-style2')?.textContent || '';
 
   return `
 <!DOCTYPE html>
@@ -973,7 +973,7 @@ async function printHtmlViaElectron(html, options = {}) {
       return Swal.fire("⚠️ Chưa có tem RID nào để in!", "", "warning");
 
     const qcStyle =
-      document.getElementById("qc-print-style")?.textContent || "";
+      document.getElementById("qc-print-style2")?.textContent || "";
 
     const nextFrame = (n = 1) =>
       new Promise((res) => {
@@ -1024,7 +1024,7 @@ async function printHtmlViaElectron(html, options = {}) {
     if (!source) return;
 
     const qcStyle =
-      document.getElementById("qc-print-style")?.textContent || "";
+      document.getElementById("qc-print-style2")?.textContent || "";
     const clone = source.cloneNode(true);
 
     clone.querySelectorAll("input").forEach((input) => {
@@ -1306,7 +1306,7 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       .sort((a, b) => a - b);
 
     const qcStyle =
-      document.getElementById("qc-print-style")?.textContent || "";
+      document.getElementById("qc-print-style2")?.textContent || "";
     let pagesHtml = "";
 
     const nextFrame = (n = 1) =>
@@ -1504,50 +1504,7 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
   window.loadRIDDetail = loadRIDDetail;
 
   // =========================
-  // Sync inspector sign into preview
-  // =========================
 
-  // =========================
-  // Enter / '-' nav inside RID qty inputs
-  // =========================
-  document.addEventListener("DOMContentLoaded", function () {
-    const qtyInputs = Array.from(
-      document.querySelectorAll('#preview-content input[id^="RID_qty"]')
-    );
-    const dateInput = document.getElementById("RID_rankcolor");
-    const inputEnd = document.getElementById("RID_qty14");
-
-    qtyInputs.forEach((el, idx) => {
-      el.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter" && e.key !== "-") return;
-        e.preventDefault();
-
-        const curVal = (el.value || "").trim();
-
-        if (e.key === "-") {
-          const prevIdx = (idx - 1 + qtyInputs.length) % qtyInputs.length;
-          qtyInputs[prevIdx].focus();
-          qtyInputs[prevIdx].select?.();
-          return;
-        }
-
-        // Enter
-        if (el === inputEnd || curVal === "") {
-          dateInput?.focus();
-          dateInput?.select?.();
-          return;
-        }
-
-        const dir = e.shiftKey ? -1 : 1;
-        const next = (idx + dir + qtyInputs.length) % qtyInputs.length;
-        qtyInputs[next].focus();
-        qtyInputs[next].select?.();
-      });
-    });
-  });
-
-  // =========================
-  // DELETE RID (Electron IPC)
   // kbAPI.deleteRid({ RI_no, RID_no }) -> { success, message, totals }
   // =========================
   async function deleteCurrentRID() {
@@ -1701,7 +1658,7 @@ const deviceName = silent ? getSavedPrinterName() : null;
       input.parentNode.replaceChild(span, input);
     });
 
-    const css = document.getElementById("qc-print-style")?.textContent || "";
+    const css = document.getElementById("qc-print-style2")?.textContent || "";
     const extraScript = `
     function fitMatName(){
       const el = document.getElementById('preview-matname');
@@ -2108,8 +2065,7 @@ function loadFailtypeMap(){
 window.__EMPLOYEE_NAME__ = info?.employee_name || '';
      bindQtyLiveUpdate();
     bindDeleteRidButton();
-    const el = document.getElementById("RID_rankcolor");
-    if (!el) return;
+
 
     
     let popup = null;
@@ -2155,51 +2111,10 @@ el.value += String(displayMap[k] || "");   // ✅ không space
       document.body.appendChild(popup);
     };
 
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "-") {
-        e.preventDefault();
-        const qtyInputs = Array.from(
-          document.querySelectorAll('#preview-content input[id^="RID_qty"]')
-        );
-        const prev = qtyInputs[qtyInputs.length - 1];
-        prev?.focus();
-        prev?.select?.();
-        return;
-      }
-
-if (e.key === "+") {
-  e.preventDefault();
-  const { rank } = parseRankColor(el.value);     // ✅ lấy rank thật
-  const m = loadFailtypeMap();
-  const displayMap = m?.[rank];
-  if (displayMap) createPopup(displayMap);
-  return;
-}
 
 
-      if (popup && activeDisplayMap?.[e.key]) {
-        e.preventDefault();
-el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
-        closePopup();
-        return;
-      }
 
-     if (/^[1-7]$/.test(e.key)) {
-  const hk = loadQcHotkeys();      // luôn đọc mới => đổi trong modal là ăn liền
-  const rank = hk[e.key];          // "A".."R" hoặc ""
-  if (rank) {
-    const v = el.value;
-    const allSelected = el.selectionStart === 0 && el.selectionEnd === v.length;
-    if (!v || allSelected) {
-      e.preventDefault();
-      el.value = RANK_MAP[rank] || rank; // set "A(A/I)"...
-      requestAnimationFrame(() =>
-        el.setSelectionRange(el.value.length, el.value.length)
-      );
-    }
-  }
-}
-    });
+  
 
     document.addEventListener("click", (e) => {
       if (popup && !popup.contains(e.target) && e.target !== el) closePopup();
@@ -2254,22 +2169,19 @@ bindMonthStamp();
         qtyInputs[next].select?.();
       });
     });
-    const rankInput = document.getElementById("RID_rankcolor");
-    // rank input Enter => save
-    rankInput?.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      const btn =
-        document.getElementById("btn-save-rid") ||
-        document.querySelector('[data-action="save-rid"]');
-      if (!btn || btn.disabled) return;
-      btn.click();
-    });
+
 
     const fastChk = document.getElementById("mode-fast");
-    if (!rankInput) return;
 
-    rankInput.addEventListener("keydown", async (e) => {
+
+    
+
+      // =========================
+const qtyInput = document.getElementById("RID_qty1");
+
+
+
+    qtyInput.addEventListener("keydown", async (e) => {
       if (e.key !== "Enter") return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -2280,6 +2192,7 @@ bindMonthStamp();
       if (!saveBtn || saveBtn.disabled) return;
 
       window.__FAST_MODE__ = !!fastChk?.checked;
+        saveBtn.click(); // 🔥 BẮT BUỘC
     });
   });
 })();

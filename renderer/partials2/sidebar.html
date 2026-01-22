@@ -1,0 +1,115 @@
+<!-- Inspection Sidebar (Electron) -->
+<div id="inspection-sidebar"
+     class="fixed top-0 left-0 h-full w-full sm:w-[650px] md:w-[960px]
+            bg-white border-r border-gray-200 shadow-2xl rounded-r-2xl
+            transform -translate-x-full transition-transform duration-300
+            z-[1050] flex flex-col">
+
+  <!-- Header -->
+  <div class="sidebar-report-header sticky top-0 flex items-center justify-between gap-3 px-5 py-[27px]">
+  <!-- Left: icon + title -->
+  <div class="flex items-center gap-3 ml-4 text-white">
+    <!-- Magnifying glass icon -->
+    <span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur">
+<span class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur">
+  <svg xmlns="http://www.w3.org/2000/svg"
+       viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       class="w-6 h-6">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="M21 21l-4.3-4.3"/>
+  </svg>
+</span>
+
+    </span>
+
+    <h2 class="text-3xl sm:text-2xl font-semibold mb-0 leading-none">
+      Report Inspection
+    </h2>
+  </div>
+
+  <!-- Close button -->
+  <button
+    id="sidebar-close"
+    type="button"
+    class="inline-flex items-center justify-center w-10 h-10 rounded-full
+           bg-white/20 text-white border border-white/30
+           backdrop-blur transition hover:bg-white/30 active:scale-90"
+    aria-label="Close sidebar"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="h-5 w-5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
+</div>
+
+
+  <!-- Body -->
+  <div class="flex-1 p-4">
+    <div class="table-scroll">
+      <table
+        class="defect-table">
+        <thead class="sidebar-table-head">
+          <tr class="">
+            <th class="px-3 py-2 text-center font-bold "data-i18n="table.created">Created</th>
+            <th class="px-3 py-2 text-center font-bold">Inspection #</th>
+            <th class="px-3 py-2 text-center font-bold">PO</th>
+            <th class="px-3 py-2 text-center font-bold" data-i18n="material">Vendor</th>
+            <th class="px-3 py-2 text-center font-bold" data-i18n="manufacturer">Material</th>
+            <th class="px-3 py-2 text-center font-bold" data-i18n="delivery.date">Delivery Date</th>
+            <th class="px-3 py-2 text-center font-bold w-16" data-i18n="table.action">Action</th>
+          </tr>
+
+          <tr class="defect-total">
+            <th class="px-2 py-2">
+              <input type="text" id="filter-created"
+                class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500" />
+            </th>
+            <th class="px-2 py-2">
+              <input type="text" id="filter-ri-no"
+                class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500" />
+            </th>
+            <th class="px-2 py-2">
+              <input type="text" id="filter-po"
+                class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500" />
+            </th>
+            <th class="px-2 py-2">
+              <input type="text" id="filter-vendor"
+                class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500" />
+            </th>
+            <th class="px-2 py-2">
+              <input type="text" id="filter-material"
+                class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500"  />
+            </th>
+            <th class="px-2 py-2">
+              <input type="date" id="filter-date"
+                class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500" />
+            </th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody id="sidebar-inspection-table">
+         <tr class="defect-total">
+  <td colspan="7" class="text-center p-6">
+    <img src="./assets/search.gif"
+         alt="Loading"
+         class="mx-auto w-12 h-12" />
+  </td>
+</tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

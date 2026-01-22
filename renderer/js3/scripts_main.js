@@ -7,6 +7,7 @@
   GL3: 'LianShun 2',
   GL4: 'KHRU'
 };
+
 function fmtYMDSlash(v){
   if(!v) return "";
   const d = new Date(v);
@@ -16,6 +17,7 @@ function fmtYMDSlash(v){
   const day = String(d.getDate()).padStart(2,"0");
   return `${y}/${m}/${day}`;
 }
+
 
 async function renderUserFactory() {
   try {
@@ -145,8 +147,7 @@ const RI_ACTION_BUTTON_IDS = [
   '#btn-history',
   '#btn-qc-tool',
   '#btn-export-excel',
-  '#btn-export-deckers',
-   '#btn-export-qc-summary'
+  '#btn-export-deckers'
 ];
 
 document
@@ -595,7 +596,7 @@ updateTotalsAndPercent();      // tính lại
 
 let sidebarInspectionData = [];
 
-async function loadSidebarInspections(rmType = 'A') {
+async function loadSidebarInspections(rmType = 'C') {
   const tbody = document.getElementById('sidebar-inspection-table');
   if (!tbody) return;
 
@@ -621,7 +622,7 @@ function renderSidebarTable(data) {
   }
 
   tbody.innerHTML = data.map(row => {
-    const created = fmtYMDSlash(row.created);
+const created = fmtYMDSlash(row.created);
     const riDate  = fmtYMDSlash(row.RI_date);
 
     return `
@@ -793,7 +794,7 @@ const sidebar  = document.getElementById('inspection-sidebar');
 const toggleBtn = document.getElementById('sidebar-toggle');
 const closeBtn  = document.getElementById('sidebar-close');
 
-function openSidebar(rmType = 'A') {
+function openSidebar(rmType = 'C') {
       if (!sidebar) return; // 👈 CHỐT CHẶN
   // reset filter (nếu có)
   const ids = ['filter-ri-no','filter-po','filter-vendor','filter-material','filter-date','filter-created'];
@@ -832,7 +833,7 @@ function bindSidebarEvents() {
   const closeBtn  = document.getElementById('sidebar-close');
   const tbody     = document.getElementById('sidebar-inspection-table');
 
-  if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('A'));
+  if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('C'));
   if (closeBtn)  closeBtn.addEventListener('click', closeSidebar);
 
   if (!tbody) return;
@@ -2327,9 +2328,6 @@ function setLoadingProgress(percent = 0, hint = "") {
   if (p) p.textContent = `${Math.round(v)}%`;
   if (h) h.textContent = hint || "";
 }
-
-
-
 document.querySelectorAll('.layout-btn').forEach(btn=>{
   btn.onclick = () => {
     const layout = btn.dataset.layout;
@@ -2342,58 +2340,5 @@ document.querySelectorAll('.layout-btn').forEach(btn=>{
 
 const cur = localStorage.getItem('app_layout') || 'leather';
 document.querySelector(`[data-layout="${cur}"]`)?.classList.add('btn-primary');
-
-document.addEventListener("click", async (e) => {
-  const btn = e.target.closest("#btn-export-qc-summary");
-  if (!btn) return;
-
-  // ✅ giống 2 nút excel cũ: chưa mở/lưu RI thì khóa
-  if (!DETAIL_MODE) {
-    (window.showToastWarning ? showToastWarning("Vui lòng lưu/mở RI trước khi xuất Excel") : alert("Vui lòng lưu/mở RI trước khi xuất Excel"));
-    return;
-  }
-
-  const riNo = document.querySelector("#RI_no")?.value?.trim();
-  if (!riNo) {
-    (window.showToastWarning ? showToastWarning("Chưa có RI_no") : alert("Chưa có RI_no"));
-    return;
-  }
-
-  // nếu đang disabled bởi setRIButtonsEnabled hoặc đang chạy export -> bỏ qua
-  if (btn.disabled) return;
-
-  const oldHtml = btn.innerHTML;
-
-  // ✅ disable khi đang export
-  btn.disabled = true;
-  btn.classList.add("opacity-60", "cursor-not-allowed", "pointer-events-none");
-
-  try {
-    showLoading?.("Đang xuất QC Summary...", 15, `RI: ${riNo}`);
-
-    const res = await window.kbAPI.exportQcSummaryExcel(riNo);
-    hideLoading?.();
-
-    if (res?.canceled) {
-      showToastWarning ? showToastWarning("Đã hủy xuất Excel") : alert("Đã hủy xuất Excel");
-      return;
-    }
-
-    if (res?.success) {
-      showToastSuccess ? showToastSuccess(res?.message || "Xuất Excel thành công") : alert(res?.message || "Xuất Excel thành công");
-    } else {
-      showToastError ? showToastError(res?.message || "Xuất Excel thất bại") : alert(res?.message || "Xuất Excel thất bại");
-    }
-  } catch (err) {
-    hideLoading?.();
-    const msg = err?.message || String(err);
-    showToastError ? showToastError(`Xuất Excel lỗi: ${msg}`) : alert(`Xuất Excel lỗi: ${msg}`);
-  } finally {
-    // ✅ trả nút về đúng trạng thái disable chung (giống 2 nút excel cũ)
-    btn.innerHTML = oldHtml;
-    setRIButtonsEnabled(DETAIL_MODE);
-  }
-});
-
 
 })();

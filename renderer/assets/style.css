@@ -423,7 +423,7 @@ html, body, .table-scroll, textarea, select {
   #preview-content .cell{ border-right:1px solid #000; padding:4px; display:flex; align-items:center; justify-content:center; text-align:center; min-height:26px; box-sizing:border-box; word-break:break-word; }
   #preview-content .qc-row .cell:last-child{ border-right:none; }
 
-  #preview-content .cell.left-label{ justify-content:flex-start; text-align:left; }
+  #preview-content .cell.left-label{  text-align:left; }
   #preview-content .cell.right{ justify-content:flex-end; text-align:right; }
   #preview-content .cell.bold{ font-weight:700; }
   #preview-content .cell.italic{ font-style:italic; }
@@ -471,7 +471,7 @@ html, body, .table-scroll, textarea, select {
   #preview-content .qc-block{ display:grid; width:100%; border-bottom:1px solid #000; grid-template-columns:26% repeat(7, 1fr); }
   #preview-content .qc-block .cell{ border-right:1px solid #000; padding:4px; display:flex; align-items:center; justify-content:center; text-align:center; box-sizing:border-box; word-break:break-word; min-height:26px; }
   #preview-content .qc-block .cell:last-child{ border-right:none; }
-  #preview-content .qc-block .cell.left-label{ justify-content:flex-start; text-align:left; }
+  #preview-content .qc-block .cell.left-label{ text-align:left; }
 
   #preview-content .block-qty .qty-label{ grid-row:1 / span 2; text-align:start !important;}
   #preview-content .block-qty .r1{ border-bottom:1px solid #000; }
@@ -1219,6 +1219,8 @@ background-position:
   display: flex;
   flex-direction: column;
   gap: 20px;
+      max-width: 90vh;
+    overflow: auto;
 }
 
 .settings-title {

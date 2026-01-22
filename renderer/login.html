@@ -152,7 +152,7 @@
       <!-- Header -->
       <div class="rounded-t-2xl bg-gradient-to-r from-sky-600 to-indigo-600 px-8 py-6 text-white">
         <h1 class="text-xl font-semibold tracking-wide" data-i18n="app.title">
-          Inspection Warehouse System
+          Material Warehouse System
         </h1>
         <p class="mt-1 text-sm text-white/80" data-i18n="login.title">
           <!-- Đăng nhập để tiếp tục -->
@@ -187,9 +187,10 @@
               
             </label>
   <select id="layoutSelect" class="select-ui">
-    <option value="leather" selected data-i18n="prelogin.type1">Da</option>
-    <option value="fabric" disabled data-i18n="prelogin.type2"> Vải</option>
-    <option value="accessory" disabled data-i18n="prelogin.type3">Phụ liệu</option>
+    <option value=""  data-i18n="material"></option>
+    <option value="leather" data-i18n="prelogin.type1">Da</option>
+    <option value="fabric"  data-i18n="prelogin.type2"> Vải</option>
+    <option value="accessory" data-i18n="prelogin.type3">Phụ liệu</option>
   </select>
 </div>
 
@@ -240,7 +241,7 @@
 
       <!-- Footer -->
       <div class="rounded-b-2xl border-t border-slate-200 px-8 py-4 text-center text-xs text-slate-500">
-        © 2026 Inspection Warehouse Application
+        © 2026 Material Warehouse Application
       </div>
     </div>
   </div>
@@ -322,6 +323,7 @@ async function autoLoginCheck() {
 
 
 const layoutSelect = document.getElementById('layoutSelect');
+const layoutSelectValue =layoutSelect?.value;
 
 layoutSelect.addEventListener('change', () => {
   btnLogin.disabled = !layoutSelect.value;
@@ -344,13 +346,17 @@ btnLogin.addEventListener('click', async () => {
     return;
   }
 
+  // Cập nhật layout từ dropdown trước khi gửi request
+  const layoutSelectValue = layoutSelect?.value; // Lấy lại giá trị layout mới nhất
+
   const res = await window.kbAPI.login({ user, password });
 
   window.kbAPI.loginSuccess({
     user,
-    factory: preFactory,   // 🔥 TỪ PRELOGIN
+    factory: preFactory,   // Từ PRELOGIN
     remember,
-    employee_name: String(res?.employee_name || '')
+    employee_name: String(res?.employee_name || ''),
+    layout: layoutSelectValue  // Gửi giá trị layout mới nhất
   });
 });
 

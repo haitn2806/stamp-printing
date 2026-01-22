@@ -1,6 +1,6 @@
 {
   "name": "kb-electron",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "main": "main.js",
   "author": "阿海",
   "type": "commonjs",

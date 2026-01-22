@@ -112,6 +112,7 @@
   "nav.qc_label": "ស្លាក QC",
   "btn.export_excel": "នាំចេញ Excel",
   "btn.export_deckers": "នាំចេញ Excel Deckers",
+      "btn.export_qc_summary": "នាំចេញសង្ខេប Excel",
    "table.created": "កាលបរិច្ឆេទបង្កើត",
   "table.action": "សកម្មភាព",
    "qc.preview": "មើលស្លាក QC ជាមុន",

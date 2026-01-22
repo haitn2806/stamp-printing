@@ -82,7 +82,7 @@
   "quantity.supplier": "Số lượng nhà cung cấp",
   "quantity.container": "Số lượng container",
 
-  "fix": "Da đã xử lý",
+  "fix": "Đã xử lý",
   "fixed": "Đã xử lý",
   "material":"Vật liệu",
   "Brand":"Thương hiệu",
@@ -105,6 +105,7 @@
   "nav.qc_label": "Tem QC",
     "btn.export_excel": "Xuất Excel",
   "btn.export_deckers": "Xuất Excel Deckers",
+  "btn.export_qc_summary": "Xuất Excel thống kê",
   "table.created": "Ngày tạo",
   "table.action": "Thao tác",
    "qc.preview": "Xem trước tem QC",

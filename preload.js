@@ -55,13 +55,15 @@ preloginDone: (data) =>
     const rid_no = generateRidOffline();
     return { rid_no };
   },
+   changeLayout: (layout) => ipcRenderer.send('kb:change-layout', layout),
   saveHistory: (payload) => ipcRenderer.invoke('kb:saveHistory', payload),
    getPrinters: () => ipcRenderer.invoke("kb:get-printers"),
 printHtml: (data) => ipcRenderer.invoke("print-html", data),
   login: (payload) => ipcRenderer.invoke("kb:login", payload),
   loginSuccess: (user) => ipcRenderer.send("kb:login-success", user),
   getRememberedLogin: () => ipcRenderer.invoke("kb:get-remember"),
-  getUserInfo: () => ipcRenderer.invoke('kb:get-user-info'),
+ exportQcSummaryExcel: (ri_no) => ipcRenderer.invoke("kb:exportQcSummaryExcel", { ri_no }),
+   getUserInfo: () => ipcRenderer.invoke('kb:get-user-info'),
   clearRemember: () => ipcRenderer.send("kb:clear-remember"),
   logout: () => ipcRenderer.send('kb:logout'),
 openPrinterSettings: () => ipcRenderer.invoke('kb:open-printer-settings'),

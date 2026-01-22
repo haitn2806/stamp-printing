@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog,shell   } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell   } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { saveSession, loadSession, clearSession } = require('./session');
@@ -64,7 +64,21 @@ async function getMainDb() {
   return await getMainPool(factory, cfg); // ✅ theo db.js mới
 }
 
+function getCompanyCodeByFactory(factory) {
+  switch (factory) {
+    case 'GL1': return 'VA1';
+    case 'GL2': return 'VB1';
+    case 'GL3': return 'VB2'; // nếu có
+    case 'GL4': return 'CA1'; // nếu có
+    default: throw new Error('Invalid factory');
+  }
+}
 
+function getCurrentUser() {
+  const code = rememberedUser || 'SYSTEM';
+  const name = rememberedEmployeeName || rememberedUser || 'SYSTEM';
+  return { code, name };
+}
 
 
 function getLoginDbConfigByFactory(factory) {
@@ -239,6 +253,8 @@ function createMainWindow(payload) {
     },
   });
 
+  console.log(payload?.layout,'payload?.layout')
+
   const layout = payload?.layout || 'leather';
 
   const map = {
@@ -315,6 +331,8 @@ app.on('before-quit', async () => {
 
 ipcMain.on('kb:login-success', (e, payload) => {
   const { user, factory, remember, employee_name, layout } = payload;
+
+  console.log(payload,'payloadpayload')
 
   rememberedUser = user;
   rememberedEmployeeName = employee_name;
@@ -482,17 +500,13 @@ const pool = await getLoginPool(getLoginDbConfigByFactory(factory));
 
 ipcMain.handle('kb:saveInspection', async (e, input) => {
   try {
-
     const pool = await getMainDb();
 
-    // ===== 1️⃣ xử lý remarkType =====
-    if (input.remark_type === 'sign') {
-      delete input.RI_remark;
-    } else {
-      delete input.RI_remark_sign;
-    }
+    // 1) remark type
+    if (input.remark_type === 'sign') delete input.RI_remark;
+    else delete input.RI_remark_sign;
 
-    // ===== 2️⃣ allowed fields =====
+    // 2) allowlist
     const allowedFields = [
       'isactive','RM_po_qty','RM_container_qty',
       'created','user_code_created','user_name_created',
@@ -511,17 +525,18 @@ ipcMain.handle('kb:saveInspection', async (e, input) => {
       'RI_brand_code','RM_type'
     ];
 
-const data = {};
-allowedFields.forEach(k => {
-  if (k in input) data[k] = input[k];
-});
+    const data = {};
+    allowedFields.forEach(k => { if (k in input) data[k] = input[k]; });
 
-// 🔥 FIX RI_ischanged
-if ('RI_ischanged' in data) {
-  data.RI_ischanged = data.RI_ischanged ? 1 : 0;
-}
+    // force boolean
+    if ('RI_ischanged' in data) data.RI_ischanged = data.RI_ischanged ? 1 : 0;
 
-    // ===== 3️⃣ check exists =====
+    if (!data.RI_no) throw new Error('Missing RI_no');
+
+    // current user
+    const { code: userCode, name: userName } = getCurrentUser();
+
+    // 3) exists?
     const exists = await pool.request()
       .input('RI_no', sql.NVarChar, data.RI_no)
       .query(`
@@ -530,58 +545,62 @@ if ('RI_ischanged' in data) {
         WHERE RI_no = @RI_no
       `);
 
-    const userName = 'SYSTEM'; // 👉 bạn có thể lấy từ login Electron
+    // NEVER allow client to set audit timestamps/users
+    delete data.created;
+    delete data.updated;
+    delete data.user_code_created;
+    delete data.user_name_created;
+    delete data.user_code_updated;
+    delete data.user_name_updated;
 
     if (exists.recordset.length) {
-      // ===== UPDATE =====
-      data.updated = new Date();
-      data.user_code_updated = userName;
-      data.user_name_updated = userName;
+      // UPDATE
+      const excluded = new Set(['RI_no']);
+      const keys = Object.keys(data).filter(k => !excluded.has(k));
 
-      const sets = Object.keys(data)
-        .filter(k => k !== 'RI_no')
-        .map(k => `${k}=@${k}`)
-        .join(',');
+      const sets = keys.map(k => `${k}=@${k}`).join(',');
 
       const req = pool.request();
-Object.entries(data).forEach(([k, v]) => {
-  bindInput(req, k, v);
-});
+      req.input('RI_no', sql.NVarChar, data.RI_no);
+      keys.forEach(k => bindInput(req, k, data[k]));
+
+      req.input('user_code_updated', sql.NVarChar, userCode);
+      req.input('user_name_updated', sql.NVarChar, userName);
 
       await req.query(`
         UPDATE DV_DATA_LAKE.dbo.dv_RM_inspection
-        SET ${sets}
+        SET ${sets ? sets + ',' : ''}
+            updated = GETDATE(),
+            user_code_updated = @user_code_updated,
+            user_name_updated = @user_name_updated
         WHERE RI_no = @RI_no
       `);
 
       return { keyid: exists.recordset[0].keyid, updated: true };
-
-    } else {
-      // ===== INSERT =====
-      data.created = new Date();
-      data.isactive = 'Y';
-      data.RM_type = data.RM_type || 'A';
-      data.user_code_created = userName;
-      data.user_name_created = userName;
-
-      const cols = Object.keys(data).join(',');
-      const vals = Object.keys(data).map(k => `@${k}`).join(',');
-
-      const req = pool.request();
-
-      
-Object.entries(data).forEach(([k, v]) => {
-  bindInput(req, k, v);
-});
-
-      const rs = await req.query(`
-        INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspection (${cols})
-        OUTPUT INSERTED.keyid
-        VALUES (${vals})
-      `);
-
-      return { keyid: rs.recordset[0].keyid, inserted: true };
     }
+
+    // INSERT
+    data.isactive = 'Y';
+    data.RM_type = data.RM_type || 'A';
+
+    const cols = Object.keys(data).join(',');
+    const vals = Object.keys(data).map(k => `@${k}`).join(',');
+
+    const req = pool.request();
+    Object.entries(data).forEach(([k, v]) => bindInput(req, k, v));
+
+    req.input('user_code_created', sql.NVarChar, userCode);
+    req.input('user_name_created', sql.NVarChar, userName);
+
+    const rs = await req.query(`
+      INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspection
+        (${cols}, created, user_code_created, user_name_created)
+      OUTPUT INSERTED.keyid
+      VALUES
+        (${vals}, GETDATE(), @user_code_created, @user_name_created)
+    `);
+
+    return { keyid: rs.recordset[0].keyid, inserted: true };
 
   } catch (err) {
     console.error('[kb:saveInspection]', err);
@@ -941,7 +960,9 @@ ipcMain.handle('kb:searchTC', async (e, tcCode) => {
       return [];
     }
 
-    const companyCode = process.env.COMPANY_CODE; // 👈 giống getCompanyCode()
+  const factory = mustFactory();
+const companyCode = getCompanyCodeByFactory(factory);
+console.log(companyCode,'companyCodecompanyCode');
 
 const pool = await getMainDb();
     // ⚠️ OPENQUERY không bind param được → phải escape
@@ -1145,10 +1166,11 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
   try {
     await tx.begin();
 
-    const userName = 'SYSTEM'; // 🔥 sau này lấy từ session login
+    const riNo = records[0].RI_no;
+    const { code: userCode, name: userName } = getCurrentUser();
 
     // ===============================
-    // 1️⃣ UPSERT DETAIL
+    // 1) UPSERT DETAIL
     // ===============================
     for (const r of records) {
       const keyReq = new sql.Request(tx);
@@ -1156,10 +1178,9 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         .input('RI_no', sql.NVarChar, r.RI_no)
         .input('RID_no', sql.NVarChar, r.RID_no)
         .input('RID_seqno', sql.Int, r.RID_seqno);
-        
 
       const old = await keyReq.query(`
-        SELECT *
+        SELECT 1
         FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
         WHERE RI_no=@RI_no
           AND RID_no=@RID_no
@@ -1178,7 +1199,8 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         .input('RID_Failtype', sql.NVarChar, r.RID_Failtype || null)
         .input('RID_LabDate', sql.Date, r.RID_LabDate || null)
         .input('RID_remark', sql.NVarChar, r.RID_remark || null)
-        .input('user', sql.NVarChar, userName);
+        .input('user_code', sql.NVarChar, userCode)
+        .input('user_name', sql.NVarChar, userName);
 
       if (old.recordset.length) {
         await req.query(`
@@ -1187,10 +1209,11 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
             RID_qty=@RID_qty,
             RID_rank=@RID_rank,
             RID_color=@RID_color,
+            RID_Failtype=@RID_Failtype,
             RID_LabDate=@RID_LabDate,
             RID_remark=@RID_remark,
             updated=GETDATE(),
-            user_name_updated=@user
+            user_name_updated=@user_name
           WHERE RI_no=@RI_no
             AND RID_no=@RID_no
             AND RID_seqno=@RID_seqno
@@ -1205,18 +1228,16 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
           )
           VALUES (
             @RI_no, @RID_no, @RID_seqno,
-            @RID_qty, @RID_rank, @RID_color,@RID_Failtype, @RID_LabDate, @RID_remark,
-            'Y', GETDATE(), @user
+            @RID_qty, @RID_rank, @RID_color, @RID_Failtype, @RID_LabDate, @RID_remark,
+            'Y', GETDATE(), @user_name
           )
         `);
       }
     }
 
     // ===============================
-    // 2️⃣ TÍNH TỔNG THEO RANK
+    // 2) TÍNH TỔNG THEO RANK
     // ===============================
-    const riNo = records[0].RI_no;
-
     const sumReq = new sql.Request(tx);
     sumReq.input('RI_no', sql.NVarChar, riNo);
 
@@ -1242,16 +1263,17 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
       if (!r.RID_rank) return;
       const p = String(r.RID_rank).charAt(0).toUpperCase();
       const col = `RI_${p}_qty`;
-      if (col in totals) totals[col] = r.qty || 0;
+      if (col in totals) totals[col] = Number(r.qty) || 0;
     });
 
     // ===============================
-    // 3️⃣ UPDATE MASTER
+    // 3) UPDATE MASTER + AUDIT
     // ===============================
     const updReq = new sql.Request(tx);
     updReq
       .input('RI_no', sql.NVarChar, riNo)
-      .input('user', sql.NVarChar, userName);
+      .input('user_code', sql.NVarChar, userCode)
+      .input('user_name', sql.NVarChar, userName);
 
     Object.entries(totals).forEach(([k, v]) => {
       updReq.input(k, sql.Decimal(18, 2), v);
@@ -1268,7 +1290,8 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         RI_F_qty=@RI_F_qty,
         RI_R_qty=@RI_R_qty,
         updated=GETDATE(),
-        user_name_updated=@user
+        user_code_updated=@user_code,
+        user_name_updated=@user_name
       WHERE RI_no=@RI_no
         AND isactive='Y'
     `);
@@ -1279,12 +1302,10 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
   } catch (err) {
     await tx.rollback();
     console.error('[kb:saveRid]', err);
-    return {
-      success: false,
-      error: err.message || String(err),
-    };
+    return { success: false, error: err.message || String(err) };
   }
 });
+
 
 
 
@@ -1500,7 +1521,8 @@ ipcMain.handle('kb:saveHistory', async (e, { ri_no, records }) => {
 ipcMain.handle('kb:search-po', async (event, poNo) => {
   if (!poNo) return [];
   const pool = await getMainDb();
-  const companyCode = process.env.COMPANY_CODE; // 👈 giống getCompanyCode()
+  const factory = mustFactory();
+const companyCode = getCompanyCodeByFactory(factory);
   const cc = companyCode.replace(/'/g, "''");
   const po = poNo.replace(/'/g, "''");
 
@@ -1647,6 +1669,21 @@ ipcMain.handle('inspection:delete', async (e, ri_no) => {
   return await deactivateInspection(ri_no, user);
 });
 
+ipcMain.on('kb:change-layout', (e, layout) => {
+  const session = loadSession() || {};
+  saveSession({
+    ...session,
+    layout,
+    remember: true
+  });
+
+  if (mainWin) {
+    mainWin.close();
+    mainWin = null;
+  }
+
+  createMainWindow({ ...session, layout });
+});
 
 ipcMain.handle('get-po-qty-combined', async (event, params) => {
   const { po_list, mat_code, tc } = params || {};
@@ -1718,7 +1755,8 @@ const pool = await getMainDb();
   const tcEsc = tc.replace(/'/g, "''");
 
   // ⚠️ companyCode giống Laravel
-  const companyCode = process.env.COMPANY_CODE; 
+const factory = mustFactory();
+const companyCode = getCompanyCodeByFactory(factory);
 
   const sqlContainer = `
     SELECT *
@@ -1758,4 +1796,278 @@ ipcMain.handle('kb:get-user-info', async () => {
     user: rememberedUser,
     employee_name: rememberedEmployeeName
   };
+});
+
+ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
+  try {
+    if (!ri_no) throw new Error("Missing RI_no");
+
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Export QC Summary Excel",
+      defaultPath: `QC_Summary_${ri_no}_${Date.now()}.xlsx`,
+      filters: [{ name: "Excel", extensions: ["xlsx"] }],
+    });
+    if (canceled || !filePath) return { success: false, canceled: true };
+
+    const pool = await getMainDb();
+
+    // ===== 0) lấy info header (Material/OldCode/Method/Date) =====
+    const infoRs = await pool.request()
+      .input("ri_no", sql.NVarChar, ri_no)
+      .query(`
+        SELECT TOP 1
+          ISNULL(RI_mat_code,'')     AS RI_mat_code,
+          ISNULL(RI_mat_oldcode,'')  AS RI_mat_oldcode,
+          ISNULL(RI_shippingway,'')  AS RI_shippingway,
+          ISNULL(CONVERT(varchar(10), RI_date, 23),'') AS RI_date
+        FROM DV_DATA_LAKE.dbo.dv_RM_inspection
+        WHERE RI_no = @ri_no AND isactive='Y'
+      `);
+
+    const info = infoRs.recordset?.[0] || {};
+    const matCode = String(info.RI_mat_code || "").trim();
+    const oldCode = String(info.RI_mat_oldcode || "").trim();
+    const method  = String(info.RI_shippingway || "").trim();
+    const delDate = String(info.RI_date || "").trim();
+
+    // ===== 1) group theo tem + key(rank+color+failtype) =====
+    const rs = await pool.request()
+      .input("ri_no", sql.NVarChar, ri_no)
+      .query(`
+        SELECT
+          RID_no,
+          ISNULL(RID_rank,'')     AS RID_rank,
+          ISNULL(RID_color,'')    AS RID_color,
+          ISNULL(RID_Failtype,'') AS RID_Failtype,
+          SUM(ISNULL(RID_qty,0))  AS qty
+        FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+        WHERE RI_no = @ri_no
+          AND isactive = 'Y'
+        GROUP BY RID_no, RID_rank, RID_color, RID_Failtype
+        ORDER BY RID_no, RID_rank, RID_color, RID_Failtype
+      `);
+
+    const rows = rs.recordset || [];
+
+    const RANK_MAP = {
+      A: "A(A/I)",
+      B: "B(A/II)",
+      C: "C(B/III)",
+      D: "D(B/IV)",
+      E: "E(C/V)",
+      F: "F(D/VI)",
+      R: "R",
+    };
+
+    const keyLabel = (r) => {
+      const rank = String(r.RID_rank || "").trim().toUpperCase();
+      const ft   = String(r.RID_Failtype || "").trim();
+      const col  = String(r.RID_color || "").trim();
+
+      const base = RANK_MAP[rank] || (rank || "EMPTY");
+      let s = base;
+      if (ft)  s += ft;        // E(C/V)4
+      if (col) s += ` ${col}`; // ... VET/IT/NHIEU
+      return s;
+    };
+
+    const colSet = new Set();
+    const ridSet = new Set();
+
+    for (const r of rows) {
+      if (r.RID_no) ridSet.add(r.RID_no);
+      colSet.add(keyLabel(r));
+    }
+
+    const cols = Array.from(colSet).sort((a, b) => a.localeCompare(b));
+    const ridList = Array.from(ridSet).sort((a, b) => String(a).localeCompare(String(b)));
+
+    // ===== 2) workbook =====
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("QC Summary");
+
+    // ===== helpers + theme =====
+    const colToLetter = (n) => {
+      let s = "";
+      while (n > 0) {
+        const m = (n - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    };
+
+    // ExcelJS argb nên dùng 8 ký tự (FF + RGB)
+    const PAL = {
+      navy:     "FF0F172A",
+      blue:     "FF2563EB",
+      skyLite:  "FFDBEAFE",
+      slateLite:"FFF1F5F9",
+      zebra:    "FFF8FAFC",
+      border:   "FFCBD5E1",
+      text:     "FF0F172A",
+      white:    "FFFFFFFF",
+      total:    "FFFEF3C7",
+    };
+
+    const setBorderAll = (cell, color = PAL.border) => {
+      cell.border = {
+        top:    { style: "thin", color: { argb: color } },
+        left:   { style: "thin", color: { argb: color } },
+        bottom: { style: "thin", color: { argb: color } },
+        right:  { style: "thin", color: { argb: color } },
+      };
+    };
+
+    // ✅ STT + RID_no + dynamic cols
+    const totalCols = 2 + cols.length;
+    const lastCol = colToLetter(totalCols);
+
+    // ===== 3) TITLE BLOCK (rows 1-4) =====
+    ws.mergeCells(`A1:${lastCol}1`);
+    ws.getCell("A1").value = "QC TEM SUMMARY";
+    ws.getRow(1).height = 28;
+    Object.assign(ws.getCell("A1"), {
+      font: { name: "Calibri", size: 16, bold: true, color: { argb: PAL.white } },
+      alignment: { vertical: "middle", horizontal: "center" },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: PAL.navy } },
+    });
+
+    ws.mergeCells(`A2:${lastCol}2`);
+    ws.getCell("A2").value = `Material: ${matCode || "-"}  -  Material Old Code: ${oldCode || "-"}`;
+    ws.getRow(2).height = 20;
+    Object.assign(ws.getCell("A2"), {
+      font: { name: "Calibri", size: 11, bold: true, color: { argb: PAL.text } },
+      alignment: { vertical: "middle", horizontal: "center" }, // ✅ center
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: PAL.slateLite } },
+    });
+
+    ws.mergeCells(`A3:${lastCol}3`);
+    ws.getCell("A3").value = `Method: ${method || "-"}  -  Delivery Date: ${delDate || "-"}`;
+    ws.getRow(3).height = 20;
+    Object.assign(ws.getCell("A3"), {
+      font: { name: "Calibri", size: 11, bold: true, color: { argb: PAL.text } },
+      alignment: { vertical: "middle", horizontal: "center" }, // ✅ center
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: PAL.skyLite } },
+    });
+
+    ws.mergeCells(`A4:${lastCol}4`);
+    ws.getRow(4).height = 6;
+
+    // border cho 1-3
+    for (let r = 1; r <= 3; r++) {
+      for (let c = 1; c <= totalCols; c++) setBorderAll(ws.getCell(r, c));
+    }
+
+    // ===== 4) HEADER TABLE (row 5) =====
+    const HEADER_ROW = 5;
+    const DATA_START = 6;
+
+    ws.getRow(HEADER_ROW).values = ["STT", "RID_no", ...cols];
+    ws.getRow(HEADER_ROW).height = 20;
+
+    for (let c = 1; c <= totalCols; c++) {
+      const cell = ws.getCell(HEADER_ROW, c);
+      cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: PAL.white } };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PAL.blue } };
+      setBorderAll(cell);
+    }
+
+    // ✅ freeze: title+header, cố định 2 cột (STT + RID_no)
+    ws.views = [{ state: "frozen", xSplit: 2, ySplit: HEADER_ROW }];
+
+    // filter
+    ws.autoFilter = { from: `A${HEADER_ROW}`, to: `${lastCol}${HEADER_ROW}` };
+
+    // width + number format
+    ws.getColumn(1).width = 6;    // STT
+    ws.getColumn(2).width = 18;   // RID_no
+    for (let i = 0; i < cols.length; i++) {
+      const colIdx = 3 + i;       // ✅ shift
+      ws.getColumn(colIdx).width = 14;
+      ws.getColumn(colIdx).numFmt = "0.00";
+    }
+
+    // ===== 5) map rid -> col -> qty =====
+    const map = new Map();
+    for (const r of rows) {
+      const rid = r.RID_no;
+      const col = keyLabel(r);
+      const qty = Number(r.qty) || 0;
+      if (!map.has(rid)) map.set(rid, new Map());
+      map.get(rid).set(col, (map.get(rid).get(col) || 0) + qty);
+    }
+
+    // ===== 6) write data + zebra =====
+    let currentRow = DATA_START;
+    let stt = 1;
+
+    for (const rid of ridList) {
+      const m = map.get(rid) || new Map();
+      const line = [stt++, rid, ...cols.map(c => m.get(c) || 0)];
+      ws.getRow(currentRow).values = line;
+      ws.getRow(currentRow).height = 18;
+
+      const zebra = (currentRow - DATA_START) % 2 === 1;
+
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = ws.getCell(currentRow, c);
+        cell.font = { name: "Calibri", size: 11, color: { argb: PAL.text } };
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: c === 1 ? "center" : (c === 2 ? "left" : "right"), // ✅ STT center, RID left, số right
+        };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: zebra ? PAL.zebra : PAL.white } };
+        setBorderAll(cell);
+      }
+
+      currentRow++;
+    }
+
+    const lastDataRow = currentRow - 1;
+
+    // ===== 7) TOTAL ROW =====
+    const totalRowIndex = currentRow;
+    ws.getCell(`A${totalRowIndex}`).value = "";       // ✅ STT trống
+    ws.getCell(`B${totalRowIndex}`).value = "TOTAL";  // ✅ TOTAL nằm cột RID_no
+
+    for (let i = 0; i < cols.length; i++) {
+      let s = 0;
+      for (let r = DATA_START; r <= lastDataRow; r++) {
+        s += Number(ws.getCell(r, 3 + i).value || 0); // ✅ shift
+      }
+      ws.getCell(totalRowIndex, 3 + i).value = s;     // ✅ shift
+    }
+
+    ws.getRow(totalRowIndex).height = 20;
+
+    for (let c = 1; c <= totalCols; c++) {
+      const cell = ws.getCell(totalRowIndex, c);
+      cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: PAL.text } };
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: c === 1 ? "center" : (c === 2 ? "left" : "right"),
+      };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PAL.total } };
+      setBorderAll(cell);
+    }
+
+    // print setup
+    ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+    await wb.xlsx.writeFile(filePath);
+    return {
+  success: true,
+  filePath,
+  message: `Xuất QC Summary Excel thành công!\n${filePath}`
+};
+
+  } catch (err) {
+    console.error("[kb:exportQcSummaryExcel]", err);
+    return {
+  success: false,
+  message: `Xuất QC Summary Excel thất bại!\n${err?.message || "Export fail"}`
+};
+  }
 });

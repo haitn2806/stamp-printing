@@ -106,6 +106,7 @@
   "nav.history": "History",
   "nav.qc_label": "QC Label",
     "btn.export_excel": "Export Excel",
+    "btn.export_qc_summary": "Export Excel Summary",
   "btn.export_deckers": "Deckers Excel",
     "table.created": "Created",
   "table.action": "Action",

@@ -113,6 +113,7 @@
   "nav.qc_label": "质检标签",
    "btn.export_excel": "导出 Excel",
   "btn.export_deckers": "导出 Deckers Excel",
+    "btn.export_qc_summary": "导出 Excel 统计表",
     "table.created": "创建时间",
   "table.action": "操作",
    "qc.preview": "QC标签预览",
