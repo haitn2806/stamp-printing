@@ -1,6 +1,13 @@
 
 (() => {
 
+function ti(key, params = {}) {
+  let s = window.i18n?.t(key) || key;
+  Object.keys(params).forEach(k => {
+    s = s.replaceAll(`{{${k}}}`, params[k]);
+  });
+  return s;
+}
    const FACTORY_NAME = {
   GL1: 'LianYing',
   GL2: 'LianShun 1',
@@ -146,7 +153,9 @@ const RI_ACTION_BUTTON_IDS = [
   '#btn-qc-tool',
   '#btn-export-excel',
   '#btn-export-deckers',
-   '#btn-export-qc-summary'
+   '#btn-export-qc-summary',
+    '#btn-check-tem',
+    '#btn-export-excel-main'
 ];
 
 document
@@ -623,12 +632,20 @@ function renderSidebarTable(data) {
   tbody.innerHTML = data.map(row => {
     const created = fmtYMDSlash(row.created);
     const riDate  = fmtYMDSlash(row.RI_date);
-
+const po = String(row.ERP_po_no || '').toUpperCase();
+const esc = s => String(s).replace(/[&<>"']/g, m => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[m]));
     return `
       <tr class="hover:bg-blue-50 cursor-pointer">
         <td class="px-2 py-1">${created}</td>
         <td class="px-2 py-1 font-medium">${String(row.RI_no || '').toUpperCase()}</td>
-        <td class="px-2 py-1">${String(row.ERP_po_no || '').toUpperCase()}</td>
+        <td class="px-2 py-1">
+  <div class="po-cell max-w-[140px] truncate cursor-pointer"
+       data-fullpo="${esc(po)}">
+    ${po}
+  </div>
+</td>
         <td class="px-2 py-1">${row.RI_vend_name || ''}</td>
         <td class="px-2 py-1">${row.RI_mat_code || ''}</td>
         <td class="px-2 py-1">${riDate}</td>
@@ -639,7 +656,7 @@ function renderSidebarTable(data) {
             type="button"
             class="btn-delete-row"
             data-del="${row.RI_no}"
-            title="Xóa biên bản"
+            title="confirmBox"
           >
             <svg xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -669,6 +686,33 @@ function renderSidebarTable(data) {
       confirmDelete?.(ri);
     });
   });
+  const tip = document.getElementById('po-tooltip');
+
+tbody.querySelectorAll('.po-cell').forEach(el => {
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();             // khỏi ảnh hưởng row
+    if (!tip) return;
+
+    const full = el.getAttribute('data-fullpo') || '';
+    if (!full) return;
+
+    // toggle same cell
+    if (tip.style.display === 'block' && tip.dataset.owner === full) {
+      tip.style.display = 'none';
+      tip.dataset.owner = '';
+      return;
+    }
+
+    tip.textContent = full;
+    tip.dataset.owner = full;
+
+    const r = el.getBoundingClientRect();
+    tip.style.left = r.left + 'px';
+    tip.style.top  = (r.bottom + 6) + 'px';
+    tip.style.display = 'block';
+  });
+});
+
 }
 
 
@@ -730,11 +774,14 @@ modalSetting?.addEventListener('click', e => {
 });
 window.confirmDelete = async function (ri_no) {
   const ok = await confirmBox({
-    title: 'Delete inspection',
-    message: `Do you want to delete RI: ${ri_no}?`,
-    okText: 'Delete',
+    title: ti("confirm.delete.title"),
+    message: ti("confirm.delete.message", { ri: ri_no }),
+    okText: ti("confirm.delete.ok"),
+    cancelText:ti("confirm.delete.cancel"),
     danger: true
   });
+
+
 
   if (!ok) return;
 
@@ -754,13 +801,18 @@ window.confirmDelete = async function (ri_no) {
 
 window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   const ok = await confirmBox({
-    title: 'Delete QC label',
-    message: `Do you want to delete RID: ${rid_no}?`,
-    okText: 'Delete',
+    title: ti("confirm.delete_rid.title"),
+    message: ti("confirm.delete_rid.message", { rid: rid_no }),
+    okText: ti("confirm.delete_rid.ok"),
+    cancelText: ti("confirm.delete_rid.cancel"),
     danger: true
   });
 
   if (!ok) return;
+
+  // xử lý delete thật ở đây
+
+
 
   try {
     if (!window.kbAPI?.deleteRid) {
@@ -786,6 +838,106 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
     showToastError(err?.message || 'Delete failed');
   }
 };
+function openCheckTemModal(res){
+  document.getElementById("ct-ri").textContent = res?.ri_no || "—";
+  document.getElementById("ct-total").textContent = res?.total_tem ?? 0;
+
+  const tbody = document.getElementById("ct-tbody");
+  if (!tbody) return;
+
+  const rows = Array.isArray(res?.rows) ? res.rows : [];
+  const toNum = v => Number(v ?? 0) || 0;
+
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[m]));
+
+  const mkDefect = (x) => {
+    const a = String(x?.RID_rank || "").trim();
+    const b = String(x?.RID_color || "").trim();
+    const c = String(x?.RID_Failtype || "").trim();
+    return [a,b,c].filter(Boolean).join(" / ");
+  };
+
+  const countGt0 = (lines) => (lines||[]).reduce((a, x) => a + (toNum(x.RID_qty) > 0 ? 1 : 0), 0);
+  const sumGt0   = (lines) => (lines||[]).reduce((a, x) => a + (toNum(x.RID_qty) > 0 ? toNum(x.RID_qty) : 0), 0);
+
+  const isLineLevel = rows.some(r => r && ("RID_seqno" in r) && ("RID_qty" in r));
+
+  let groups = [];
+
+  if (isLineLevel) {
+    const mp = new Map();
+    rows.forEach(l => {
+      const rid = l.RID_no ?? l.RID ?? "";
+      if (!mp.has(rid)) mp.set(rid, { RID_no: rid, lines: [] });
+      mp.get(rid).lines.push(l);
+    });
+
+    groups = [...mp.values()].map(g => {
+      const posLines = g.lines.filter(x => toNum(x.RID_qty) > 0);
+
+      const defects = [...new Set(
+        posLines.map(mkDefect).filter(Boolean)
+      )].join(", ");
+
+      return {
+        RID_no: g.RID_no,
+        totalRow: countGt0(g.lines),
+        qtySum: sumGt0(g.lines),
+        defect: defects || "—",
+      };
+    });
+  } else {
+    groups = rows.map(r => {
+      const lines =
+        Array.isArray(r.lines) ? r.lines :
+        Array.isArray(r.items) ? r.items :
+        Array.isArray(r.details) ? r.details : [];
+
+      const totalRow = r.lines_qty_gt0 != null ? toNum(r.lines_qty_gt0) : countGt0(lines);
+
+      const qtySum =
+        r.qty_sum_gt0 != null ? toNum(r.qty_sum_gt0) :
+        (lines.length ? sumGt0(lines) : toNum(r.qty_sum));
+
+      // defect: ưu tiên ngay trên row, fallback từ lines (RID_qty>0)
+      let defect = mkDefect(r);
+      if (!defect && lines.length){
+        const posLines = lines.filter(x => toNum(x.RID_qty) > 0);
+        defect = [...new Set(posLines.map(mkDefect).filter(Boolean))].join(", ");
+      }
+
+      return {
+        RID_no: r.RID_no ?? r.RID ?? "",
+        totalRow,
+        qtySum,
+        defect: defect || "—",
+      };
+    });
+  }
+
+  const totalRowAll = groups.reduce((s, g) => s + toNum(g.totalRow), 0);
+  document.getElementById("ct-total-row").textContent = totalRowAll;
+
+  if (!groups.length){
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Không có dữ liệu</td></tr>`;
+    return;
+  }
+
+ tbody.innerHTML = res.rows.map((r, i) => `
+  <tr>
+    <td class="right">${i + 1}</td>
+    <td><span class="code-pill">${r.RID_no}</span></td>
+    <td class="fail"><span class="pill">${r.defect || '—'}</span></td>
+    <td class="right">${r.lines_qty_gt0}</td>
+    <td class="right">${Number(r.qty_sum || 0).toFixed(2)}</td>
+  </tr>
+`).join("");
+
+}
+
+
 
 
 
@@ -823,7 +975,12 @@ function closeSidebar() {
 //   if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('A'));
 //   if (closeBtn)  closeBtn.addEventListener('click', closeSidebar);
 // });
-
+function closeCheckTemModal(){
+  const m = document.getElementById("check-tem-modal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.classList.remove("flex");
+}
 
 // bind sau khi DOM đã có
 // bind sau khi DOM đã có
@@ -1701,20 +1858,27 @@ poSelect?.addEventListener('change', function () {
 
 const poTooltip = document.getElementById('po-tooltip');
 
-poInput?.addEventListener('click', () => {
-  const fullPO = poInput.value?.trim();
-  if (!fullPO || !poTooltip) return;
+poInput.addEventListener('click', (e)=>{
+  const val = poInput.value?.trim();
+  if(!val) return;
 
-  poTooltip.textContent = fullPO;
+  const r = poInput.getBoundingClientRect();
+  poTooltip.textContent = val;
 
-  const rect = poInput.getBoundingClientRect();
-  poTooltip.style.left = rect.left + 'px';
-  poTooltip.style.top = (rect.bottom + 4) + 'px';
+  poTooltip.style.left = r.left + 'px';
+  poTooltip.style.top  = (r.bottom + 8) + 'px';
+
   poTooltip.style.display = 'block';
+  requestAnimationFrame(()=> poTooltip.classList.add('show'));
 
-  if (DETAIL_MODE) return;
-  fetchPoQtyCurrentSelection();
+  e.stopPropagation();
 });
+
+document.addEventListener('click', ()=>{
+  poTooltip.classList.remove('show');
+  setTimeout(()=> poTooltip.style.display='none', 140);
+});
+
 
 document.addEventListener('click', (e) => {
   if (!poTooltip) return;
@@ -1887,18 +2051,21 @@ function ensureModalInBody() {
   }
 }
 
-  window.logout =  async function logout() {
+window.logout = async function logout() {
   const ok = await confirmBox({
-    title: 'Logout',
-    message: 'Do you want to logout?',
-    okText: 'Logout',
+    title: ti("confirm.logout.title"),
+    message: ti("confirm.logout.message"),
+    okText: ti("confirm.logout.ok"),
+    cancelText: ti("confirm.logout.cancel"),
     danger: false
   });
 
   if (!ok) return;
 
   window.kbAPI.logout();
-}
+};
+
+
 
 async function applyLanguage(lang) {
   if (!window.i18n) return;
@@ -2204,6 +2371,51 @@ function bindFailtypeUI(){
 
 
 window.addEventListener("app:ready", async() => {
+  const excelMain = document.getElementById("btn-export-excel-main");
+const excelMenu = document.querySelector("#excel-dropdown .toolbar-dropdown-menu");
+
+excelMain?.addEventListener("click", (e)=>{
+  e.stopPropagation();
+  excelMenu?.classList.toggle("hidden");
+});
+
+document.addEventListener("click", ()=>{
+  excelMenu?.classList.add("hidden");
+});
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("#btn-check-tem");
+  if (!btn) return;
+
+  if (!DETAIL_MODE) {
+    alert("Chưa mở / lưu RI");
+    return;
+  }
+
+  const riNo = document.getElementById("RI_no")?.value?.trim();
+  if (!riNo) return;
+
+  try {
+    showLoading("Checking tem...", 20, riNo);
+
+    const res = await window.kbAPI.checkTem(riNo);
+
+    hideLoading();
+
+    if (!res?.success) throw new Error(res?.message || "Check tem fail");
+
+    // 🔥 MỞ MODAL + ĐỔ DATA
+    const modal = document.getElementById("check-tem-modal");
+    modal?.classList.remove("hidden");
+    modal?.classList.add("flex");
+
+    openCheckTemModal(res);
+
+  } catch (err) {
+    hideLoading();
+    alert(err.message || err);
+  }
+});
+
   renderUserFactory();
  bindQcHotkeysModal(); 
   renderQcHotkeySettings();
@@ -2391,9 +2603,32 @@ document.addEventListener("click", async (e) => {
   } finally {
     // ✅ trả nút về đúng trạng thái disable chung (giống 2 nút excel cũ)
     btn.innerHTML = oldHtml;
+    btn.disabled = false;
+  btn.classList.remove(
+    "opacity-60",
+    "cursor-not-allowed",
+    "pointer-events-none"
+  );
     setRIButtonsEnabled(DETAIL_MODE);
   }
 });
+document.getElementById("check-tem-close")
+  ?.addEventListener("click", closeCheckTemModal);
+
+
+  document.getElementById("btn-check-update")
+  ?.addEventListener("click", async () => {
+    try {
+      const info = await window.kbAPI.checkUpdate();
+      if (!info) {
+        showToastSuccess?.("Latest version");
+        return;
+      }
+      openUpdateModal(info);
+    } catch (e) {
+      showToastError?.("Check update failed");
+    }
+  });
 
 
 })();

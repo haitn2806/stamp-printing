@@ -12,6 +12,24 @@ function beginPrintLoading() {
   showFormLoading();          // dùng overlay hiện có
 }
 
+function ensureRankBeforePrint() {
+  const v = document.getElementById("RID_rankcolor")?.value?.trim();
+  if (!v) {
+    showToastWarning(ti("not_rank"));
+    return false;
+  }
+  return true;
+}
+
+function ti(key, params = {}) {
+  let s = window.i18n?.t(key) || key;
+  Object.keys(params).forEach(k => {
+    s = s.replaceAll(`{{${k}}}`, params[k]);
+  });
+  return s;
+}
+
+
 function endPrintLoading() {
   __PRINT_LOADING_DEPTH__ = Math.max(0, __PRINT_LOADING_DEPTH__ - 1);
   if (__PRINT_LOADING_DEPTH__ === 0) hideFormLoading();
@@ -36,6 +54,55 @@ function endPrintLoading() {
   F: "F(D/VI)",
   R: "R",
 };
+
+const QC_FIT_SCRIPT = `
+  window.__QC_FIT_DONE__ = false;
+
+  function fitOne(el, min=8) {
+    if (!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if (!cell) return;
+
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const maxH = cell.getBoundingClientRect().height;
+    const maxW = cell.getBoundingClientRect().width;
+    if (!maxH || !maxW) return;
+
+    const oldAlign = cell.style.alignItems;
+    cell.style.alignItems = 'center';  // Căn giữa dọc
+
+    // Đảm bảo cho phép xuống dòng
+    el.style.whiteSpace = 'normal';
+    el.style.display = 'block';
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+
+    // Giảm font-size cho đến khi vừa vặn
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
+    }
+
+    cell.style.alignItems = oldAlign || '';
+  }
+
+  function runFit() {
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+  }
+
+  // Chạy sớm và vài lần để tránh sự cố in nhanh
+  const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
+  document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('beforeprint', runFit);
+  setTimeout(runFit, 0);
+  setTimeout(runFit, 80);
+  setTimeout(runFit, 200);
+`;
+
+
+
+
 
 function formatRankColor(rank, color, failtype) {
   const r = (rank || "").toUpperCase();
@@ -153,29 +220,22 @@ function buildPrintableHtmlSnapshot() {
 
   const clone = source.cloneNode(true);
 
-  // ❌ XÓA ID – CỰC KỲ QUAN TRỌNG
+  // (optional) remove ids nếu muốn sạch
   clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
-  // remove edit state
-clone.classList.remove('editing-mode');
-clone.querySelectorAll('.editing-mode').forEach(el =>
-  el.classList.remove('editing-mode')
-);
-
-  // input, textarea, select → span
-  clone.querySelectorAll('input, textarea, select').forEach(el => {
+  // ✅ input -> span (lấy đúng current value)
+  clone.querySelectorAll('input').forEach((input) => {
     const span = document.createElement('span');
-    span.textContent = el.value || el.textContent || '—';
+    span.textContent = input.value || '—';
     span.style.display = 'inline-block';
     span.style.width = '100%';
     span.style.textAlign = 'center';
-    el.replaceWith(span);
+    input.replaceWith(span);
   });
 
   const css = document.getElementById('qc-print-style')?.textContent || '';
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -184,10 +244,9 @@ clone.querySelectorAll('.editing-mode').forEach(el =>
 </head>
 <body>
   <div class="print-root">
-   <div class="preview-content">
-      ${clone.innerHTML}
-    </div>
+    <div class="preview-content">${clone.innerHTML}</div>
   </div>
+  <script>${QC_FIT_SCRIPT}<\/script>
 </body>
 </html>`;
 }
@@ -618,6 +677,14 @@ if (footer) {
   async function saveRID(event) {
     const autoPrint = document.getElementById("mode-print")?.checked;
 
+
+    const rankColorVal =
+  document.getElementById("RID_rankcolor")?.value?.trim() || "";
+
+if (!rankColorVal) {
+  showToastWarning(ti("not_rank"));
+  return;
+}
     // chặn khi đang loading
     if (
       document.getElementById("modal-loading")?.classList.contains("hidden") ===
@@ -773,14 +840,29 @@ if (btn) delete btn.dataset.draft;
             window.updateTotalsAndPercent?.();
             window.calcWeightedTotal?.();
 
-            // nếu bạn muốn fill toàn bộ input name=...
-            Object.keys(detail.inspection).forEach((key) => {
-              const input = document.querySelector(`[name="${key}"]`);
-              if (!input) return;
-              let v = detail.inspection[key];
-              if (input.type === "date" && v) v = String(v).slice(0, 10);
-              input.value = v ?? "";
-            });
+Object.keys(detail.inspection).forEach((key) => {
+  const input = document.querySelector(`[name="${key}"]`);
+  if (!input) return;
+
+  let v = detail.inspection[key];
+
+  // Chuyển đổi ngày đúng định dạng "yyyy-MM-dd"
+  if (input.type === "date" && v) {
+    if (typeof v === "string") {
+      const date = new Date(v);
+      if (!isNaN(date.getTime())) {
+        v = date.toISOString().slice(0, 10); // Đảm bảo định dạng yyyy-MM-dd
+      } else {
+        v = ""; // Nếu ngày không hợp lệ, để trống
+      }
+    } else if (v instanceof Date) {
+      v = v.toISOString().slice(0, 10); // Chuyển đổi từ đối tượng Date thành chuỗi yyyy-MM-dd
+    }
+  }
+
+  input.value = v ?? "";
+});
+
 
             document.querySelectorAll('input[type="number"]').forEach((inp) => {
               if (!inp.value) return;
@@ -821,12 +903,12 @@ const shouldFastCreate = isFast && hasQty && isActiveLastRID();
       }
 
 if (autoPrint) {
+  if (!ensureRankBeforePrint()) return;
   try {
     if (isSilentPrint()) await silentPrintCurrentRID();
     else await window.printCurrentLabelDirect?.();
   } catch (e) {
-    console.error("Print failed:", e);
-    showToastError("In thất bại (đã lưu thành công)");
+    showToastError("In thất bại (đã lưu)");
   }
 }
 // ===== FAST MODE =====
@@ -864,7 +946,7 @@ function clonePreviewToPrintable(btn, i, isLast = false) {
   const source = document.getElementById("preview-content");
   if (!source) return "";
   const clone = source.cloneNode(true);
-
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
   // ❌ XÓA TOÀN BỘ ID (CỰC KỲ QUAN TRỌNG)
 
 
@@ -908,7 +990,7 @@ if (idxSpan) {
 </head>
 <body>
 ${bodyHtml || ""}
-${extraScript ? `<script>${extraScript}<\/script>` : ""}
+${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
 </body>
 </html>`;
   }
@@ -952,13 +1034,14 @@ async function printHtmlViaElectron(html, options = {}) {
   // =========================
   // 3) PRINT ALL (Electron)
   // =========================
-  async function printAllLabels() {
-    const ok = await confirmBox({
-      title: "Print all labels",
-      message: "Do you want to print ALL labels?",
-      okText: "Print",
-      danger: false,
-    });
+async function printAllLabels() {
+  const ok = await confirmBox({
+    title: ti("confirm.print_all.title"),
+    message: ti("confirm.print_all.message"),
+    okText: ti("confirm.print_all.ok"),
+    cancelText: ti("confirm.print_all.cancel"),
+    danger: false,
+  });
 
     if (!ok) return;
 
@@ -1003,6 +1086,7 @@ async function printHtmlViaElectron(html, options = {}) {
       title: "In tất cả tem QC",
       qcStyle,
       bodyHtml: pagesHtml,
+ extraScript: QC_FIT_SCRIPT,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print All" });
@@ -1026,7 +1110,7 @@ async function printHtmlViaElectron(html, options = {}) {
     const qcStyle =
       document.getElementById("qc-print-style")?.textContent || "";
     const clone = source.cloneNode(true);
-
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
     clone.querySelectorAll("input").forEach((input) => {
       const span = document.createElement("span");
       span.textContent = input.value || "—";
@@ -1036,26 +1120,53 @@ async function printHtmlViaElectron(html, options = {}) {
       input.parentNode.replaceChild(span, input);
     });
 
-    const extraScript = `
-    function fitMatName(){
-      const el = document.getElementById('preview-matname');
-      if(!el) return;
-      const cell = el.closest('.cell');
-      if(!cell) return;
-      let style    = window.getComputedStyle(el);
-      let fontSize = parseFloat(style.fontSize) || 14;
-      const maxHeight = cell.clientHeight || cell.offsetHeight;
-      if (!maxHeight) return;
-      const oldAlign = cell.style.alignItems;
-      cell.style.alignItems = 'flex-start';
-      while (el.scrollHeight > maxHeight && fontSize > 6){
-        fontSize -= 0.5;
-        el.style.fontSize = fontSize + 'px';
-      }
-      cell.style.alignItems = oldAlign || '';
+const extraScript = `
+  // Hàm xử lý thu nhỏ chữ cho các phần tử
+  function fitOne(el, min = 8) {
+    if (!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if (!cell) return;
+
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const maxH = cell.getBoundingClientRect().height;
+    const maxW = cell.getBoundingClientRect().width;
+    if (!maxH || !maxW) return;
+
+    const oldAlign = cell.style.alignItems;
+    cell.style.alignItems = 'center';  // Căn giữa dọc
+
+    // Đảm bảo cho phép xuống dòng
+    el.style.whiteSpace = 'normal';
+    el.style.display = 'block';
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+
+    // Giảm font-size cho đến khi vừa vặn
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
     }
-   
-  `;
+
+    cell.style.alignItems = oldAlign || '';
+  }
+
+  function runFit() {
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+  }
+
+  // Chạy script sớm và vài lần để đảm bảo kết quả chính xác khi in
+  const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
+  document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('beforeprint', runFit);
+  setTimeout(runFit, 0);
+  setTimeout(runFit, 80);
+  setTimeout(runFit, 200);
+`;
+
+document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`);
+
+
 
     const html = buildPrintHtml({
       title: "In tem QC",
@@ -1338,6 +1449,7 @@ pagesHtml += clonePreviewToPrintable(
       title: "In tem QC đã chọn",
       qcStyle,
       bodyHtml: pagesHtml,
+ extraScript: QC_FIT_SCRIPT,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print Picked" });
@@ -1678,7 +1790,7 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
 </head>
 <body>
 ${body || ""}
-${extraScript ? `<script>${extraScript}<\/script>` : ""}
+${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
 </body>
 </html>`;
   }
@@ -1691,7 +1803,7 @@ ${extraScript ? `<script>${extraScript}<\/script>` : ""}
 const deviceName = silent ? getSavedPrinterName() : null;
 
     const clone = source.cloneNode(true);
-
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
     clone.querySelectorAll("input").forEach((input) => {
       const span = document.createElement("span");
       span.textContent = input.value || "—";
@@ -1702,26 +1814,53 @@ const deviceName = silent ? getSavedPrinterName() : null;
     });
 
     const css = document.getElementById("qc-print-style")?.textContent || "";
-    const extraScript = `
-    function fitMatName(){
-      const el = document.getElementById('preview-matname');
-      if(!el) return;
-      const cell = el.closest('.cell');
-      if(!cell) return;
-      let style = window.getComputedStyle(el);
-      let fontSize = parseFloat(style.fontSize) || 14;
-      const maxHeight = cell.clientHeight || cell.offsetHeight;
-      if (!maxHeight) return;
-      const oldAlign = cell.style.alignItems;
-      cell.style.alignItems = 'flex-start';
-      while (el.scrollHeight > maxHeight && fontSize > 6){
-        fontSize -= 0.5;
-        el.style.fontSize = fontSize + 'px';
-      }
-      cell.style.alignItems = oldAlign || '';
+const extraScript = `
+  // Hàm xử lý thu nhỏ chữ cho các phần tử
+  function fitOne(el, min = 8) {
+    if (!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if (!cell) return;
+
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const maxH = cell.getBoundingClientRect().height;
+    const maxW = cell.getBoundingClientRect().width;
+    if (!maxH || !maxW) return;
+
+    const oldAlign = cell.style.alignItems;
+    cell.style.alignItems = 'center';  // Căn giữa dọc
+
+    // Đảm bảo cho phép xuống dòng
+    el.style.whiteSpace = 'normal';
+    el.style.display = 'block';
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+
+    // Giảm font-size cho đến khi vừa vặn
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
     }
-    
-  `;
+
+    cell.style.alignItems = oldAlign || '';
+  }
+
+  function runFit() {
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+  }
+
+  // Chạy script sớm và vài lần để đảm bảo kết quả chính xác khi in
+  const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
+  document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('beforeprint', runFit);
+  setTimeout(runFit, 0);
+  setTimeout(runFit, 80);
+  setTimeout(runFit, 200);
+`;
+
+document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`);
+
+
 
     const html = buildPrintHtml2({
       title: "In tem QC",
@@ -1766,15 +1905,16 @@ await window.kbAPI.printHtml({
     document.getElementById("pick-modal").classList.add("hidden");
   }
 
-  window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
-    const ok = await confirmBox({
-      title: "Delete QC label",
-      message: `Do you want to delete RID: ${rid_no}?`,
-      okText: "Delete",
-      danger: true,
-    });
+window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
+  const ok = await confirmBox({
+    title: ti("confirm.delete_rid.title"),
+    message: ti("confirm.delete_rid.message", { rid: rid_no }),
+    okText: ti("confirm.delete_rid.ok"),
+    cancelText: ti("confirm.delete_rid.cancel"),
+    danger: true
+  });
 
-    if (!ok) return;
+  if (!ok) return;
 
     try {
       if (!window.kbAPI?.deleteRid) {
@@ -2008,13 +2148,14 @@ await window.kbAPI.printHtml({
     window.saveRID(e);
   });
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#btn-print-preview");
-    if (!btn) return;
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("#btn-print-preview");
+  if (!btn) return;
+  e.preventDefault();
+  if (!ensureRankBeforePrint()) return;
+  window.printPreview?.();
+});
 
-    e.preventDefault();
-    window.printPreview?.();
-  });
 
   document
     .getElementById("btn-print-all")

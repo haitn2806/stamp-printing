@@ -67,6 +67,7 @@ printHtml: (data) => ipcRenderer.invoke("print-html", data),
   clearRemember: () => ipcRenderer.send("kb:clear-remember"),
   logout: () => ipcRenderer.send('kb:logout'),
 openPrinterSettings: () => ipcRenderer.invoke('kb:open-printer-settings'),
+checkTem: (ri_no) => ipcRenderer.invoke("kb:checkTem", { ri_no }),
   getInspectionDetail: (ri_no) =>
     ipcRenderer.invoke("get-inspection-detail", ri_no),
   dragEvent: (e) => {
@@ -96,7 +97,9 @@ saveRid: (payload) => ipcRenderer.invoke("kb:saveRid", payload),
   getRidDetail: (params) => ipcRenderer.invoke("kb:getRidDetail", params),
 
 
-  //excelllll
+  //excelllll checkUpdate: () => ipcRenderer.invoke("app:check-update"),
+  checkUpdate: () => ipcRenderer.invoke("app:check-update"),
+  doUpdate: () => ipcRenderer.invoke("app:do-update"),
 exportExcel: (payload) =>
     ipcRenderer.invoke('kb:exportExcel', payload),
   //tem QC

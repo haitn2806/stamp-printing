@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, shell   } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 const { saveSession, loadSession, clearSession } = require('./session');
@@ -10,6 +11,9 @@ const {
 } = require('./db');
 
 const ExcelJS = require('exceljs');
+
+autoUpdater.autoDownload = false;
+
 
 
 let rememberedUser = null;
@@ -2003,27 +2007,36 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
     let currentRow = DATA_START;
     let stt = 1;
 
-    for (const rid of ridList) {
-      const m = map.get(rid) || new Map();
-      const line = [stt++, rid, ...cols.map(c => m.get(c) || 0)];
-      ws.getRow(currentRow).values = line;
-      ws.getRow(currentRow).height = 18;
+for (const rid of ridList) {
+  const m = map.get(rid) || new Map();
 
-      const zebra = (currentRow - DATA_START) % 2 === 1;
+  // set STT + RID trước
+  ws.getCell(currentRow, 1).value = stt++;
+  ws.getCell(currentRow, 2).value = rid;
 
-      for (let c = 1; c <= totalCols; c++) {
-        const cell = ws.getCell(currentRow, c);
-        cell.font = { name: "Calibri", size: 11, color: { argb: PAL.text } };
-        cell.alignment = {
-          vertical: "middle",
-          horizontal: c === 1 ? "center" : (c === 2 ? "left" : "right"), // ✅ STT center, RID left, số right
-        };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: zebra ? PAL.zebra : PAL.white } };
-        setBorderAll(cell);
-      }
+  // set từng cột qty: có thì ghi số, không thì null (trống)
+  for (let i = 0; i < cols.length; i++) {
+    const v = m.get(cols[i]);
+    ws.getCell(currentRow, 3 + i).value = (v == null || v === 0) ? null : v;
+  }
 
-      currentRow++;
-    }
+  ws.getRow(currentRow).height = 18;
+
+  const zebra = (currentRow - DATA_START) % 2 === 1;
+  for (let c = 1; c <= totalCols; c++) {
+    const cell = ws.getCell(currentRow, c);
+    cell.font = { name: "Calibri", size: 11, color: { argb: PAL.text } };
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: c === 1 ? "center" : (c === 2 ? "left" : "right"),
+    };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: zebra ? PAL.zebra : PAL.white } };
+    setBorderAll(cell);
+  }
+
+  currentRow++;
+}
+
 
     const lastDataRow = currentRow - 1;
 
@@ -2071,3 +2084,93 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
 };
   }
 });
+
+
+// ===== QC TEM CHECK =====
+ipcMain.handle("kb:checkTem", async (e, { ri_no }) => {
+  if (!ri_no) return { success: false, message: "Missing RI_no" };
+
+  const pool = await getMainDb();
+
+  const rs = await pool.request()
+    .input("ri_no", sql.NVarChar, ri_no)
+    .query(`
+      ;WITH base AS (
+        SELECT
+          RID_no,
+          COUNT(*) AS lines_total,
+          SUM(CASE WHEN ISNULL(RID_qty,0) > 0 THEN 1 ELSE 0 END) AS lines_qty_gt0,
+          SUM(CASE WHEN ISNULL(RID_qty,0) > 0 THEN ISNULL(RID_qty,0) ELSE 0 END) AS qty_sum  -- sum chỉ >0
+        FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+        WHERE RI_no = @ri_no
+          AND isactive = 'Y'
+        GROUP BY RID_no
+      ),
+      defect AS (
+        SELECT
+          RID_no,
+          STRING_AGG(defect, ', ') AS defect
+        FROM (
+          SELECT DISTINCT
+            RID_no,
+            CONCAT_WS(' / ',
+              NULLIF(LTRIM(RTRIM(RID_rank)), ''),
+              NULLIF(LTRIM(RTRIM(RID_color)), ''),
+              NULLIF(LTRIM(RTRIM(RID_Failtype)), '')
+            ) AS defect
+          FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+          WHERE RI_no = @ri_no
+            AND isactive = 'Y'
+            AND ISNULL(RID_qty,0) > 0
+        ) x
+        WHERE defect IS NOT NULL
+        GROUP BY RID_no
+      )
+      SELECT
+        b.RID_no,
+        b.lines_total,
+        b.lines_qty_gt0,
+        b.qty_sum,
+        ISNULL(d.defect, '—') AS defect
+      FROM base b
+      LEFT JOIN defect d ON d.RID_no = b.RID_no
+      ORDER BY b.RID_no;
+    `);
+
+  const rows = rs.recordset || [];
+  const total_tem = rows.length;
+
+  const totals = rows.reduce((a, r) => {
+    a.lines_total   += Number(r.lines_total || 0);
+    a.lines_qty_gt0 += Number(r.lines_qty_gt0 || 0);
+    a.qty_sum       += Number(r.qty_sum || 0);
+    return a;
+  }, { lines_total: 0, lines_qty_gt0: 0, qty_sum: 0 });
+
+  return { success: true, ri_no, total_tem, totals, rows };
+});
+
+
+ipcMain.handle("app:check-update", async () => {
+  if (!app.isPackaged) {
+    return null; // dev → coi như latest
+  }
+  const r = await autoUpdater.checkForUpdates();
+  return r?.updateInfo || null;
+});
+
+ipcMain.handle("app:do-update", () => {
+  autoUpdater.downloadUpdate();
+});
+
+
+autoUpdater.on("update-downloaded", () => {
+  autoUpdater.quitAndInstall();
+});
+
+autoUpdater.on("download-progress", p => {
+  mainWindow.webContents.send("app:update-progress", p.percent);
+});
+
+
+app.getVersion()

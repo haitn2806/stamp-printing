@@ -1542,5 +1542,9 @@ background-position:
   background: rgba(15,23,42,.9);
   color: #e5e7eb;
 } */
-
+ 
+.rid-unsaved {
+  background: #fde68a !important;
+  font-weight: bold;
+}
 }

@@ -1,6 +1,6 @@
 {
   "name": "kb-electron",
-  "version": "1.1.2",
+  "version": "1.1.7",
   "main": "main.js",
   "author": "阿海",
   "type": "commonjs",
@@ -11,6 +11,13 @@
     "predist": "npm run css:build",
     "dist": "electron-builder --win"
   },
+   "publish": [
+      {
+        "provider": "github",
+        "owner": "haitn2806",
+        "repo": "stamp-printing"
+      }
+    ],
   "build": {
     "appId": "com.inspection.warehouse",
     "productName": "inspection Warehouse",
@@ -56,6 +63,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.7.3",
     "exceljs": "^4.4.0",
     "jsbarcode": "^3.12.1",
     "mssql": "^12.2.0"

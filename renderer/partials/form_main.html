@@ -1,5 +1,7 @@
 <style>
 
+  
+
 /* ===== FACTORY BADGE BASE ===== */
 .user-factory {
   position: relative;
@@ -535,7 +537,243 @@
     border-radius: 18px;
   }
 }
+/* ===== CHECK TEM MODAL (match settings/qc) ===== */
+#check-tem-modal.settings-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(8px);
+}
+#check-tem-modal.settings-modal.flex{ display:flex; }
+#check-tem-modal.settings-modal.hidden{ display:none; }
 
+.checktem-panel{
+  width: min(860px, 96vw);
+  max-height: min(84vh, 820px);
+  overflow: auto;
+  border-radius: 22px;
+  background: linear-gradient(180deg,#ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(226,232,240,.95);
+  box-shadow: 0 24px 70px rgba(15,23,42,.24), 0 10px 22px rgba(15,23,42,.14);
+  padding: 18px 18px 16px;
+}
+
+/* hide scrollbar like your qc modal */
+.checktem-panel::-webkit-scrollbar{ width:0; height:0; }
+.checktem-panel{ scrollbar-width:none; -ms-overflow-style:none; }
+
+/* ===== TYPO: unify ===== */
+.checktem-title{
+  font-size: 18px;     /* same settings-title */
+  font-weight: 800;
+  letter-spacing: .2px;
+  color: #0f172a;
+}
+.checktem-desc{
+  font-size: 13px;     /* same settings-desc */
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+/* numbers aligned */
+#check-tem-modal, #check-tem-modal *{
+  font-variant-numeric: tabular-nums;
+}
+
+/* code pill (RI/RID) */
+.code-pill{
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(226,232,240,.95);
+  background: rgba(248,250,252,.9);
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* KPI row */
+.checktem-kpi{
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.kpi-card{
+  border-radius: 16px;
+  border: 1px solid rgba(226,232,240,.95);
+  background: #ffffff;
+  padding: 12px;
+  box-shadow: 0 6px 16px rgba(15,23,42,.06), 0 2px 6px rgba(15,23,42,.05);
+}
+.kpi-label{
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.kpi-value{
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+/* table */
+.checktem-table-wrap{
+  margin-top: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(226,232,240,.95);
+  background: #fff;
+  overflow: hidden;
+}
+.checktem-table{
+  font-size: 16px; 
+  width: 100%;
+  border-collapse: collapse;
+}
+.checktem-table thead th{
+  position: sticky;       
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(226,232,240,.95);
+}
+.checktem-table tbody td{
+  padding: 10px 12px;
+   font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  border-bottom: 1px solid rgba(226,232,240,.75);
+}
+
+/* RID nổi rõ */
+.checktem-table td:nth-child(2){
+  font-size: 16px;
+  font-weight: 900;
+}
+.checktem-table tbody tr:hover{ background: rgba(14,165,233,.06); }
+.checktem-table .right{ text-align: right; }
+.checktem-table .empty{
+  text-align: center;
+  color: #64748b;
+  padding: 18px 12px;
+}
+
+.checktem-table td:nth-child(2){
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.checktem-table .empty{
+  font-size: 15px;
+  font-weight: 700;
+}
+
+
+/* Defect pill rõ hơn */
+.checktem-table .fail .pill{
+  font-size: 13px;
+  font-weight: 900;
+  padding: 5px 12px;
+  background: #f1f5f9;
+}
+
+/* actions */
+.checktem-actions{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226,232,240,.9);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* responsive */
+@media (max-width: 560px){
+  .checktem-kpi{ grid-template-columns: 1fr; }
+}
+
+/* dark (if you use html.dark) */
+.dark #check-tem-modal .checktem-panel{
+  background: linear-gradient(180deg, rgba(30,41,59,.75), rgba(15,23,42,.88));
+  border-color: rgba(51,65,85,.9);
+}
+.dark #check-tem-modal .checktem-title{ color:#e2e8f0; }
+.dark #check-tem-modal .checktem-desc{ color:#94a3b8; }
+.dark #check-tem-modal .kpi-card,
+.dark #check-tem-modal .checktem-table-wrap{
+  background: rgba(2,6,23,.35);
+  border-color: rgba(51,65,85,.9);
+}
+.dark #check-tem-modal .checktem-table thead th{ background: rgba(30,41,59,.65); color:#cbd5e1; }
+.dark #check-tem-modal .checktem-table tbody td{ color:#e2e8f0; border-bottom-color: rgba(51,65,85,.8); }
+.dark #check-tem-modal .code-pill{ background: rgba(15,23,42,.55); color:#e2e8f0; border-color: rgba(51,65,85,.9); }
+
+.checktem-table .fail{
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.checktem-table .fail .pill{
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(226,232,240,.95);
+  background: rgba(241,245,249,.9);
+  font-weight: 800;
+}
+
+.toolbar-dropdown{ position:relative; }
+
+.toolbar-dropdown-menu{
+  position:absolute;
+  top:calc(100% + 6px);
+  left:0;
+  min-width:220px;
+  z-index:50;
+  border-radius:14px;
+  border:1px solid rgba(226,232,240,.95);
+  background:#fff;
+  box-shadow:0 14px 30px rgba(15,23,42,.18);
+  padding:6px;
+}
+
+.toolbar-btn-sub{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:10px;
+  font-size:13px;
+  font-weight:600;
+  background:transparent;
+}
+.toolbar-btn-sub:hover{ background:rgba(14,165,233,.08); }
+
+.toolbar-dropdown-menu.hidden{ display:none; }
+
+/* dark */
+.dark .toolbar-dropdown-menu{
+  background:rgba(15,23,42,.95);
+  border-color:rgba(51,65,85,.9);
+}
 
 </style>
 <body class="bg-slate-100">
@@ -551,6 +789,18 @@
       <div class="user-name"></div>
       <div class="user-factory" id="user-factory"></div>
       <div class="user-role">QC Inspector</div>
+      <button
+  id="btn-check-update"
+  class="btn mt-3 w-full text-sm flex items-center justify-center gap-2">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+       fill="none" stroke="currentColor" stroke-width="2"
+       class="w-4 h-4">
+    <path d="M21 12a9 9 0 1 1-3-6.7"/>
+    <path d="M21 3v6h-6"/>
+  </svg>
+  Check update
+</button>
+
     </div>
 
 <!-- RIGHT -->
@@ -602,7 +852,7 @@
         <rect x="14" y="14" width="7" height="7"/>
       </svg>
       <div>
-        <div class="settings-label">Layout</div>
+        <div class="settings-label" data-i18n="material">Layout</div>
         <div class="settings-desc">Switch UI layout</div>
       </div>
     </div>
@@ -949,39 +1199,42 @@
   </svg>
   <span data-i18n="nav.qc_label">QC Label</span>
 </button>
-<button id="btn-export-qc-summary" type="button" class="toolbar-btn">
-  <svg viewBox="0 0 24 24"
-       class="h-4 w-4 excel-icon"
-       xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="3" width="18" height="18" rx="3" fill="#16A34A"/>
-    <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z" fill="white"/>
+
+<button id="btn-check-tem" type="button" class="toolbar-btn toolbar-btn-check">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+       viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+      d="M9 9h6m-6 4h6m-7 8h8a2 2 0 002-2V7l-4-4H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
   </svg>
-  <span data-i18n="btn.export_qc_summary">QC Summary Excel</span>
+  <span data-i18n="btn.check_tem"></span>
 </button>
 
-<button id="btn-export-excel" type="button" class="toolbar-btn">
- <svg viewBox="0 0 24 24"
-       class="h-4 w-4 excel-icon"
-       xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="3" width="18" height="18" rx="3"
-          fill="#16A34A"/>
-    <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z"
-          fill="white"/>
-  </svg>
-  <span  data-i18n="btn.export_excel">Export Excel</span>
-</button>
 
-<button id="btn-export-deckers" type="button" class="toolbar-btn">
-  <svg viewBox="0 0 24 24"
-       class="h-4 w-4 excel-icon"
-       xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="3" width="18" height="18" rx="3"
-          fill="#16A34A"/>
-    <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z"
-          fill="white"/>
-  </svg>
-  <span data-i18n="btn.export_deckers">Deckers Excel Decker</span>
-</button>
+<div class="toolbar-dropdown" id="excel-dropdown">
+  <button id="btn-export-excel-main" type="button" class="toolbar-btn">
+    <svg viewBox="0 0 24 24" class="h-4 w-4 excel-icon" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="18" height="18" rx="3" fill="#16A34A"/>
+      <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z" fill="white"/>
+    </svg>
+    <span data-i18n="btn.export_excel">Export Excel</span>
+
+    </svg>
+  </button>
+
+  <div class="toolbar-dropdown-menu hidden">
+        <button id="btn-export-qc-summary" class="toolbar-btn-sub" data-i18n="btn.export_qc_summary">
+      QC Summary Excel
+    </button>
+    <button id="btn-export-excel" class="toolbar-btn-sub" data-i18n="btn.export_excel">
+      Export Excel
+    </button>
+
+    <button id="btn-export-deckers" class="toolbar-btn-sub" data-i18n="btn.export_deckers">
+      Deckers Excel
+    </button>
+  </div>
+</div>
+
 
 <button type="submit" class="toolbar-btn toolbar-btn-primary">
   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -1690,4 +1943,59 @@ class="select-ui"                >
       </div>
     </div>
   </form>
+  <!-- CHECK TEM MODAL -->
+<div id="check-tem-modal" class="settings-modal hidden">
+  <div class="settings-panel2 checktem-panel">
+    <div class="qc-close-wrap">
+      <button id="check-tem-close" class="settings-close">✕</button>
+    </div>
+
+    <div class="settings-right" style="width:100%">
+      <h2 class="settings-title checktem-title" data-i18n="btn.check_tem">Check tem</h2>
+      <!-- <div class="settings-desc checktem-desc">
+        Thống kê RID theo RI • hiển thị tổng tem + chi tiết RID_no &gt; 0
+      </div> -->
+
+      <!-- KPI -->
+      <div class="checktem-kpi">
+        <div class="kpi-card">
+          <div class="kpi-label" data-i18n="inspection.number">RI</div>
+          <div class="kpi-value"><span id="ct-ri" class="code-pill">—</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label" data-i18n="total_tem">Total tem</div>
+          <div class="kpi-value" id="ct-total">0</div>
+        </div>
+       <div class="kpi-card">
+  <div class="kpi-label" data-i18n="total_in">Total row</div>
+  <div class="kpi-value" id="ct-total-row">0</div>
+</div>
+      </div>
+
+      <!-- Result table -->
+      <div class="checktem-table-wrap">
+        <table class="checktem-table">
+<thead>
+  <tr>
+    <th class="right">#</th>
+    <th>RID</th>
+      <th data-i18n="level">Defect</th> 
+    <th class="right"  data-i18n="total_inx">Total row</th>
+    <th class="right"  data-i18n="total_sum">SUM</th>
+  </tr>
+</thead>
+
+          <tbody id="ct-tbody">
+            <tr><td colspan="3" class="empty">Chưa có dữ liệu</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="checktem-actions">
+        <button id="check-tem-refresh" type="button" class="btn">Refresh</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>

@@ -8,6 +8,14 @@
   GL4: 'KHRU'
 };
 
+function ti(key, params = {}) {
+  let s = window.i18n?.t(key) || key;
+  Object.keys(params).forEach(k => {
+    s = s.replaceAll(`{{${k}}}`, params[k]);
+  });
+  return s;
+} 
+
 function fmtYMDSlash(v){
   if(!v) return "";
   const d = new Date(v);
@@ -621,15 +629,23 @@ function renderSidebarTable(data) {
     return;
   }
 
-  tbody.innerHTML = data.map(row => {
+    tbody.innerHTML = data.map(row => {
 const created = fmtYMDSlash(row.created);
     const riDate  = fmtYMDSlash(row.RI_date);
-
+const po = String(row.ERP_po_no || '').toUpperCase();
+const esc = s => String(s).replace(/[&<>"']/g, m => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[m]));
     return `
       <tr class="hover:bg-blue-50 cursor-pointer">
         <td class="px-2 py-1">${created}</td>
         <td class="px-2 py-1 font-medium">${String(row.RI_no || '').toUpperCase()}</td>
-        <td class="px-2 py-1">${String(row.ERP_po_no || '').toUpperCase()}</td>
+<td class="px-2 py-1">
+  <div class="po-cell max-w-[140px] truncate cursor-pointer"
+       data-fullpo="${esc(po)}">
+    ${po}
+  </div>
+</td>
         <td class="px-2 py-1">${row.RI_vend_name || ''}</td>
         <td class="px-2 py-1">${row.RI_mat_code || ''}</td>
         <td class="px-2 py-1">${riDate}</td>
@@ -670,6 +686,33 @@ const created = fmtYMDSlash(row.created);
       confirmDelete?.(ri);
     });
   });
+
+    const tip = document.getElementById('po-tooltip');
+
+tbody.querySelectorAll('.po-cell').forEach(el => {
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();             // khỏi ảnh hưởng row
+    if (!tip) return;
+
+    const full = el.getAttribute('data-fullpo') || '';
+    if (!full) return;
+
+    // toggle same cell
+    if (tip.style.display === 'block' && tip.dataset.owner === full) {
+      tip.style.display = 'none';
+      tip.dataset.owner = '';
+      return;
+    }
+
+    tip.textContent = full;
+    tip.dataset.owner = full;
+
+    const r = el.getBoundingClientRect();
+    tip.style.left = r.left + 'px';
+    tip.style.top  = (r.bottom + 6) + 'px';
+    tip.style.display = 'block';
+  });
+});
 }
 
 
@@ -731,11 +774,13 @@ modalSetting?.addEventListener('click', e => {
 });
 window.confirmDelete = async function (ri_no) {
   const ok = await confirmBox({
-    title: 'Delete inspection',
-    message: `Do you want to delete RI: ${ri_no}?`,
-    okText: 'Delete',
+    title: ti("confirm.delete.title"),
+    message: ti("confirm.delete.message", { ri: ri_no }),
+    okText: ti("confirm.delete.ok"),
+    cancelText:ti("confirm.delete.cancel"),
     danger: true
   });
+
 
   if (!ok) return;
 
@@ -755,9 +800,10 @@ window.confirmDelete = async function (ri_no) {
 
 window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   const ok = await confirmBox({
-    title: 'Delete QC label',
-    message: `Do you want to delete RID: ${rid_no}?`,
-    okText: 'Delete',
+    title: ti("confirm.delete_rid.title"),
+    message: ti("confirm.delete_rid.message", { rid: rid_no }),
+    okText: ti("confirm.delete_rid.ok"),
+    cancelText: ti("confirm.delete_rid.cancel"),
     danger: true
   });
 
@@ -1888,18 +1934,21 @@ function ensureModalInBody() {
   }
 }
 
-  window.logout =  async function logout() {
+window.logout = async function logout() {
   const ok = await confirmBox({
-    title: 'Logout',
-    message: 'Do you want to logout?',
-    okText: 'Logout',
+    title: ti("confirm.logout.title"),
+    message: ti("confirm.logout.message"),
+    okText: ti("confirm.logout.ok"),
+    cancelText: ti("confirm.logout.cancel"),
     danger: false
   });
 
   if (!ok) return;
 
   window.kbAPI.logout();
-}
+};
+
+
 
 async function applyLanguage(lang) {
   if (!window.i18n) return;

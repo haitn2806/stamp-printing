@@ -11,6 +11,14 @@ function beginPrintLoading() {
   __PRINT_LOADING_DEPTH__++;
   showFormLoading();          // dùng overlay hiện có
 }
+function ti(key, params = {}) {
+  let s = window.i18n?.t(key) || key;
+  Object.keys(params).forEach(k => {
+    s = s.replaceAll(`{{${k}}}`, params[k]);
+  });
+  return s;
+}
+
 
 function endPrintLoading() {
   __PRINT_LOADING_DEPTH__ = Math.max(0, __PRINT_LOADING_DEPTH__ - 1);
@@ -36,6 +44,45 @@ function endPrintLoading() {
   F: "F(D/VI)",
   R: "R",
 };
+
+const QC_FIT_SCRIPT = `
+  function fitOne(el, min=6){
+    if(!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if(!cell) return;
+
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 14;
+    const maxH = cell.getBoundingClientRect().height;
+    const maxW = cell.getBoundingClientRect().width;
+    if(!maxH || !maxW) return;
+
+    const oldAlign = cell.style.alignItems;
+    cell.style.alignItems = 'flex-start';
+
+    el.style.whiteSpace = 'nowrap';
+    el.style.display = 'block';
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min){
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
+    }
+    cell.style.alignItems = oldAlign || '';
+  }
+
+  function runFit(){
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 12));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 6));
+  }
+
+  const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
+  document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('beforeprint', runFit);
+  setTimeout(runFit, 0);
+  setTimeout(runFit, 80);
+  setTimeout(runFit, 200);
+`;
 
 function formatRankColor(rank, color, failtype) {
   const r = (rank || "").toUpperCase();
@@ -152,30 +199,21 @@ function buildPrintableHtmlSnapshot() {
   if (!source) return null;
 
   const clone = source.cloneNode(true);
-
-  // ❌ XÓA ID – CỰC KỲ QUAN TRỌNG
   clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
-  // remove edit state
-clone.classList.remove('editing-mode');
-clone.querySelectorAll('.editing-mode').forEach(el =>
-  el.classList.remove('editing-mode')
-);
-
-  // input, textarea, select → span
-  clone.querySelectorAll('input, textarea, select').forEach(el => {
-    const span = document.createElement('span');
-    span.textContent = el.value || el.textContent || '—';
-    span.style.display = 'inline-block';
-    span.style.width = '100%';
-    span.style.textAlign = 'center';
-    el.replaceWith(span);
+  // ✅ input -> span (lấy đúng value hiện tại)
+  clone.querySelectorAll("input").forEach((input) => {
+    const span = document.createElement("span");
+    span.textContent = input.value || "—";
+    span.style.display = "inline-block";
+    span.style.width = "100%";
+    span.style.textAlign = "center";
+    input.replaceWith(span);
   });
 
-  const css = document.getElementById('qc-print-style3')?.textContent || '';
+  const css = document.getElementById('qc-print-style2')?.textContent || '';
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -184,10 +222,9 @@ clone.querySelectorAll('.editing-mode').forEach(el =>
 </head>
 <body>
   <div class="print-root">
-   <div class="preview-content">
-      ${clone.innerHTML}
-    </div>
+    <div class="preview-content">${clone.innerHTML}</div>
   </div>
+  <script>${QC_FIT_SCRIPT}<\/script>
 </body>
 </html>`;
 }
@@ -864,7 +901,7 @@ function clonePreviewToPrintable(btn, i, isLast = false) {
   const source = document.getElementById("preview-content");
   if (!source) return "";
   const clone = source.cloneNode(true);
-
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // ✅ thêm
   // ❌ XÓA TOÀN BỘ ID (CỰC KỲ QUAN TRỌNG)
 
 
@@ -952,14 +989,14 @@ async function printHtmlViaElectron(html, options = {}) {
   // =========================
   // 3) PRINT ALL (Electron)
   // =========================
-  async function printAllLabels() {
-    const ok = await confirmBox({
-      title: "Print all labels",
-      message: "Do you want to print ALL labels?",
-      okText: "Print",
-      danger: false,
-    });
-
+async function printAllLabels() {
+  const ok = await confirmBox({
+    title: ti("confirm.print_all.title"),
+    message: ti("confirm.print_all.message"),
+    okText: ti("confirm.print_all.ok"),
+    cancelText: ti("confirm.print_all.cancel"),
+    danger: false,
+  });
     if (!ok) return;
 
     const riNo = document.querySelector('[name="RI_no"]')?.value?.trim() || "";
@@ -973,7 +1010,7 @@ async function printHtmlViaElectron(html, options = {}) {
       return Swal.fire("⚠️ Chưa có tem RID nào để in!", "", "warning");
 
     const qcStyle =
-      document.getElementById("qc-print-style3")?.textContent || "";
+      document.getElementById("qc-print-style2")?.textContent || "";
 
     const nextFrame = (n = 1) =>
       new Promise((res) => {
@@ -1003,6 +1040,7 @@ async function printHtmlViaElectron(html, options = {}) {
       title: "In tất cả tem QC",
       qcStyle,
       bodyHtml: pagesHtml,
+       extraScript: QC_FIT_SCRIPT, // ✅
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print All" });
@@ -1024,8 +1062,9 @@ async function printHtmlViaElectron(html, options = {}) {
     if (!source) return;
 
     const qcStyle =
-      document.getElementById("qc-print-style3")?.textContent || "";
+      document.getElementById("qc-print-style2")?.textContent || "";
     const clone = source.cloneNode(true);
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
     clone.querySelectorAll("input").forEach((input) => {
       const span = document.createElement("span");
@@ -1036,32 +1075,14 @@ async function printHtmlViaElectron(html, options = {}) {
       input.parentNode.replaceChild(span, input);
     });
 
-    const extraScript = `
-    function fitMatName(){
-      const el = document.getElementById('preview-matname');
-      if(!el) return;
-      const cell = el.closest('.cell');
-      if(!cell) return;
-      let style    = window.getComputedStyle(el);
-      let fontSize = parseFloat(style.fontSize) || 14;
-      const maxHeight = cell.clientHeight || cell.offsetHeight;
-      if (!maxHeight) return;
-      const oldAlign = cell.style.alignItems;
-      cell.style.alignItems = 'flex-start';
-      while (el.scrollHeight > maxHeight && fontSize > 6){
-        fontSize -= 0.5;
-        el.style.fontSize = fontSize + 'px';
-      }
-      cell.style.alignItems = oldAlign || '';
-    }
-   
-  `;
+
+
 
     const html = buildPrintHtml({
       title: "In tem QC",
       qcStyle,
       bodyHtml: `<div id="preview-content">${clone.innerHTML}</div>`,
-      extraScript,
+       extraScript: QC_FIT_SCRIPT, // ✅
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print Current" });
@@ -1306,7 +1327,7 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       .sort((a, b) => a - b);
 
     const qcStyle =
-      document.getElementById("qc-print-style3")?.textContent || "";
+      document.getElementById("qc-print-style2")?.textContent || "";
     let pagesHtml = "";
 
     const nextFrame = (n = 1) =>
@@ -1338,6 +1359,7 @@ pagesHtml += clonePreviewToPrintable(
       title: "In tem QC đã chọn",
       qcStyle,
       bodyHtml: pagesHtml,
+     extraScript: QC_FIT_SCRIPT, // ✅
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print Picked" });
@@ -1648,6 +1670,7 @@ ${extraScript ? `<script>${extraScript}<\/script>` : ""}
 const deviceName = silent ? getSavedPrinterName() : null;
 
     const clone = source.cloneNode(true);
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
 
     clone.querySelectorAll("input").forEach((input) => {
       const span = document.createElement("span");
@@ -1658,33 +1681,15 @@ const deviceName = silent ? getSavedPrinterName() : null;
       input.parentNode.replaceChild(span, input);
     });
 
-    const css = document.getElementById("qc-print-style3")?.textContent || "";
-    const extraScript = `
-    function fitMatName(){
-      const el = document.getElementById('preview-matname');
-      if(!el) return;
-      const cell = el.closest('.cell');
-      if(!cell) return;
-      let style = window.getComputedStyle(el);
-      let fontSize = parseFloat(style.fontSize) || 14;
-      const maxHeight = cell.clientHeight || cell.offsetHeight;
-      if (!maxHeight) return;
-      const oldAlign = cell.style.alignItems;
-      cell.style.alignItems = 'flex-start';
-      while (el.scrollHeight > maxHeight && fontSize > 6){
-        fontSize -= 0.5;
-        el.style.fontSize = fontSize + 'px';
-      }
-      cell.style.alignItems = oldAlign || '';
-    }
-    
-  `;
+    const css = document.getElementById("qc-print-style2")?.textContent || "";
+
+
 
     const html = buildPrintHtml2({
       title: "In tem QC",
       css,
       body: `<div id="preview-content">${clone.innerHTML}</div>`,
-      extraScript,
+     extraScript: QC_FIT_SCRIPT, // ✅
     });
 
     if (!window.kbAPI?.printHtml) {
@@ -1723,16 +1728,16 @@ await window.kbAPI.printHtml({
     document.getElementById("pick-modal").classList.add("hidden");
   }
 
-  window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
-    const ok = await confirmBox({
-      title: "Delete QC label",
-      message: `Do you want to delete RID: ${rid_no}?`,
-      okText: "Delete",
-      danger: true,
-    });
+window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
+  const ok = await confirmBox({
+    title: ti("confirm.delete_rid.title"),
+    message: ti("confirm.delete_rid.message", { rid: rid_no }),
+    okText: ti("confirm.delete_rid.ok"),
+    cancelText: ti("confirm.delete_rid.cancel"),
+    danger: true
+  });
 
-    if (!ok) return;
-
+  if (!ok) return;
     try {
       if (!window.kbAPI?.deleteRid) {
         throw new Error("deleteRid API not found");
