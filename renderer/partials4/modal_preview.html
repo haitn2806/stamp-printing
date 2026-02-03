@@ -1,0 +1,741 @@
+<!-- Preview Modal (Electron HTML/JS) -->
+
+<style>
+  #pick-modal {
+  z-index: 99999 !important;
+}
+
+.preview-header {
+  background: linear-gradient(
+    135deg,
+    rgba(2,132,199,.95),
+    rgba(79,70,229,.95)
+  );
+  color: white;
+  padding: 14px 20px;
+
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.35),
+    0 6px 18px rgba(15,23,42,.25);
+}
+
+#rid-list {
+  background: linear-gradient(
+    180deg,
+    #f8fafc,
+    #eef2f7
+  );
+
+  border-right: 1px solid #cbd5e1;
+
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,.6);
+}
+
+#modal-main {
+  background: #ffffff;
+  border-radius: 20px;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.6),
+    0 10px 30px rgba(15,23,42,.15);
+}
+
+#rid-list > div:first-child {
+  background: linear-gradient(
+    135deg,
+    #0ea5e9,
+    #6366f1
+  );
+  color: white;
+  font-weight: 600;
+}
+
+.btn-danger-glass {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  color: #dc2626;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+
+  transition: all .2s ease;
+}
+
+
+.btn-danger-glass:hover {
+  background: rgba(239,68,68,.15);
+  box-shadow: 0 6px 16px rgba(239,68,68,.35);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+
+    box-shadow:
+    0 6px 18px rgba(15,23,42,.35),
+    inset 0 1px 0 rgba(255,255,255,.45);
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.45);
+
+  transition: all .2s;
+}
+.modal-close-btn:active {
+  transform: scale(.95);
+}
+
+.btn {
+  box-shadow:
+    0 4px 12px rgba(15,23,42,.18);
+}
+
+.btn:hover {
+  box-shadow:
+    0 10px 26px rgba(15,23,42,.35);
+}
+
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    #0ea5e9,
+    #2563eb
+  );
+}
+
+.btn-emerald {
+  background: linear-gradient(
+    135deg,
+    #10b981,
+    #059669
+  );
+}
+#preview-content {
+  margin-top: 16px;
+  border-radius: 14px;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.15),
+    0 8px 24px rgba(15,23,42,.25);
+}
+
+
+.modal-close-btn:hover {
+  background: rgba(239,68,68,.85);
+  color: white;
+}
+
+#modal-preview {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(12px);
+}
+
+#modal-wrap {
+  border-radius: 24px;
+  box-shadow:
+    0 40px 120px rgba(15,23,42,.55),
+    0 10px 30px rgba(15,23,42,.35);
+}
+
+.preview-header-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+
+  padding: 14px 18px;
+  border-radius: 16px;
+
+  background: linear-gradient(
+    135deg,
+    rgba(2,132,199,.95),
+    rgba(79,70,229,.95)
+  );
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 8px 24px rgba(15,23,42,.35);
+}
+
+/* TITLE */
+.preview-header-title {
+  text-align: center;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* BUTTON LEFT */
+.preview-header-row .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  height: 42px;
+  padding: 0 18px;
+
+  border-radius: 999px;
+
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+
+  color: white;
+
+  background: linear-gradient(
+    135deg,
+    rgba(2,132,199,.9),
+    rgba(79,70,229,.9)
+  );
+
+  border: 1px solid rgba(255,255,255,.45);
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  box-shadow:
+    0 2px 6px rgba(15,23,42,.35),
+    inset 0 1px 0 rgba(255,255,255,.35);
+
+  transition: all .2s ease;
+  cursor: pointer;
+}
+
+/* SELECT RIGHT */
+.preview-header-action .select-ui {
+  height: 36px;
+  min-width: 140px;
+  background-color: rgba(255,255,255,.95);
+}
+.rid-add-btn {
+  height: 36px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(
+    135deg,
+    #22c55e,
+    #16a34a
+  );
+  color: white;
+
+  border: none;
+  cursor: pointer;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 6px 18px rgba(22,163,74,.45);
+
+  transition: all .2s ease;
+}
+
+.rid-add-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rid-add-btn:hover {
+  filter: brightness(1.08);
+}
+
+.rid-add-btn:active {
+  transform: scale(.96);
+}
+
+/* ===== RID ACTIVE – GLASS STYLE (GIỐNG HEADER) ===== */
+.rid-active {
+  color: white !important;
+  font-weight: 700;
+
+  background: linear-gradient(
+    135deg,
+    rgba(2,132,199,.95),
+    rgba(79,70,229,.95)
+  ) !important;
+
+  /* border-left: 4px solid rgba(255,255,255,.85); */
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 6px 18px rgba(15,23,42,.45);
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  transition: all .2s ease;
+}
+
+/* hover nhẹ khi active */
+.rid-active:hover {
+  filter: brightness(1.05);
+}
+#rid-items button {
+  height: 40px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-bottom: 1px solid #e2e8f0;
+}
+
+
+#rid-items button:hover:not(.rid-active) {
+  background: rgba(56,189,248,.15);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;              /* khoảng cách giữa các item */
+  white-space: nowrap;   /* ❗ không cho xuống dòng */
+}
+
+/* select gọn hơn để không phá layout */
+.header-controls .select-ui {
+  height: 34px;
+  min-width: 130px;
+  border-radius: 999px;
+}
+
+/* toggle label chữ nhỏ hơn cho cân */
+.qc-toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.qc-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.qc-toggle input {
+  display: none;
+}
+
+.qc-slider {
+  width: 42px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.35);
+  position: relative;
+  transition: .2s;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
+}
+
+.qc-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: .2s;
+}
+
+.qc-toggle input:checked + .qc-slider {
+  background: linear-gradient(135deg,#22c55e,#16a34a);
+}
+
+.qc-toggle input:checked + .qc-slider::after {
+  transform: translateX(20px);
+}
+
+.qc-toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+#preview-content .left-label {
+  display: flex;
+  flex-direction: column;
+
+  align-items: flex-start !important;
+
+  text-align: left !important;
+
+  padding-left: 10px;   /* 👈 khoảng cách đẹp, không dính lề */
+  padding-right: 6px;
+
+  line-height: 1.25;
+  white-space: normal;
+}
+#rid-list{
+  display: flex;
+  flex-direction: column;
+  height: 100%;      /* ăn theo modal-wrap */
+  min-height: 0;     /* ✅ cực quan trọng để overflow bên trong chạy */
+}
+
+#rid-items{
+  flex: 1;
+  min-height: 0;     /* ✅ cực quan trọng */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+#modal-wrap{
+  max-height: 92vh;
+  height: 736px;      /* hoặc height:auto + max-height, nhưng nên set height để scroll ổn định */
+}
+
+.header-index {
+  margin-left: 10px;
+  padding: 2px 10px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  border-radius: 999px;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.45);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 2px 6px rgba(15,23,42,.35);
+}
+.qc-loading-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:0px 10px 20px 10px;
+  border-radius:16px;
+  background: rgba(255,255,255,.85);
+  box-shadow: 0 10px 30px rgba(15,23,42,.25);
+}
+
+#qc-loading-gif{
+  width: 150px;   /* chỉnh theo gif */
+  height: 150px;  /* chỉnh theo gif */
+  object-fit: contain;
+}
+
+.qc-loading-text{
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+}
+#preview-content .block-qty input[id^="RID_size"]{
+  text-align:center;
+  font-weight:700;
+  background:#f8fafc;
+  border:none;
+  pointer-events:none;
+}
+</style>
+<div id="modal-loading"
+     class="fixed inset-0  flex items-center justify-center
+            bg-black/40 backdrop-blur-sm z-[100000] hidden">
+  <div class="qc-loading-box">
+    <img id="qc-loading-gif" src="./assets/loading.gif" alt="Loading" />
+    <div class="qc-loading-text" data-i18n="loading"></div>
+  </div>
+</div>
+
+<div id="modal-preview"
+  class="fixed inset-0 z-50 hidden flex bg-black/50 items-center justify-center">
+  <div id="modal-wrap"
+     class="bg-white rounded-2xl shadow-2xl
+         w-[1050px] p-0 relative overflow-hidden flex">
+
+
+    <!-- RID list -->
+    <div id="rid-list" class="border border-gray-600 w-[100px] flex flex-col text-center">
+      <div class="font-bold border-b py-3 p-1" data-i18n="qc.sheet_no">单号</div>
+      <div id="rid-items" class="flex-1 overflow-y-auto"></div>
+
+<button id="btn-create-rid"
+        type="button"
+        class="rid-add-btn"
+        title="Create new RID">
+  <svg xmlns="http://www.w3.org/2000/svg"
+       viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M12 8v8"/>
+    <path d="M8 12h8"/>
+  </svg>
+</button>
+
+    </div>
+
+    <!-- Main -->
+    <div id="modal-main" class="bg-white rounded-xl shadow-2xl w-[950px] p-6 relative overflow-y-auto max-h-[95vh]">
+<button id="btn-close-preview" class="modal-close-btn">
+  ✕
+</button>
+<div id="print-progress"
+     class="fixed bottom-4 right-4 hidden
+            bg-slate-800 text-white text-sm
+            px-4 py-2 rounded-lg shadow-lg z-[9999]">
+</div>
+   <div class="preview-header-row">
+  <!-- LEFT -->
+  <button id="btn-toggle-rid"
+          type="button"
+          class="btn btn-primary text-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2">
+    <path d="M4 7h16M4 12h16M4 17h10"/>
+  </svg>
+    <span data-i18n="qc.sheet_no"></span>
+  </button>
+
+  <!-- CENTER -->
+  <div class="preview-header-title" data-i18n="qc.label_preview">
+    QC LABEL PREVIEW
+     <span id="preview-header-index" class="header-index"></span>
+  </div>
+
+  <!-- RIGHT -->
+ <div class="preview-header-action header-controls">
+  <label class="qc-toggle">
+    <input type="checkbox" id="mode-fast">
+    <span class="qc-slider"></span>
+    <span class="qc-toggle-label" data-i18n="qc.fast">Fast</span>
+  </label>
+<label class="qc-toggle">
+  <input type="checkbox" id="mode-silent-print">
+  <span class="qc-slider"></span>
+  <span class="qc-toggle-label" data-i18n="qc.silent_print">Silent Print</span>
+</label>
+
+  <label class="qc-toggle">
+    <input type="checkbox" id="mode-print">
+    <span class="qc-slider"></span>
+    <span class="qc-toggle-label" data-i18n="qc.save_and_print">Save & Print</span>
+  </label>
+
+  <select id="label-lang" class="select-ui">
+    <option value="vi">Tiếng Việt</option>
+    <option value="km">ភាសាខ្មែរ</option>
+    <option value="en">English</option>
+  </select>
+</div>
+
+</div>
+
+
+      <!-- Label content -->
+      <div id="preview-content" class="bg-white text-[14px] font-sans soft">
+
+        <div class="qc-row row-1">
+          <div class="cell left-label" data-label="matname">材料名稱 Tên nguyên liệu</div>
+          <div class="cell c-span-7 passsobigs " id="preview-matname" >—</div>
+        </div>
+
+        <div class="qc-row row-2">
+          <div class="cell left-label passsobigi" data-label="color" id="preview-color-label"></div>
+          <div class="cell c-span-4 fit-color" id="preview-color" ></div>
+          <div class="cell">合計:</div>
+          <div class="cell c-span-2" id="preview-total">0.0</div>
+        </div>
+
+        <!-- qty block -->
+        <div class="qc-block block-qty">
+          <div class="cell left-label passsobigi qty-label " data-label="qty">數量: Số lượng</div>
+
+          <div class="cell r1"><input id="RID_size1" type="text" disabled></div>
+          <div class="cell r1"><input id="RID_size2" type="text" disabled></div>
+          <div class="cell r1"><input id="RID_size3" type="text" disabled></div>
+          <div class="cell r1"><input id="RID_size4" type="text" disabled></div>
+          <div class="cell r1"><input id="RID_size5" type="text" disabled></div>
+          <div class="cell r1"><input id="RID_size6" type="text" disabled></div>
+          <div class="cell r1" style="border-right:none;"><input id="RID_size7" type="text" disabled></div>
+
+          <div class="cell"><input id="RID_qty8" type="text"></div>
+          <div class="cell"><input id="RID_qty9" type="text"></div>
+          <div class="cell"><input id="RID_qty10" type="text"></div>
+          <div class="cell"><input id="RID_qty11" type="text"></div>
+          <div class="cell"><input id="RID_qty12" type="text"></div>
+          <div class="cell"><input id="RID_qty13" type="text"></div>
+          <div class="cell"><input id="RID_qty14" type="text"></div>
+        </div>
+
+        <!-- vendor + barcode -->
+        <div class="qc-block block-vendor">
+          <div class="cell left-label passsobig r1" data-label="vendor">廠商: Nhà cung cấp</div>
+          <div class="cell c-span-4 semi-bold passsobig r1" style="border-right:none;" id="preview-vendor">—</div>
+
+          <div class="cell barcode-cell">
+             <img id="preview-barcode" style="border-right :none;" alt="barcode" class="barcode" />
+          </div>
+
+          <div class="cell left-label passsobig" data-label="po"></div>
+          <div class="cell c-span-2 bold passsobig" id="preview-pono">—</div>
+          <div class="cell c-span-2 bold passsobig" id="preview-brand">—</div>
+        </div>
+
+        <div class="qc-row row-7">
+          <div class="cell left-label passbig" data-label="received">收貨日期 / Ngày Nhập :</div>
+          <div class="cell c-span-7 text-lg bold passsobigi" id="preview-date">—</div>
+        </div>
+
+        <div class="block-8 ">
+          <div class="cell left-label passfail " data-label="check">
+            要完成試驗貨才放在合格區<br>Kiểm tra trước khi nhập kho
+          </div>
+          <div class="cell small passbig" data-label="qualified">&gt;合格: đạt</div>
+          <div class="cell small" data-label="unqualified"></div>
+
+          <div class="col-4">
+            <div class="month-title" data-label="month">月份 Tem tháng</div>
+            <div class="month-box"></div>
+            <div class="seal-box"></div>
+          </div>
+
+          <div class="cell left-label passbig " data-label="lab">試驗結果 ： kết quả thử nghiệm</div>
+          <div class="cell"></div>
+          <div class="cell"></div>
+
+          <div class="cell left-label passbig " data-label="visual">目視结果： kết quả kiểm</div>
+          <div class="cell">✓</div>
+          <div class="cell"></div>
+
+          <div class="cell left-label passbig no-print" data-label="send">送测日期 / Ngày gửi</div>
+          <div class="cell no-print" style="grid-column: span 2;">
+            <input id="RID_LabDate" type="date"  class="mt-1 h-11 w-[80%] rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white">             
+           </div>
+
+          <div class="cell left-label passbig" data-label="dim">尺寸面積: Quy cách</div>
+          <div class="cell" id="preview-spec">—</div>
+          <div class="cell"></div>
+
+          <div class="cell left-label passbig" data-label="defect">不良&等級： lỗi và phân cấp</div>
+          <div class="cell"><input id="RID_rankcolor" type="text"></div>
+          <div class="cell"></div>
+
+          <div class="cell left-label passbig " data-label="pack">包裝: Đóng gói</div>
+          <div class="cell">✓</div>
+          <div class="cell"></div>
+
+          <div class="cell left-label passbig no-bb" data-label="checker">查驗員: Chữ ký QC</div>
+          <div class="cell no-bb"><img class="sign-inspector" id="preview-sign-inspector" src="" alt="None"></div>
+          <div class="cell no-bb"></div>
+        </div>
+
+        <div class="qc-row row-footer">
+          <div class="cell small italic bold footer-meta">
+            <span class="label-index" id="preview-label-index"></span>
+            <span class="footer-code">QIP/VI/02/03</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex justify-between mt-5">
+        <div>
+          <button type="button" class="btn btn-primary" id="btn-print-picked" > <svg xmlns="http://www.w3.org/2000/svg" 
+       class="w-4 h-4"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 9V2h12v7M6 18h12v4H6v-4z"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 14H5a3 3 0 01-3-3V9a3 3 0 013-3h14a3 3 0 013 3v2a3 3 0 01-3 3h-1"/>
+  </svg><span data-i18n="btn.pick"></span> </button>
+          <button type="button" class="btn btn-primary" id="btn-print-all" > <svg xmlns="http://www.w3.org/2000/svg"
+       class="w-4 h-4"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 9V2h12v7M6 18h12v4H6v-4z"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 14H5a3 3 0 01-3-3V9a3 3 0 013-3h14a3 3 0 013 3v2a3 3 0 01-3 3h-1"/>
+  </svg> <span data-i18n="btn.pick_all"></span></button>
+          <button type="button" class="btn btn-primary" id="btn-print-preview" > <svg xmlns="http://www.w3.org/2000/svg"
+       class="w-4 h-4"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 9V2h12v7M6 18h12v4H6v-4z"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 14H5a3 3 0 01-3-3V9a3 3 0 013-3h14a3 3 0 013 3v2a3 3 0 01-3 3h-1"/>
+  </svg> <span data-i18n="btn.print"></span></button>
+        </div>
+        <div>
+          <button type="button" class="btn btn-emerald" id="btn-save-rid"><svg xmlns="http://www.w3.org/2000/svg"
+       class="w-4 h-4"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h8l4 4v12a2 2 0 01-2 2z"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M7 21v-6h10v6"/>
+  </svg><span  data-i18n="btn.save"></span></button>
+          <button type="button" class="btn btn-danger-glass" id="btn-delete-rid" > <svg xmlns="http://www.w3.org/2000/svg"
+       class="w-4 h-4"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3 6h18"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M8 6V4h8v2"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/>
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M10 11v6M14 11v6"/>
+  </svg><span data-i18n="btn.delete"></span> </button>
+          <button type="button" class="btn btn-secondary" id="btn-close2" >  <svg xmlns="http://www.w3.org/2000/svg"
+       class="w-4 h-4"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="2">
+    <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 18L18 6M6 6l12 12"/>
+  </svg><span data-i18n="btn.close"></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -8,6 +8,21 @@
   GL4: 'KHRU'
 };
 
+function formatReleaseNotes(notes){
+  if(!notes) return "<em>No release notes</em>";
+
+  // electron-updater có thể trả array
+  if(Array.isArray(notes)){
+    return notes.map(n=>`<div>• ${n.note}</div>`).join("");
+  }
+
+  // string markdown thường
+  return String(notes)
+    .replace(/\r?\n/g, "<br>")
+    .replace(/^### (.*)$/gm, "<b>$1</b>")
+    .replace(/^- /gm, "• ");
+}
+
 function ti(key, params = {}) {
   let s = window.i18n?.t(key) || key;
   Object.keys(params).forEach(k => {
@@ -372,6 +387,10 @@ const oldMatCode = document.querySelector('[name="RI_mat_oldcode"]')?.value.trim
       }
       if (key === "qualified" || key === "unqualified") {
         el.innerHTML = `<div><span class="zh">${zh}</span><span class="vn">${other}</span></div>`;
+        return;
+      }
+        if (key === "defect") {
+        el.innerHTML = `<div><span class="zh">${zh}</span><span class="vnbx">${other}</span></div>`;
         return;
       }
 
@@ -2250,7 +2269,17 @@ function bindFailtypeUI(){
   });
 }
 
-
+function showUpdateToast(){
+  document.getElementById("update-toast")?.classList.remove("hidden");
+}
+function hideUpdateToast(){
+  document.getElementById("update-toast")?.classList.add("hidden");
+}
+function setUpdateProgress(p){
+  const v = Math.max(0, Math.min(100, Number(p)||0));
+  document.getElementById("ut-bar-fill").style.width = v + "%";
+  document.getElementById("ut-percent").textContent = v + "%";
+}
 window.addEventListener("app:ready", async() => {
   renderUserFactory();
  bindQcHotkeysModal(); 
@@ -2388,6 +2417,97 @@ document.querySelectorAll('.layout-btn').forEach(btn=>{
 const cur = localStorage.getItem('app_layout') || 'leather';
 document.querySelector(`[data-layout="${cur}"]`)?.classList.add('btn-primary');
 
+  // ===== UPDATE MODAL =====
+// ===== UPDATE MODAL =====
+window.openUpdateModal = function(info) {
+  if (!info) return;
 
+  const modal = document.getElementById("update-modal");
+  if (!modal) return;
+
+  document.getElementById("update-desc").textContent =
+    `New version ${info.version}`;
+
+  const notesEl = document.getElementById("update-notes");
+  if (notesEl) {
+  notesEl.innerHTML = formatReleaseNotes(info.notes);
+  }
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+
+  const btnUpdate = document.getElementById("btn-update-now");
+  btnUpdate.disabled = false;
+  btnUpdate.classList.remove("opacity-60","pointer-events-none");
+
+  btnUpdate.onclick = () => {
+    btnUpdate.disabled = true;
+    btnUpdate.classList.add("opacity-60","pointer-events-none");
+    window.kbAPI.doUpdate();
+  };
+
+  document.getElementById("btn-update-skip").onclick = () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  };
+};
+
+
+window.kbAPI.onUpdateEvent?.((e)=>{
+   if(e.type === "available"){
+    openUpdateModal({
+      version: e.version,
+      notes: e.notes
+    });
+  }
+  if(e.type==="start"){
+    showUpdateToast();
+    setUpdateProgress(0);
+  }
+  if(e.type==="progress"){
+    setUpdateProgress(e.percent);
+  }
+  if(e.type==="done"){
+    setUpdateProgress(100);
+    setTimeout(hideUpdateToast, 800);
+  }
+  if(e.type==="error"){
+    hideUpdateToast();
+    alert(e.message);
+  }
+});
+
+
+
+
+document.getElementById("btn-check-update")
+  ?.addEventListener("click", async () => {
+    try {
+      showLoading("Checking for updates...", 10);
+
+    const btn = document.getElementById("btn-check-update");
+btn.disabled = true;
+btn.classList.add("opacity-60","pointer-events-none");
+
+const info = await window.kbAPI.checkUpdate();
+
+      hideLoading();
+      btn.disabled = false;
+btn.classList.remove("opacity-60","pointer-events-none");
+
+      if (!info) {
+        showToastSuccess?.(ti("update_new"));
+        return;
+      }
+
+    } catch (e) {
+      hideLoading();
+      showToastError?.("Check update failed");
+      btn.disabled = false;
+btn.classList.remove("opacity-60","pointer-events-none");
+    }
+  });
+
+  
 
 })();

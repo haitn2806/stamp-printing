@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, shell   } = require("electron");
+const { randomUUID } = require("crypto");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
@@ -265,6 +266,7 @@ function createMainWindow(payload) {
     leather: 'index.html',
     fabric: 'index_fabric.html',
     accessory: 'index_accessory.html',
+    sole: 'index_sole.html',
   };
 
   mainWin.loadFile(
@@ -1171,6 +1173,18 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
     await tx.begin();
 
     const riNo = records[0].RI_no;
+const remarkRs = await new sql.Request(tx)
+  .input('RI_no', sql.NVarChar, riNo)
+  .query(`
+    SELECT ISNULL(MAX(CAST(RID_remark AS INT)), 0) AS max_remark
+    FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+    WHERE RI_no = @RI_no
+      AND isactive = 'Y'
+  `);
+
+let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
+
+    
     const { code: userCode, name: userName } = getCurrentUser();
 
     // ===============================
@@ -1202,7 +1216,7 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
         .input('RID_color', sql.NVarChar, r.RID_color || null)
         .input('RID_Failtype', sql.NVarChar, r.RID_Failtype || null)
         .input('RID_LabDate', sql.Date, r.RID_LabDate || null)
-        .input('RID_remark', sql.NVarChar, r.RID_remark || null)
+        .input('RID_remark', sql.NVarChar, String(nextRemark))
         .input('user_code', sql.NVarChar, userCode)
         .input('user_name', sql.NVarChar, userName);
 
@@ -1314,9 +1328,9 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
 
 
 
-ipcMain.handle('kb:generateRid', async (e, { ri_no }) => {
-  return { rid_no: 'RID' + Date.now() }; // fake
-});
+// ipcMain.handle('kb:generateRid', async (e, { ri_no }) => {
+//   return { rid_no: 'RID' + Date.now() }; // fake
+// });
 
 
 ipcMain.handle('kb:getRidDetail', async (e, { rid_no, ri_no }) => {
@@ -1583,6 +1597,167 @@ FROM OPENQUERY([DV_SERVER_ERP], '
   console.log(result)
     return result.recordset;
 });
+
+
+const buildSizeRuns = (row) => {
+  const out = [];
+  for (let i = 1; i <= 40; i++) {
+    const idx = String(i).padStart(2, "0");
+    const code = row[`size_numcode${idx}`];
+    const qtyRaw = row[`size_qty${idx}`];
+
+    const qty = Number(qtyRaw);
+    if (code && Number.isFinite(qty) && qty > 0) {
+      out.push({ size: String(code).trim(), qty });
+    }
+  }
+  return out;
+};
+ipcMain.handle('kb:search-po-sole', async (event, poNo) => {
+  if (!poNo) return [];
+
+  const pool = await getMainDb();
+  const factory = mustFactory();
+  const companyCode = getCompanyCodeByFactory(factory);
+
+  const po = poNo.replace(/'/g, "''");
+  const cc = companyCode.replace(/'/g, "''");
+
+  const query = `
+SELECT *
+FROM OPENQUERY([DV_SERVER_ERP], '
+  SELECT 
+    e.mat_codeone,
+    e.mat_fullname,
+    e.mat_fullename,
+    f.custbrand_id,
+    g.brand_code,
+    g.brand_name,
+    j.vend_code,
+    ISNULL(j.vend_simplename, '''') AS vend_name,
+    REPLACE(k.referdetails_name, ''by '', '''') AS shippingway,
+    MAX(m.mat_oldcode) AS mat_oldcode,
+
+    asize.size_numcode01, asize.size_qty01,
+    asize.size_numcode02, asize.size_qty02,
+    asize.size_numcode03, asize.size_qty03,
+    asize.size_numcode04, asize.size_qty04,
+    asize.size_numcode05, asize.size_qty05,
+    asize.size_numcode06, asize.size_qty06,
+    asize.size_numcode07, asize.size_qty07,
+    asize.size_numcode08, asize.size_qty08,
+    asize.size_numcode09, asize.size_qty09,
+    asize.size_numcode10, asize.size_qty10,
+    asize.size_numcode11, asize.size_qty11,
+    asize.size_numcode12, asize.size_qty12,
+    asize.size_numcode13, asize.size_qty13,
+    asize.size_numcode14, asize.size_qty14,
+    asize.size_numcode15, asize.size_qty15,
+    asize.size_numcode16, asize.size_qty16,
+    asize.size_numcode17, asize.size_qty17,
+    asize.size_numcode18, asize.size_qty18,
+    asize.size_numcode19, asize.size_qty19,
+    asize.size_numcode20, asize.size_qty20,
+    asize.size_numcode21, asize.size_qty21,
+    asize.size_numcode22, asize.size_qty22,
+    asize.size_numcode23, asize.size_qty23,
+    asize.size_numcode24, asize.size_qty24,
+    asize.size_numcode25, asize.size_qty25,
+    asize.size_numcode26, asize.size_qty26,
+    asize.size_numcode27, asize.size_qty27,
+    asize.size_numcode28, asize.size_qty28,
+    asize.size_numcode29, asize.size_qty29,
+    asize.size_numcode30, asize.size_qty30,
+    asize.size_numcode31, asize.size_qty31,
+    asize.size_numcode32, asize.size_qty32,
+    asize.size_numcode33, asize.size_qty33,
+    asize.size_numcode34, asize.size_qty34,
+    asize.size_numcode35, asize.size_qty35,
+    asize.size_numcode36, asize.size_qty36,
+    asize.size_numcode37, asize.size_qty37,
+    asize.size_numcode38, asize.size_qty38,
+    asize.size_numcode39, asize.size_qty39,
+    asize.size_numcode40, asize.size_qty40
+
+  FROM wuerp_vnrd.dbo.ta_purchasedet a
+  LEFT JOIN wuerp_vnrd.dbo.ta_purchasesizerun asize
+    ON asize.pod_templink = a.pod_templink
+   AND asize.isactive = ''Y''
+  LEFT JOIN wuerp_vnrd.dbo.ta_purchasemst b
+    ON b.po_no = a.po_no AND b.isactive = ''Y''
+  LEFT JOIN wuerp_vnrd.dbo.ta_materialmast e
+    ON e.mat_code = a.mat_code AND e.isactive = ''Y''
+  LEFT JOIN wuerp_vnrd.dbo.ta_materialbrand f
+    ON f.mat_code = e.mat_code AND f.isactive = ''Y''
+  INNER JOIN wuerp_vnrd.dbo.ta_brand g
+    ON g.custbrand_id = f.custbrand_id AND g.isactive = ''Y''
+  INNER JOIN wuerp_vnrd.dbo.ta_vendmast j
+    ON b.vend_code = j.vend_code AND j.isactive = ''Y''
+  LEFT JOIN wuerp_vnrd.dbo.ta_fieldreference k
+    ON k.referdetails_code = b.po_transport_type
+   AND k.field_code = ''transport_type''
+   AND k.language_code = ''EN''
+   AND k.software_code = ''''
+  LEFT JOIN wuerp_vnrd.dbo.ta_materialoldcode m
+    ON m.isactive = ''Y''
+   AND m.cofactory_code = ''${cc}''
+   AND RIGHT(m.mat_code, LEN(m.mat_code) - 1) = e.mat_codeone
+  WHERE a.isactive = ''Y''
+    AND a.po_no = ''${po}''
+  GROUP BY
+    e.mat_codeone, e.mat_fullname, e.mat_fullename,
+    f.custbrand_id, g.brand_code, g.brand_name,
+    j.vend_code, j.vend_simplename, k.referdetails_name,
+    asize.size_numcode01, asize.size_qty01,
+    asize.size_numcode02, asize.size_qty02,
+    asize.size_numcode03, asize.size_qty03,
+    asize.size_numcode04, asize.size_qty04,
+    asize.size_numcode05, asize.size_qty05,
+    asize.size_numcode06, asize.size_qty06,
+    asize.size_numcode07, asize.size_qty07,
+    asize.size_numcode08, asize.size_qty08,
+    asize.size_numcode09, asize.size_qty09,
+    asize.size_numcode10, asize.size_qty10,
+    asize.size_numcode11, asize.size_qty11,
+    asize.size_numcode12, asize.size_qty12,
+    asize.size_numcode13, asize.size_qty13,
+    asize.size_numcode14, asize.size_qty14,
+    asize.size_numcode15, asize.size_qty15,
+    asize.size_numcode16, asize.size_qty16,
+    asize.size_numcode17, asize.size_qty17,
+    asize.size_numcode18, asize.size_qty18,
+    asize.size_numcode19, asize.size_qty19,
+    asize.size_numcode20, asize.size_qty20,
+    asize.size_numcode21, asize.size_qty21,
+    asize.size_numcode22, asize.size_qty22,
+    asize.size_numcode23, asize.size_qty23,
+    asize.size_numcode24, asize.size_qty24,
+    asize.size_numcode25, asize.size_qty25,
+    asize.size_numcode26, asize.size_qty26,
+    asize.size_numcode27, asize.size_qty27,
+    asize.size_numcode28, asize.size_qty28,
+    asize.size_numcode29, asize.size_qty29,
+    asize.size_numcode30, asize.size_qty30,
+    asize.size_numcode31, asize.size_qty31,
+    asize.size_numcode32, asize.size_qty32,
+    asize.size_numcode33, asize.size_qty33,
+    asize.size_numcode34, asize.size_qty34,
+    asize.size_numcode35, asize.size_qty35,
+    asize.size_numcode36, asize.size_qty36,
+    asize.size_numcode37, asize.size_qty37,
+    asize.size_numcode38, asize.size_qty38,
+    asize.size_numcode39, asize.size_qty39,
+    asize.size_numcode40, asize.size_qty40
+')
+`;
+
+  const result = await pool.request().query(query);
+  return (result.recordset || []).map(r => ({
+    ...r,
+    size_runs: buildSizeRuns(r),   // ✅ NEW: chỉ size qty>0
+  }));
+});
+
 
 
 
@@ -2150,27 +2325,78 @@ ipcMain.handle("kb:checkTem", async (e, { ri_no }) => {
   return { success: true, ri_no, total_tem, totals, rows };
 });
 
-
 ipcMain.handle("app:check-update", async () => {
-  if (!app.isPackaged) {
-    return null; // dev → coi như latest
-  }
   const r = await autoUpdater.checkForUpdates();
-  return r?.updateInfo || null;
+
+  if (!r?.updateInfo?.version) return null;
+
+  // 🔥 QUAN TRỌNG
+  if (r.updateInfo.version === app.getVersion()) {
+    return null; // đã là bản mới nhất
+  }
+
+  return r.updateInfo;
 });
+
+
+autoUpdater.on("update-available", (info) => {
+  mainWin.webContents.send("app:update-event", {
+    type: "available",
+    version: info.version,
+    notes: info.releaseNotes || ""
+  });
+});
+
+function sendUpdate(event, data) {
+  mainWin?.webContents.send("app:update-event", data);
+}
 
 ipcMain.handle("app:do-update", () => {
   autoUpdater.downloadUpdate();
+  sendUpdate(null, { type: "start" });
 });
 
+autoUpdater.on("download-progress", (p) => {
+  sendUpdate(null, {
+    type: "progress",
+    percent: Math.round(p.percent),
+    speed: p.bytesPerSecond,
+    transferred: p.transferred,
+    total: p.total
+  });
+});
 
 autoUpdater.on("update-downloaded", () => {
+  sendUpdate(null, { type: "done" });
   autoUpdater.quitAndInstall();
 });
 
-autoUpdater.on("download-progress", p => {
-  mainWindow.webContents.send("app:update-progress", p.percent);
+autoUpdater.on("error", (err) => {
+  sendUpdate(null, {
+    type: "error",
+    message: err.message || String(err)
+  });
 });
 
 
-app.getVersion()
+autoUpdater.on("error", (err) => {
+  console.error("[UPDATER] error", err);
+});
+
+
+ipcMain.handle("app:get-version", () => {
+  return app.getVersion();
+});
+
+function genRid() {
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const u10 = randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
+  return `RID${yy}${mm}${dd}${u10}`;
+}
+
+ipcMain.handle("kb:generateRid", async () => {
+  return { rid_no: genRid() };
+});

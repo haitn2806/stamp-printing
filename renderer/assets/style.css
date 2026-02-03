@@ -520,6 +520,8 @@ html, body, .table-scroll, textarea, select {
      <div id="preview-content" class="soft">...</div>
   */
 
+  
+
   #preview-content.soft{
     /* màu & cảm giác mềm */
     --line: rgba(15, 23, 42, .22);

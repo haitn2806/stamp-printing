@@ -133,6 +133,7 @@
           "prelogin.type1":"皮料入庫品檢",
    "prelogin.type2":"布料&合皮入庫品檢",
    "prelogin.type3":"輔料入庫品檢",
+   "prelogin.type4":"大底入庫品檢",
      "confirm.delete.title": "刪除檢驗單",
   "confirm.delete.message": "確定要刪除 RI：{{ri}} 嗎？",
   "confirm.delete.ok": "刪除",
@@ -154,6 +155,12 @@
   "total_in": "卷数总计",
   "total_inx": "卷数",
   "total_sum": "总数量",
-  "btn.check_tem": "检查标签"
+  "btn.check_tem": "检查标签",
+  "update": "更新",
+  "new_v": "新版本",
+  "update_a": "有新的更新",
+  "update_p": "正在更新...",
+  "update_c":"检查更新",
+  "update_new":"已是最新版本"
   
 }

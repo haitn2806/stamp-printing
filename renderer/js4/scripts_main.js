@@ -1,13 +1,6 @@
 
 (() => {
 
-function ti(key, params = {}) {
-  let s = window.i18n?.t(key) || key;
-  Object.keys(params).forEach(k => {
-    s = s.replaceAll(`{{${k}}}`, params[k]);
-  });
-  return s;
-}
    const FACTORY_NAME = {
   GL1: 'LianYing',
   GL2: 'LianShun 1',
@@ -30,6 +23,14 @@ function formatReleaseNotes(notes){
     .replace(/^- /gm, "• ");
 }
 
+function ti(key, params = {}) {
+  let s = window.i18n?.t(key) || key;
+  Object.keys(params).forEach(k => {
+    s = s.replaceAll(`{{${k}}}`, params[k]);
+  });
+  return s;
+}
+
 function fmtYMDSlash(v){
   if(!v) return "";
   const d = new Date(v);
@@ -39,6 +40,7 @@ function fmtYMDSlash(v){
   const day = String(d.getDate()).padStart(2,"0");
   return `${y}/${m}/${day}`;
 }
+
 
 async function renderUserFactory() {
   try {
@@ -168,10 +170,7 @@ const RI_ACTION_BUTTON_IDS = [
   '#btn-history',
   '#btn-qc-tool',
   '#btn-export-excel',
-  '#btn-export-deckers',
-   '#btn-export-qc-summary',
-    '#btn-check-tem',
-    '#btn-export-excel-main'
+  '#btn-export-deckers'
 ];
 
 document
@@ -390,7 +389,7 @@ const oldMatCode = document.querySelector('[name="RI_mat_oldcode"]')?.value.trim
         el.innerHTML = `<div><span class="zh">${zh}</span><span class="vn">${other}</span></div>`;
         return;
       }
-      if (key === "defect") {
+        if (key === "defect") {
         el.innerHTML = `<div><span class="zh">${zh}</span><span class="vnbx">${other}</span></div>`;
         return;
       }
@@ -624,7 +623,7 @@ updateTotalsAndPercent();      // tính lại
 
 let sidebarInspectionData = [];
 
-async function loadSidebarInspections(rmType = 'A') {
+async function loadSidebarInspections(rmType = 'B') {
   const tbody = document.getElementById('sidebar-inspection-table');
   if (!tbody) return;
 
@@ -650,7 +649,7 @@ function renderSidebarTable(data) {
   }
 
   tbody.innerHTML = data.map(row => {
-    const created = fmtYMDSlash(row.created);
+const created = fmtYMDSlash(row.created);
     const riDate  = fmtYMDSlash(row.RI_date);
 const po = String(row.ERP_po_no || '').toUpperCase();
 const esc = s => String(s).replace(/[&<>"']/g, m => ({
@@ -660,7 +659,7 @@ const esc = s => String(s).replace(/[&<>"']/g, m => ({
       <tr class="hover:bg-blue-50 cursor-pointer">
         <td class="px-2 py-1">${created}</td>
         <td class="px-2 py-1 font-medium">${String(row.RI_no || '').toUpperCase()}</td>
-        <td class="px-2 py-1">
+<td class="px-2 py-1">
   <div class="po-cell max-w-[140px] truncate cursor-pointer"
        data-fullpo="${esc(po)}">
     ${po}
@@ -676,7 +675,7 @@ const esc = s => String(s).replace(/[&<>"']/g, m => ({
             type="button"
             class="btn-delete-row"
             data-del="${row.RI_no}"
-            title="confirmBox"
+            title="Xóa biên bản"
           >
             <svg xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -706,6 +705,7 @@ const esc = s => String(s).replace(/[&<>"']/g, m => ({
       confirmDelete?.(ri);
     });
   });
+
   const tip = document.getElementById('po-tooltip');
 
 tbody.querySelectorAll('.po-cell').forEach(el => {
@@ -732,7 +732,6 @@ tbody.querySelectorAll('.po-cell').forEach(el => {
     tip.style.display = 'block';
   });
 });
-
 }
 
 
@@ -802,7 +801,6 @@ window.confirmDelete = async function (ri_no) {
   });
 
 
-
   if (!ok) return;
 
   try {
@@ -830,10 +828,6 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
 
   if (!ok) return;
 
-  // xử lý delete thật ở đây
-
-
-
   try {
     if (!window.kbAPI?.deleteRid) {
       throw new Error('deleteRid API not found');
@@ -858,106 +852,6 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
     showToastError(err?.message || 'Delete failed');
   }
 };
-function openCheckTemModal(res){
-  document.getElementById("ct-ri").textContent = res?.ri_no || "—";
-  document.getElementById("ct-total").textContent = res?.total_tem ?? 0;
-
-  const tbody = document.getElementById("ct-tbody");
-  if (!tbody) return;
-
-  const rows = Array.isArray(res?.rows) ? res.rows : [];
-  const toNum = v => Number(v ?? 0) || 0;
-
-  const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[m]));
-
-  const mkDefect = (x) => {
-    const a = String(x?.RID_rank || "").trim();
-    const b = String(x?.RID_color || "").trim();
-    const c = String(x?.RID_Failtype || "").trim();
-    return [a,b,c].filter(Boolean).join(" / ");
-  };
-
-  const countGt0 = (lines) => (lines||[]).reduce((a, x) => a + (toNum(x.RID_qty) > 0 ? 1 : 0), 0);
-  const sumGt0   = (lines) => (lines||[]).reduce((a, x) => a + (toNum(x.RID_qty) > 0 ? toNum(x.RID_qty) : 0), 0);
-
-  const isLineLevel = rows.some(r => r && ("RID_seqno" in r) && ("RID_qty" in r));
-
-  let groups = [];
-
-  if (isLineLevel) {
-    const mp = new Map();
-    rows.forEach(l => {
-      const rid = l.RID_no ?? l.RID ?? "";
-      if (!mp.has(rid)) mp.set(rid, { RID_no: rid, lines: [] });
-      mp.get(rid).lines.push(l);
-    });
-
-    groups = [...mp.values()].map(g => {
-      const posLines = g.lines.filter(x => toNum(x.RID_qty) > 0);
-
-      const defects = [...new Set(
-        posLines.map(mkDefect).filter(Boolean)
-      )].join(", ");
-
-      return {
-        RID_no: g.RID_no,
-        totalRow: countGt0(g.lines),
-        qtySum: sumGt0(g.lines),
-        defect: defects || "—",
-      };
-    });
-  } else {
-    groups = rows.map(r => {
-      const lines =
-        Array.isArray(r.lines) ? r.lines :
-        Array.isArray(r.items) ? r.items :
-        Array.isArray(r.details) ? r.details : [];
-
-      const totalRow = r.lines_qty_gt0 != null ? toNum(r.lines_qty_gt0) : countGt0(lines);
-
-      const qtySum =
-        r.qty_sum_gt0 != null ? toNum(r.qty_sum_gt0) :
-        (lines.length ? sumGt0(lines) : toNum(r.qty_sum));
-
-      // defect: ưu tiên ngay trên row, fallback từ lines (RID_qty>0)
-      let defect = mkDefect(r);
-      if (!defect && lines.length){
-        const posLines = lines.filter(x => toNum(x.RID_qty) > 0);
-        defect = [...new Set(posLines.map(mkDefect).filter(Boolean))].join(", ");
-      }
-
-      return {
-        RID_no: r.RID_no ?? r.RID ?? "",
-        totalRow,
-        qtySum,
-        defect: defect || "—",
-      };
-    });
-  }
-
-  const totalRowAll = groups.reduce((s, g) => s + toNum(g.totalRow), 0);
-  document.getElementById("ct-total-row").textContent = totalRowAll;
-
-  if (!groups.length){
-    tbody.innerHTML = `<tr><td colspan="5" class="empty">Không có dữ liệu</td></tr>`;
-    return;
-  }
-
- tbody.innerHTML = res.rows.map((r, i) => `
-  <tr>
-    <td class="right">${i + 1}</td>
-    <td><span class="code-pill">${r.RID_no}</span></td>
-    <td class="fail"><span class="pill">${r.defect || '—'}</span></td>
-    <td class="right">${r.lines_qty_gt0}</td>
-    <td class="right">${Number(r.qty_sum || 0).toFixed(2)}</td>
-  </tr>
-`).join("");
-
-}
-
-
 
 
 
@@ -965,7 +859,7 @@ const sidebar  = document.getElementById('inspection-sidebar');
 const toggleBtn = document.getElementById('sidebar-toggle');
 const closeBtn  = document.getElementById('sidebar-close');
 
-function openSidebar(rmType = 'A') {
+function openSidebar(rmType = 'B') {
       if (!sidebar) return; // 👈 CHỐT CHẶN
   // reset filter (nếu có)
   const ids = ['filter-ri-no','filter-po','filter-vendor','filter-material','filter-date','filter-created'];
@@ -995,12 +889,7 @@ function closeSidebar() {
 //   if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('A'));
 //   if (closeBtn)  closeBtn.addEventListener('click', closeSidebar);
 // });
-function closeCheckTemModal(){
-  const m = document.getElementById("check-tem-modal");
-  if (!m) return;
-  m.classList.add("hidden");
-  m.classList.remove("flex");
-}
+
 
 // bind sau khi DOM đã có
 // bind sau khi DOM đã có
@@ -1009,7 +898,7 @@ function bindSidebarEvents() {
   const closeBtn  = document.getElementById('sidebar-close');
   const tbody     = document.getElementById('sidebar-inspection-table');
 
-  if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('A'));
+  if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('B'));
   if (closeBtn)  closeBtn.addEventListener('click', closeSidebar);
 
   if (!tbody) return;
@@ -1305,7 +1194,7 @@ function resetFullMaterialFields() {
   const poSelect  = document.getElementById('bill-code-select');
   const poInput   = document.getElementById('bill-code-input');
   const poDisplay = document.getElementById('po-selected-display');
-
+ renderSizeRuns([]);
   if (poSelect) {
     poSelect.innerHTML = "";
     poSelect.classList.add('hidden');
@@ -1467,7 +1356,7 @@ if (poInput) {
     // IPC fake search
     const data = await window.kbAPI.searchTC(tcCode);
     renderMaterialData(data);
-
+__poRows = (Array.isArray(data) ? data : []).map(r => ({ ...r, size_runs: buildSizeRunsFromRow(r) }));
     // ===== AUTO FILL QTY AFTER TC SEARCH =====
 
     
@@ -1737,8 +1626,11 @@ async function fetchPOInfo() {
   loader?.classList.remove("hidden");
 
   try {
-    const data = await window.kbAPI.searchPO(poCode);
+    const data = await window.kbAPI.searchPOSole(poCode);
+    console.log(data,'data')
     materialData = Array.isArray(data) ? data : [];
+    __poRows = materialData.map(r => ({ ...r, size_runs: buildSizeRunsFromRow(r) }));
+
 renderMaterialData(materialData);
     // ===== render BRAND =====
     const selectBrand = document.getElementById('brand_name_select');
@@ -1761,6 +1653,7 @@ renderMaterialData(materialData);
     if (brands.length === 1 && selectBrand) {
       selectBrand.value = brands[0];
       selectBrand.dispatchEvent(new Event('change'));
+      syncSizeRunByMaterial();
     }
 
   } catch (err) {
@@ -1878,27 +1771,20 @@ poSelect?.addEventListener('change', function () {
 
 const poTooltip = document.getElementById('po-tooltip');
 
-poInput.addEventListener('click', (e)=>{
-  const val = poInput.value?.trim();
-  if(!val) return;
+poInput?.addEventListener('click', () => {
+  const fullPO = poInput.value?.trim();
+  if (!fullPO || !poTooltip) return;
 
-  const r = poInput.getBoundingClientRect();
-  poTooltip.textContent = val;
+  poTooltip.textContent = fullPO;
 
-  poTooltip.style.left = r.left + 'px';
-  poTooltip.style.top  = (r.bottom + 8) + 'px';
-
+  const rect = poInput.getBoundingClientRect();
+  poTooltip.style.left = rect.left + 'px';
+  poTooltip.style.top = (rect.bottom + 4) + 'px';
   poTooltip.style.display = 'block';
-  requestAnimationFrame(()=> poTooltip.classList.add('show'));
 
-  e.stopPropagation();
+  if (DETAIL_MODE) return;
+  fetchPoQtyCurrentSelection();
 });
-
-document.addEventListener('click', ()=>{
-  poTooltip.classList.remove('show');
-  setTimeout(()=> poTooltip.style.display='none', 140);
-});
-
 
 document.addEventListener('click', (e) => {
   if (!poTooltip) return;
@@ -1996,6 +1882,8 @@ async function fetchPoQtyCurrentSelection() {
     const cDisplay = document.getElementById('container-qty-display');
     if (cHidden)  cHidden.value  = containerQty;
     if (cDisplay) cDisplay.value = containerQty;
+     const row = json?.original || json || {};
+    renderSizeRuns(buildSizeRunsFromRow(row));
   } catch (err) {
     console.error("fetchPoQtyCurrentSelection error:", err);
   }
@@ -2025,6 +1913,9 @@ async function fetchPoQtyForRow(row) {
     const cDisplay = document.getElementById('container-qty-display');
     if (cHidden)  cHidden.value  = containerQty;
     if (cDisplay) cDisplay.value = containerQty;
+        const row2 = json?.original || json || {};
+    renderSizeRuns(buildSizeRunsFromRow(row2));
+
   } catch (e) {
     console.error("fetchPoQtyForRow error:", e);
   }
@@ -2084,8 +1975,6 @@ window.logout = async function logout() {
 
   window.kbAPI.logout();
 };
-
-
 
 async function applyLanguage(lang) {
   if (!window.i18n) return;
@@ -2388,6 +2277,7 @@ function bindFailtypeUI(){
     renderFailtypeUI(sel.value || "F");
   });
 }
+
 function showUpdateToast(){
   document.getElementById("update-toast")?.classList.remove("hidden");
 }
@@ -2400,52 +2290,81 @@ function setUpdateProgress(p){
   document.getElementById("ut-percent").textContent = v + "%";
 }
 
+let __poRows = []; // cache latest search-po result
+
+const escapeHtml = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, m => (
+    { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]
+  ));
+
+function renderSizeRuns(sizeRuns){
+  if (!Array.isArray(sizeRuns) || sizeRuns.length === 0) return;
+
+  const sec  = document.querySelector("#size-run-section");
+  const grid = sec?.querySelector("#size-run-grid");
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <div class="sr-table-wrap">
+      <table class="sr-table sr-horizontal">
+        <tbody>
+          <tr class="sr-size-row">
+            ${sizeRuns.map(it =>
+              `<th>${escapeHtml(it.size)}</th>`
+            ).join("")}
+          </tr>
+          <tr class="sr-qty-row">
+            ${sizeRuns.map(it => {
+              const q = Number(it.qty);
+              return `<td>${Number.isFinite(q) ? q.toFixed(0) : q}</td>`;
+            }).join("")}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+
+
+function buildSizeRunsFromRow(row){
+  if (!row || typeof row !== "object") return [];
+
+  const idx = [];
+  for (const k of Object.keys(row)){
+    const m = k.match(/^size_qty(\d{1,2})$/i);
+    if (m) idx.push(m[1]);
+  }
+
+  idx.sort((a,b)=>Number(a)-Number(b));
+
+  const out = [];
+  for (const i of idx){
+    const qty = Number(row[`size_qty${i}`]);
+    if (!(qty > 0)) continue;
+
+    const size = row[`size_numcode${i}`];
+    if (!size) continue;
+
+    out.push({ size: String(size), qty });
+  }
+  return out;
+}
+
+
+function syncSizeRunByMaterial(){
+  const mat = document.getElementById("mat_codeone")?.value || "";
+  const row = __poRows.find(r => String(r.mat_codeone || "") === String(mat));
+  console.log(row,'row')
+  console.log(__poRows,'__poRows')
+  renderSizeRuns(row?.size_runs || []);
+  window.__CURRENT_SIZE_RUNS__ = row.size_runs;
+
+}
+
+
 window.addEventListener("app:ready", async() => {
-  const excelMain = document.getElementById("btn-export-excel-main");
-const excelMenu = document.querySelector("#excel-dropdown .toolbar-dropdown-menu");
-
-excelMain?.addEventListener("click", (e)=>{
-  e.stopPropagation();
-  excelMenu?.classList.toggle("hidden");
-});
-
-document.addEventListener("click", ()=>{
-  excelMenu?.classList.add("hidden");
-});
-document.addEventListener("click", async (e) => {
-  const btn = e.target.closest("#btn-check-tem");
-  if (!btn) return;
-
-  if (!DETAIL_MODE) {
-    alert("Chưa mở / lưu RI");
-    return;
-  }
-
-  const riNo = document.getElementById("RI_no")?.value?.trim();
-  if (!riNo) return;
-
-  try {
-    showLoading("Checking tem...", 20, riNo);
-
-    const res = await window.kbAPI.checkTem(riNo);
-
-    hideLoading();
-
-    if (!res?.success) throw new Error(res?.message || "Check tem fail");
-
-    // 🔥 MỞ MODAL + ĐỔ DATA
-    const modal = document.getElementById("check-tem-modal");
-    modal?.classList.remove("hidden");
-    modal?.classList.add("flex");
-
-    openCheckTemModal(res);
-
-  } catch (err) {
-    hideLoading();
-    alert(err.message || err);
-  }
-});
-
+  document.getElementById("mat_codeone")?.addEventListener("change", syncSizeRunByMaterial);
   renderUserFactory();
  bindQcHotkeysModal(); 
   renderQcHotkeySettings();
@@ -2569,9 +2488,6 @@ function setLoadingProgress(percent = 0, hint = "") {
   if (p) p.textContent = `${Math.round(v)}%`;
   if (h) h.textContent = hint || "";
 }
-
-
-
 document.querySelectorAll('.layout-btn').forEach(btn=>{
   btn.onclick = () => {
     const layout = btn.dataset.layout;
@@ -2585,68 +2501,8 @@ document.querySelectorAll('.layout-btn').forEach(btn=>{
 const cur = localStorage.getItem('app_layout') || 'leather';
 document.querySelector(`[data-layout="${cur}"]`)?.classList.add('btn-primary');
 
-document.addEventListener("click", async (e) => {
-  const btn = e.target.closest("#btn-export-qc-summary");
-  if (!btn) return;
-
-  // ✅ giống 2 nút excel cũ: chưa mở/lưu RI thì khóa
-  if (!DETAIL_MODE) {
-    (window.showToastWarning ? showToastWarning("Vui lòng lưu/mở RI trước khi xuất Excel") : alert("Vui lòng lưu/mở RI trước khi xuất Excel"));
-    return;
-  }
-
-  const riNo = document.querySelector("#RI_no")?.value?.trim();
-  if (!riNo) {
-    (window.showToastWarning ? showToastWarning("Chưa có RI_no") : alert("Chưa có RI_no"));
-    return;
-  }
-
-  // nếu đang disabled bởi setRIButtonsEnabled hoặc đang chạy export -> bỏ qua
-  if (btn.disabled) return;
-
-  const oldHtml = btn.innerHTML;
-
-  // ✅ disable khi đang export
-  btn.disabled = true;
-  btn.classList.add("opacity-60", "cursor-not-allowed", "pointer-events-none");
-
-  try {
-    showLoading?.("Đang xuất QC Summary...", 15, `RI: ${riNo}`);
-
-    const res = await window.kbAPI.exportQcSummaryExcel(riNo);
-    hideLoading?.();
-
-    if (res?.canceled) {
-      showToastWarning ? showToastWarning("Đã hủy xuất Excel") : alert("Đã hủy xuất Excel");
-      return;
-    }
-
-    if (res?.success) {
-      showToastSuccess ? showToastSuccess(res?.message || "Xuất Excel thành công") : alert(res?.message || "Xuất Excel thành công");
-    } else {
-      showToastError ? showToastError(res?.message || "Xuất Excel thất bại") : alert(res?.message || "Xuất Excel thất bại");
-    }
-  } catch (err) {
-    hideLoading?.();
-    const msg = err?.message || String(err);
-    showToastError ? showToastError(`Xuất Excel lỗi: ${msg}`) : alert(`Xuất Excel lỗi: ${msg}`);
-  } finally {
-    // ✅ trả nút về đúng trạng thái disable chung (giống 2 nút excel cũ)
-    btn.innerHTML = oldHtml;
-    btn.disabled = false;
-  btn.classList.remove(
-    "opacity-60",
-    "cursor-not-allowed",
-    "pointer-events-none"
-  );
-    setRIButtonsEnabled(DETAIL_MODE);
-  }
-});
-document.getElementById("check-tem-close")
-  ?.addEventListener("click", closeCheckTemModal);
-
-
   // ===== UPDATE MODAL =====
+// ===== UPDATE MODAL =====
 window.openUpdateModal = function(info) {
   if (!info) return;
 
@@ -2737,6 +2593,5 @@ btn.classList.remove("opacity-60","pointer-events-none");
   });
 
   
-
 
 })();

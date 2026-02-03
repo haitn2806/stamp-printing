@@ -135,6 +135,7 @@
           "prelogin.type1":"Kiểm tra hàng da nhập kho",
    "prelogin.type2":"Kiểm tra nguyên liệu vải&PU nhập kho",
    "prelogin.type3":"Kiểm tra phụ liệu nhập kho",
+   "prelogin.type4":"Kiểm tra nguyên liệu đế nhập kho",
      "confirm.delete.title": "Xóa biên bản",
   "confirm.delete.message": "Bạn có chắc muốn xóa RI: {{ri}}?",
   "confirm.delete.ok": "Xóa",
@@ -156,6 +157,14 @@
   "total_in":"Tổng số tờ",
   "total_inx":"Số tờ",
   "total_sum":"Tổng số lượng",
-   "btn.check_tem": "Kiểm tra tem"
+   "btn.check_tem": "Kiểm tra tem",
+   "update":"Cập nhật",
+   "new_v":"Phiên bản mới",
+   "update_a":"Có bản cập nhật mới",
+   "update_p":"Đang cập nhật...",
+   "update_c":"Kiểm tra cập nhật",
+  "update_new":"Đã là phiên bản mới nhất rồi !"
+
+
 
 }

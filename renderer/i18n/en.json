@@ -135,6 +135,7 @@
    "prelogin.type1":"Leather incoming goods inspection",
    "prelogin.type2":"Inspection of incoming fabric & PU materials",
    "prelogin.type3":"Incoming materials inspection.",
+   "prelogin.type4":"Incoming outsole quality inspection ",
    "prelogin.type":"Warehouse",
      "confirm.delete.title": "Delete inspection",
   "confirm.delete.message": "Do you want to delete RI: {{ri}}?",
@@ -157,7 +158,13 @@
   "total_in": "Total rolls",
   "total_inx": "No. of rolls",
   "total_sum": "Total quantity",
-   "btn.check_tem": "Check labels"
+   "btn.check_tem": "Check labels",
+    "update": "Update",
+  "new_v": "New version",
+  "update_a": "New update available",
+  "update_p": "Updating...",
+   "update_c":"Check update",
+   "update_new":"Already latest version"
   
 
 }
