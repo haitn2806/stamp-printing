@@ -71,7 +71,7 @@ checkTem: (ri_no) => ipcRenderer.invoke("kb:checkTem", { ri_no }),
   dragEvent: (e) => {
     console.log("dragEvent:", e.type);
   }, // Giả sử bạn muốn expose dragEvent
-  // RI
+  // RIaaa
 searchPO: (poNo) => ipcRenderer.invoke('kb:search-po', poNo),
 searchPOSole: (poNo) => ipcRenderer.invoke('kb:search-po-sole', poNo),
   saveInspection: (payload) => ipcRenderer.invoke("kb:saveInspection", payload),

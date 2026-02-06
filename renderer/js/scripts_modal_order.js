@@ -7,55 +7,69 @@
 
   let __PRINT_LOADING_DEPTH__ = 0;
 
-function beginPrintLoading() {
-  __PRINT_LOADING_DEPTH__++;
-  showFormLoading();          // dùng overlay hiện có
-}
-
-function ensureRankBeforePrint() {
-  const v = document.getElementById("RID_rankcolor")?.value?.trim();
-  if (!v) {
-    showToastWarning(ti("not_rank"));
-    return false;
+  function beginPrintLoading() {
+    __PRINT_LOADING_DEPTH__++;
+    showFormLoading(); // dùng overlay hiện có
   }
-  return true;
-}
 
-function ti(key, params = {}) {
-  let s = window.i18n?.t(key) || key;
-  Object.keys(params).forEach(k => {
-    s = s.replaceAll(`{{${k}}}`, params[k]);
-  });
-  return s;
-}
+  function ensureRankBeforePrint() {
+    const v = document.getElementById("RID_rankcolor")?.value?.trim();
+    if (!v) {
+      showToastWarning(ti("not_rank"));
+      return false;
+    }
+    return true;
+  }
 
+  function ti(key, params = {}) {
+    let s = window.i18n?.t(key) || key;
+    Object.keys(params).forEach((k) => {
+      s = s.replaceAll(`{{${k}}}`, params[k]);
+    });
+    return s;
+  }
 
-function endPrintLoading() {
-  __PRINT_LOADING_DEPTH__ = Math.max(0, __PRINT_LOADING_DEPTH__ - 1);
-  if (__PRINT_LOADING_DEPTH__ === 0) hideFormLoading();
-}
+  function resetRIDForm() {
+    for (let i = 1; i <= 14; i++) {
+      const el = document.getElementById(`RID_qty${i}`);
+      if (el) el.value = "";
+    }
 
-  function isActiveLastRID() {
-  const btns = Array.from(
-    document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
-  );
-  if (!btns.length) return false;
+    const rank = document.getElementById("RID_rankcolor");
+    if (rank) rank.value = "";
 
-  const active = document.querySelector('#rid-items button.rid-active');
-  return active === btns[btns.length - 1];
-}
+    const total = document.getElementById("preview-total");
+    if (total) total.textContent = "0.0";
+
+    hasUnsavedRID = false;
+  }
+
+  function endPrintLoading() {
+    __PRINT_LOADING_DEPTH__ = Math.max(0, __PRINT_LOADING_DEPTH__ - 1);
+    if (__PRINT_LOADING_DEPTH__ === 0) hideFormLoading();
+  }
+
+  //   function isActiveLastRID() {
+  //   const btns = Array.from(
+  //     document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+  //   );
+  //   if (!btns.length) return false;
+
+  //   const active = document.querySelector('#rid-items button.rid-active');
+  //   return active === btns[btns.length - 1];
+  // }
 
   const RANK_MAP = {
-  A: "A(A/I)",
-  B: "B(A/II)",
-  C: "C(B/III)",
-  D: "D(B/IV)",
-  E: "E(C/V)",
-  F: "F(D/VI)",
-  R: "R",
-};
+    A: "A(A/I)",
+    B: "B(A/II)",
+    C: "C(B/III)",
+    D: "D(B/IV)",
+    E: "E(C/V)",
+    F: "F(D/VI)",
+    R: "R",
+  };
 
-const QC_FIT_SCRIPT = `
+  const QC_FIT_SCRIPT = `
   window.__QC_FIT_DONE__ = false;
 
   function fitOne(el, min=8) {
@@ -100,104 +114,98 @@ const QC_FIT_SCRIPT = `
   setTimeout(runFit, 200);
 `;
 
+  function formatRankColor(rank, color, failtype) {
+    const r = (rank || "").toUpperCase();
+    const label = RANK_MAP[r] || r;
+    return (
+      label + (color ? String(color) : "") + (failtype ? String(failtype) : "")
+    );
+  }
 
+  // input có thể là: "A(A/I)23", "A23", "A(A/I) 23", "R 6 log"
+  // input: "F(C/V)23IT", "F23IT", "F(D/VI) 23IT", "R 6 log"...
+  function parseRankColor(input) {
+    const s = String(input || "").trim();
 
+    const rank = (s.match(/^[A-FR]/i)?.[0] || "").toUpperCase();
 
+    const closeParenIdx = s.lastIndexOf(")");
+    let tail = "";
+    if (closeParenIdx !== -1) tail = s.slice(closeParenIdx + 1);
+    else if (rank) tail = s.slice(1);
+    else tail = s;
 
-function formatRankColor(rank, color, failtype) {
-  const r = (rank || "").toUpperCase();
-  const label = RANK_MAP[r] || r;
-  return label + (color ? String(color) : "") + (failtype ? String(failtype) : "");
-}
+    tail = tail.trim().replace(/\s+/g, ""); // "3log", "6log", "23IT"...
 
+    const m = tail.match(/^(\d+)(.*)$/); // digits + rest
+    const color = m ? m[1] : "";
+    const failtype = m ? m[2] || "" : tail;
 
-// input có thể là: "A(A/I)23", "A23", "A(A/I) 23", "R 6 log"
-// input: "F(C/V)23IT", "F23IT", "F(D/VI) 23IT", "R 6 log"...
-function parseRankColor(input) {
-  const s = String(input || "").trim();
+    return { rank, color, failtype };
+  }
 
-  const rank = (s.match(/^[A-FR]/i)?.[0] || "").toUpperCase();
+  async function silentPrintCurrentRID() {
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
 
-  const closeParenIdx = s.lastIndexOf(")");
-  let tail = "";
-  if (closeParenIdx !== -1) tail = s.slice(closeParenIdx + 1);
-  else if (rank) tail = s.slice(1);
-  else tail = s;
+    const html = buildPrintableHtmlSnapshot();
+    if (!html) throw new Error("Printable HTML empty");
 
-  tail = tail.trim().replace(/\s+/g, ""); // "3log", "6log", "23IT"...
+    const deviceName = getSavedPrinterName?.();
 
-  const m = tail.match(/^(\d+)(.*)$/);    // digits + rest
-  const color = m ? m[1] : "";
-  const failtype = m ? (m[2] || "") : tail;
-
-  return { rank, color, failtype };
-}
-
-
-
-async function silentPrintCurrentRID() {
-  await new Promise(r => requestAnimationFrame(r));
-  await new Promise(r => requestAnimationFrame(r));
-
-  const html = buildPrintableHtmlSnapshot();
-  if (!html) throw new Error("Printable HTML empty");
-
-  const deviceName = getSavedPrinterName?.();
-
-  await window.kbAPI.printHtml({
-    html,
-    silent: true,
-    title: "QC - Silent Print",
-    ...(deviceName ? { deviceName } : {})
-  });
-}
-
-
+    await window.kbAPI.printHtml({
+      html,
+      silent: true,
+      title: "QC - Silent Print",
+      ...(deviceName ? { deviceName } : {}),
+    });
+  }
 
   let currentRINo = null;
   let hasUnsavedRID = false; // nếu bạn có dùng
   let isCreatingRID = false; // bạn có dùng ở openPreviewModal
   window.__FAST_MODE__ = false; // bạn có dùng trong saveRID
 
-function syncRidIndexes() {
-  const buttons = Array.from(
-    document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
-  );
+  function syncRidIndexes() {
+    const buttons = Array.from(
+      document.querySelectorAll('#rid-items button[id^="rid-btn-"]'),
+    );
 
-  buttons.forEach((btn, idx) => {
-    const displayIndex = String(idx + 1);
+    buttons.forEach((btn, idx) => {
+      const displayIndex = String(idx + 1);
 
-    // index hiển thị (thay đổi theo list)
-    btn.textContent = displayIndex;
-    btn.dataset.index = displayIndex;
+      // index hiển thị (thay đổi theo list)
+      btn.textContent = displayIndex;
+      btn.dataset.index = displayIndex;
 
-    // remarkIndex: chỉ set lần đầu (đóng băng)
-    if (!btn.dataset.remarkIndex) {
-      btn.dataset.remarkIndex = displayIndex;
-    }
-  });
-}
+      // remarkIndex: chỉ set lần đầu (đóng băng)
+      if (!btn.dataset.remarkIndex) {
+        btn.dataset.remarkIndex = displayIndex;
+      }
 
+      const creator = btn.dataset.creator;
+if (creator === window.__EMPLOYEE_NAME__) btn.classList.add("rid-own");
+    });
+  }
 
   function toYMD(v) {
-  if (!v) return "";
-  if (v instanceof Date) {
-    const y = v.getFullYear();
-    const m = String(v.getMonth() + 1).padStart(2, "0");
-    const d = String(v.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+    if (!v) return "";
+    if (v instanceof Date) {
+      const y = v.getFullYear();
+      const m = String(v.getMonth() + 1).padStart(2, "0");
+      const d = String(v.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    // nếu là string kiểu "2025-11-12 00:00:00.000" hoặc "2025-11-12T..."
+    const s = String(v);
+    const m = s.match(/^\d{4}-\d{2}-\d{2}/);
+    if (m) return m[0];
+
+    // fallback cuối: thử parse Date
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) return toYMD(dt);
+    return "";
   }
-  // nếu là string kiểu "2025-11-12 00:00:00.000" hoặc "2025-11-12T..."
-  const s = String(v);
-  const m = s.match(/^\d{4}-\d{2}-\d{2}/);
-  if (m) return m[0];
-
-  // fallback cuối: thử parse Date
-  const dt = new Date(s);
-  if (!isNaN(dt.getTime())) return toYMD(dt);
-  return "";
-}
-
 
   document.addEventListener(
     "click",
@@ -212,30 +220,30 @@ function syncRidIndexes() {
       console.log("[QC] btn-qc-tool clicked");
       window.openPreviewModal?.();
     },
-    true
+    true,
   ); // 👈 capture = true
-function buildPrintableHtmlSnapshot() {
-  const source = document.getElementById('preview-content');
-  if (!source) return null;
+  function buildPrintableHtmlSnapshot() {
+    const source = document.getElementById("preview-content");
+    if (!source) return null;
 
-  const clone = source.cloneNode(true);
+    const clone = source.cloneNode(true);
 
-  // (optional) remove ids nếu muốn sạch
-  clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    // (optional) remove ids nếu muốn sạch
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
 
-  // ✅ input -> span (lấy đúng current value)
-  clone.querySelectorAll('input').forEach((input) => {
-    const span = document.createElement('span');
-    span.textContent = input.value || '—';
-    span.style.display = 'inline-block';
-    span.style.width = '100%';
-    span.style.textAlign = 'center';
-    input.replaceWith(span);
-  });
+    // ✅ input -> span (lấy đúng current value)
+    clone.querySelectorAll("input").forEach((input) => {
+      const span = document.createElement("span");
+      span.textContent = input.value || "—";
+      span.style.display = "inline-block";
+      span.style.width = "100%";
+      span.style.textAlign = "center";
+      input.replaceWith(span);
+    });
 
-  const css = document.getElementById('qc-print-style')?.textContent || '';
+    const css = document.getElementById("qc-print-style")?.textContent || "";
 
-  return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
@@ -249,9 +257,7 @@ function buildPrintableHtmlSnapshot() {
   <script>${QC_FIT_SCRIPT}<\/script>
 </body>
 </html>`;
-}
-
-
+  }
 
   // close buttons (cái này để bubble cũng được)
   document.addEventListener("click", (e) => {
@@ -271,12 +277,12 @@ function buildPrintableHtmlSnapshot() {
   }
 
   function hasDraftRID() {
-  return !!document.querySelector('#rid-items button[data-draft="1"]');
-}
+    return !!document.querySelector('#rid-items button[data-draft="1"]');
+  }
 
-function getSavedPrinterName() {
-  return localStorage.getItem("QC_PRINTER_NAME") || null;
-}
+  function getSavedPrinterName() {
+    return localStorage.getItem("QC_PRINTER_NAME") || null;
+  }
 
   function showPrintProgress(text) {
     const el = document.getElementById("print-progress");
@@ -298,13 +304,15 @@ function getSavedPrinterName() {
     lockAllInputs(false);
   }
 
-function lockAllInputs(lock) {
-  const inputs = document.querySelectorAll("#preview-content input:not(#RID_LabDate)");
-  inputs.forEach((i) => {
-    i.disabled = lock;
-    i.classList.toggle("input-disabled", !!lock);
-  });
-}
+  function lockAllInputs(lock) {
+    const inputs = document.querySelectorAll(
+      "#preview-content input:not(#RID_LabDate)",
+    );
+    inputs.forEach((i) => {
+      i.disabled = lock;
+      i.classList.toggle("input-disabled", !!lock);
+    });
+  }
 
   function focusFirstQty() {
     const first = document.getElementById("RID_qty1");
@@ -348,22 +356,23 @@ function lockAllInputs(lock) {
     // update index
     const idx = btn.dataset.index || btn.textContent.trim();
 
-   const footer = document.getElementById("preview-label-index");
-if (footer) {
-  footer.textContent =
-    __EMPLOYEE_NAME__
-      ? `${idx} – ${__EMPLOYEE_NAME__}`
-      : idx;
-}
+    const footer = document.getElementById("preview-label-index");
+    if (footer) {
+      const creator = btn?.dataset?.creator || "";
+footer.textContent = creator ? `${idx} – ${creator}` : idx;
+    }
 
     document
       .querySelectorAll("[data-live-index]")
       .forEach((el) => (el.textContent = idx));
   }
 
-  function getCurrentRID() {
-    return document.querySelector("#preview-barcode")?.dataset?.rid || "";
-  }
+function getCurrentRID() {
+  const activeBtn = document.querySelector("#rid-items button.rid-active");
+  if (activeBtn) return activeBtn.id.replace("rid-btn-", "");
+  return "";
+}
+
 
   function scrollRidToView(btn) {
     const container = document.getElementById("rid-items");
@@ -386,64 +395,61 @@ if (footer) {
       ?.classList.remove("editing-mode");
   }
 
-function getMonthForStamp(){
-  const lab = document.getElementById('RID_LabDate')?.value?.trim();
-  const ri  = document.querySelector('[name="RI_date"]')?.value?.trim();
-  const s = lab || ri;
-  if(!s) return new Date().getMonth()+1;
-  const m = String(s).match(/^\d{4}-(\d{2})-\d{2}/);
-  return m ? parseInt(m[1],10) : (new Date(s).getMonth()+1);
-}
+  function getMonthForStamp() {
+    const lab = document.getElementById("RID_LabDate")?.value?.trim();
+    const ri = document.querySelector('[name="RI_date"]')?.value?.trim();
+    const s = lab || ri;
+    if (!s) return new Date().getMonth() + 1;
+    const m = String(s).match(/^\d{4}-(\d{2})-\d{2}/);
+    return m ? parseInt(m[1], 10) : new Date(s).getMonth() + 1;
+  }
 
-function renderMonthStamp(){
-  const root = document.getElementById('preview-content') || document.querySelector('.preview-content');
-  if(!root) return;
+  function renderMonthStamp() {
+    const root =
+      document.getElementById("preview-content") ||
+      document.querySelector(".preview-content");
+    if (!root) return;
 
-  const seal = root.querySelector('.seal-box');
-  if(!seal) return;
+    const seal = root.querySelector(".seal-box");
+    if (!seal) return;
 
-  const month = getMonthForStamp();
-  seal.innerHTML = `<div class="month-seal month-${month}">${month}</div>`;
-}
+    const month = getMonthForStamp();
+    seal.innerHTML = `<div class="month-seal month-${month}">${month}</div>`;
+  }
 
-function bindMonthStamp(){
-  const lab = document.getElementById('RID_LabDate');
-  const rer = () => renderMonthStamp();
-  lab?.addEventListener('input', rer);
-  lab?.addEventListener('change', rer);
-  rer();
-}
-
-
+  function bindMonthStamp() {
+    const lab = document.getElementById("RID_LabDate");
+    const rer = () => renderMonthStamp();
+    lab?.addEventListener("input", rer);
+    lab?.addEventListener("change", rer);
+    rer();
+  }
 
   function getRidIndex(btn) {
     return btn?.dataset?.index || btn?.textContent?.trim() || "";
   }
 
-function setActiveRidIndex(btn) {
-  if (!btn) return;
+  function setActiveRidIndex(btn) {
+    if (!btn) return;
 
-  const idx = getRidIndex(btn);
+    const idx = getRidIndex(btn);
 
-  // footer
-  const footer = document.getElementById("preview-label-index");
-if (footer) {
-  footer.textContent =
-    __EMPLOYEE_NAME__
-      ? `${idx} – ${__EMPLOYEE_NAME__}`
-      : idx;
-}
+    // footer
+    const footer = document.getElementById("preview-label-index");
+    if (footer) {
+     const creator = btn?.dataset?.creator || "";
+footer.textContent = creator ? `${idx} – ${creator}` : idx;
+    }
 
-  // header
-  const headerIdx = document.getElementById("preview-header-index");
-  if (headerIdx) headerIdx.textContent = `#${idx}`;
+    // header
+    const headerIdx = document.getElementById("preview-header-index");
+    if (headerIdx) headerIdx.textContent = `#${idx}`;
 
-  // các chỗ live khác (nếu có)
-  document
-    .querySelectorAll("[data-live-index]")
-    .forEach((el) => (el.textContent = idx));
-}
-
+    // các chỗ live khác (nếu có)
+    document
+      .querySelectorAll("[data-live-index]")
+      .forEach((el) => (el.textContent = idx));
+  }
 
   function debounce(func, delay) {
     let timeout;
@@ -460,7 +466,7 @@ if (footer) {
       if (!isNaN(v)) total += v;
     }
     const elTotal = document.getElementById("preview-total");
-    if (elTotal) elTotal.textContent = total.toFixed(1);
+    if (elTotal) elTotal.textContent = total.toFixed(2);
 
     const rank = document
       .getElementById("RID_rankcolor")
@@ -498,9 +504,7 @@ if (footer) {
       .toUpperCase();
     const spec =
       document.querySelector('[name="RI_thickness_spec"]')?.value?.trim() || "";
-    const date =
-      document.getElementById('RI_date')?.value?.trim() || "";
- 
+    const date = document.getElementById("RI_date")?.value?.trim() || "";
 
     // sync sign inspector preview
     const srcImg = document.getElementById("sign-preview-inspector");
@@ -522,7 +526,7 @@ if (footer) {
         ? showToastWarning(
             "⚠️ Chưa có RI_no — không thể mở tem QC!",
             "",
-            "warning"
+            "warning",
           )
         : showToastWarning("Chưa có RI_no");
       return;
@@ -557,14 +561,14 @@ if (footer) {
       clearBarcode();
 
       const isOk = document.querySelector(
-        'input[name="RI_ischanged"]'
+        'input[name="RI_ischanged"]',
       )?.checked;
       const okText = isOk ? "(FIX)" : "";
 
       const formattedDate = date
         ? date.replace(
             /^(\d{4})-(\d{2})-(\d{2})$/,
-            (_, y, m, d) => `${y}-${parseInt(m)}-${parseInt(d)}`
+            (_, y, m, d) => `${y}-${parseInt(m)}-${parseInt(d)}`,
           )
         : "";
 
@@ -590,13 +594,10 @@ if (footer) {
         (document.getElementById("preview-color-label").textContent =
           `顏色: ( ${oldMatCode} ) ` || "Màu sắc");
 
-          
-
       if (brandCode) {
         document.getElementById("preview-brand") &&
-          (document.getElementById(
-            "preview-brand"
-          ).textContent = `(${brandCode})`);
+          (document.getElementById("preview-brand").textContent =
+            `(${brandCode})`);
       }
 
       // ===== Electron: lấy màu (thay fetch /color) =====
@@ -643,7 +644,7 @@ if (footer) {
       // ✅ CASE 2: ĐÃ CÓ RID → ACTIVE RID CUỐI
       // ================================
       const ridButtons = Array.from(
-        document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+        document.querySelectorAll('#rid-items button[id^="rid-btn-"]'),
       );
 
       if (ridButtons.length) {
@@ -675,16 +676,19 @@ if (footer) {
 
   // ===== Electron: saveRID (thay fetch generate + save + reload detail) =====
   async function saveRID(event) {
+const saveBtn =
+  event?.target?.closest('#btn-save-rid, [data-action="save-rid"]') ||
+  document.getElementById("btn-save-rid");
+
     const autoPrint = document.getElementById("mode-print")?.checked;
 
-
     const rankColorVal =
-  document.getElementById("RID_rankcolor")?.value?.trim() || "";
+      document.getElementById("RID_rankcolor")?.value?.trim() || "";
 
-if (!rankColorVal) {
-  showToastWarning(ti("not_rank"));
-  return;
-}
+    if (!rankColorVal) {
+      showToastWarning(ti("not_rank"));
+      return;
+    }
     // chặn khi đang loading
     if (
       document.getElementById("modal-loading")?.classList.contains("hidden") ===
@@ -692,19 +696,18 @@ if (!rankColorVal) {
     )
       return;
 
-    const fastChk = document.getElementById("mode-fast");
-    window.__FAST_MODE__ = !!fastChk?.checked;
+    // const fastChk = document.getElementById("mode-fast");
+    // window.__FAST_MODE__ = !!fastChk?.checked;
 
     const riNo = document.querySelector('[name="RI_no"]')?.value?.trim() || "";
     const ridNo = getCurrentRID();
-    const isNewRID = !ridNo;
 
     if (!riNo) {
       window.Swal?.fire
         ? Swal.fire(
             "❌ Chưa có RI_no — vui lòng tạo phiếu trước khi lưu tem QC!",
             "",
-            "error"
+            "error",
           )
         : showToastWarning("Chưa có RI_no");
       return;
@@ -727,7 +730,7 @@ if (!rankColorVal) {
     }
 
     // Nếu chưa có RID_no -> generate mới (Electron)
-  let finalRID = ridNo;
+let finalRID = ridNo;
 
 if (!finalRID) {
   if (!window.kbAPI?.generateRid) {
@@ -735,7 +738,6 @@ if (!finalRID) {
     return;
   }
 
-  // ✅ TRUYỀN RI_NO ĐỂ KHÔNG BỊ TRÙNG / SAI NGỮ CẢNH
   const gen = await window.kbAPI.generateRid({ ri_no: riNo });
   finalRID = gen?.rid_no || gen?.RID_no || "";
 
@@ -743,12 +745,12 @@ if (!finalRID) {
     showToastWarning("Không generate được RID");
     return;
   }
+}
+// 🔥 CHỐT RID DUY NHẤT, SAU KHI ĐÃ CÓ RID THẬT
+window.__LAST_SAVED_RID__ = finalRID;
 
 
-    }
-
-    const saveBtn = event?.target || document.getElementById("btn-save-rid");
-if (saveBtn) {
+if (saveBtn?.classList) {
   saveBtn.disabled = true;
   saveBtn.classList.add("opacity-50", "cursor-not-allowed");
 }
@@ -756,30 +758,32 @@ if (saveBtn) {
       const rankColorVal =
         document.getElementById("RID_rankcolor")?.value?.trim() || "";
       const riDate =
-  document.querySelector('[name="RI_date"]')?.value?.trim() || '';
+        document.querySelector('[name="RI_date"]')?.value?.trim() || "";
 
-const labDateInput =
-  document.getElementById('RID_LabDate')?.value?.trim() || '';
+      const labDateInput =
+        document.getElementById("RID_LabDate")?.value?.trim() || "";
 
-// 🔥 LOGIC CHUẨN
-const finalLabDate = labDateInput || riDate || null;
+      // 🔥 LOGIC CHUẨN
+      const finalLabDate = labDateInput || riDate || null;
 
-
-// ✅ parse đúng như Laravel: rank = chữ đầu, color = số cuối
-const { rank: rid_rank, color: rid_color, failtype: rid_failtype } =
-  parseRankColor(rankColorVal);// (optional) nếu bạn muốn chặn case nhập rank mà không có số color:
-if (rid_rank && !rid_color && rid_rank !== "R") {
-  // tùy rule của bạn, nếu A-F bắt buộc có color
-  // showToastWarning("Thiếu số color (vd: A(A/I)23)");
-  // return;
-}
-
+      // ✅ parse đúng như Laravel: rank = chữ đầu, color = số cuối
+      const {
+        rank: rid_rank,
+        color: rid_color,
+        failtype: rid_failtype,
+      } = parseRankColor(rankColorVal); // (optional) nếu bạn muốn chặn case nhập rank mà không có số color:
+      if (rid_rank && !rid_color && rid_rank !== "R") {
+        // tùy rule của bạn, nếu A-F bắt buộc có color
+        // showToastWarning("Thiếu số color (vd: A(A/I)23)");
+        // return;
+      }
 
       document
         .querySelector("#preview-barcode")
         ?.setAttribute("data-rid", finalRID);
-  const activeBtn = document.querySelector("#rid-items button.rid-active");
-const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
+      const activeBtn = document.querySelector("#rid-items button.rid-active");
+      const remarkIndex =
+        activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
 
       const records = [];
 
@@ -798,9 +802,9 @@ const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index
           RID_date: new Date().toISOString(),
           RID_rank: rid_rank,
           RID_color: rid_color,
-            RID_Failtype: rid_failtype,   // NEW
-         RID_LabDate: finalLabDate || null,
-          RID_remark: String(remarkIndex  || ""),
+          RID_Failtype: rid_failtype, // NEW
+          RID_LabDate: finalLabDate || null,
+          RID_remark: String(remarkIndex || ""),
         });
       }
 
@@ -808,13 +812,66 @@ const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index
 
       // ===== Electron: saveRID =====
       if (!window.kbAPI?.saveRid) throw new Error("kbAPI.saveRid chưa có");
+      window.__LAST_SAVED_RID__ = finalRID;
       const result = await window.kbAPI.saveRid({ records });
-
       if (!result?.success) {
-        showToastError("Lưu thất bại");
+        showToastError(result?.error || "Lưu thất bại");
         return;
       }
+      console.log(result, "resultresult");
+await loadRIDList(riNo, false);
+const savedBtn = document.getElementById(
+  `rid-btn-${window.__LAST_SAVED_RID__}`
+);
 
+if (!savedBtn) {
+  console.warn("RID chưa kịp xuất hiện, retry");
+  await loadRIDList(riNo, false);
+}
+
+const btns = document.getElementById(
+  `rid-btn-${window.__LAST_SAVED_RID__}`
+);
+
+if (!btns) throw new Error("RID không tồn tại sau save");
+
+setActiveRidButton(btns);
+setActiveRidIndex(btns);
+scrollRidToView(btns);
+
+
+      const isFast = !!document.getElementById("mode-fast")?.checked;
+      const shouldFastCreate = isFast && hasQty;
+
+if (autoPrint) {
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => requestAnimationFrame(r));
+
+  if (isSilentPrint()) {
+    await silentPrintCurrentRID();
+  } else {
+    await printCurrentLabelDirect();
+  }
+}
+
+
+// ===== FAST CREATE SAU =====
+if (shouldFastCreate) {
+   window.__LAST_SAVED_RID__ = null; // 🔥 CỰC QUAN TRỌNG
+  resetRIDForm();
+  await createNewRID();
+  return;
+}
+      // ===== NON-FAST =====
+      // if (result.reloadRidList) {
+      //   await loadRIDList(riNo, false);
+      // }s
+      updateTotalQty();
+      const btn = document.getElementById(`rid-btn-${finalRID}`);
+      if (btn) {
+        btn.click();
+        scrollRidToView(btn);
+      }
 
       if (result?.totals) {
         Object.entries(result.totals).forEach(([k, v]) => {
@@ -824,8 +881,7 @@ const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index
       }
 
       hasUnsavedRID = false;
-      const btn = document.getElementById(`rid-btn-${finalRID}`);
-if (btn) delete btn.dataset.draft; 
+      if (btn) delete btn.dataset.draft;
 
       // ===== Electron: reload RI detail (thay fetch /detail) =====
       if (window.kbAPI?.getInspectionDetail) {
@@ -840,29 +896,28 @@ if (btn) delete btn.dataset.draft;
             window.updateTotalsAndPercent?.();
             window.calcWeightedTotal?.();
 
-Object.keys(detail.inspection).forEach((key) => {
-  const input = document.querySelector(`[name="${key}"]`);
-  if (!input) return;
+            Object.keys(detail.inspection).forEach((key) => {
+              const input = document.querySelector(`[name="${key}"]`);
+              if (!input) return;
 
-  let v = detail.inspection[key];
+              let v = detail.inspection[key];
 
-  // Chuyển đổi ngày đúng định dạng "yyyy-MM-dd"
-  if (input.type === "date" && v) {
-    if (typeof v === "string") {
-      const date = new Date(v);
-      if (!isNaN(date.getTime())) {
-        v = date.toISOString().slice(0, 10); // Đảm bảo định dạng yyyy-MM-dd
-      } else {
-        v = ""; // Nếu ngày không hợp lệ, để trống
-      }
-    } else if (v instanceof Date) {
-      v = v.toISOString().slice(0, 10); // Chuyển đổi từ đối tượng Date thành chuỗi yyyy-MM-dd
-    }
-  }
+              // Chuyển đổi ngày đúng định dạng "yyyy-MM-dd"
+              if (input.type === "date" && v) {
+                if (typeof v === "string") {
+                  const date = new Date(v);
+                  if (!isNaN(date.getTime())) {
+                    v = date.toISOString().slice(0, 10); // Đảm bảo định dạng yyyy-MM-dd
+                  } else {
+                    v = ""; // Nếu ngày không hợp lệ, để trống
+                  }
+                } else if (v instanceof Date) {
+                  v = v.toISOString().slice(0, 10); // Chuyển đổi từ đối tượng Date thành chuỗi yyyy-MM-dd
+                }
+              }
 
-  input.value = v ?? "";
-});
-
+              input.value = v ?? "";
+            });
 
             document.querySelectorAll('input[type="number"]').forEach((inp) => {
               if (!inp.value) return;
@@ -881,59 +936,34 @@ Object.keys(detail.inspection).forEach((key) => {
         if (field) field.value = Number(result.sumQty).toFixed(2);
       }
 
-     const isFast = !!document.getElementById("mode-fast")?.checked;
-const shouldFastCreate = isFast && hasQty && isActiveLastRID();
-
       // reload list RID nếu là RID mới (giữ logic bạn)
-      if (isNewRID) {
-        await window.loadRIDList?.(riNo, false);
-// if (hasDraftRID()) {
-//   showToastWarning("⚠️ Còn tem chưa lưu – FAST MODE bị chặn");
-//   return;
-// }
-        if (!shouldFastCreate) {
-          const btn = document.getElementById(`rid-btn-${finalRID}`);
-          if (btn) {
-            btn.click();
-            scrollRidToView(btn);
-          }
-        }
-      } else {
-        updateTotalQty();
-      }
 
-if (autoPrint) {
-  if (!ensureRankBeforePrint()) return;
-  try {
-    if (isSilentPrint()) await silentPrintCurrentRID();
-    else await window.printCurrentLabelDirect?.();
-  } catch (e) {
-    showToastError("In thất bại (đã lưu)");
-  }
-}
-// ===== FAST MODE =====
-if (shouldFastCreate) {
-  await createNewRID();
-}
+      // if (autoPrint) {
+      //   if (!ensureRankBeforePrint()) return;
+      //   try {
+      //     if (isSilentPrint()) await silentPrintCurrentRID();
+      //     else await window.printCurrentLabelDirect?.();
+      //   } catch (e) {
+      //     showToastError("In thất bại (đã lưu)");
+      //   }
+      // }
 
-// ===== NORMAL MODE =====
+      // ===== NORMAL MODE =====
 
-
-
-      window.__FAST_MODE__ = false;
       showToastSuccess("Success !");
     } catch (err) {
       // console.error("Lỗi lưu RID:", err);
       showToastError("Lỗi khi lưu");
     } finally {
+      
       hideFormLoading();
-  if (saveBtn) {
-  saveBtn.disabled = false;
-  saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
 
-  // 🔥 BẮT BUỘC
-window.applyLanguage?.(localStorage.getItem("app_lang") || "en");
-}
+        // 🔥 BẮT BUỘC
+        window.applyLanguage?.(localStorage.getItem("app_lang") || "en");
+      }
     }
   }
 
@@ -942,34 +972,33 @@ window.applyLanguage?.(localStorage.getItem("app_lang") || "en");
   // =========================
   // 1) Helper build printable html
   // =========================
-function clonePreviewToPrintable(btn, i, isLast = false) {
-  const source = document.getElementById("preview-content");
-  if (!source) return "";
-  const clone = source.cloneNode(true);
-clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
-  // ❌ XÓA TOÀN BỘ ID (CỰC KỲ QUAN TRỌNG)
+  function clonePreviewToPrintable(btn, i, isLast = false) {
+    const source = document.getElementById("preview-content");
+    if (!source) return "";
+    const clone = source.cloneNode(true);
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id")); // thêm
+    // ❌ XÓA TOÀN BỘ ID (CỰC KỲ QUAN TRỌNG)
 
+    // set footer index
+    const idxSpan = clone.querySelector(".label-index");
+    if (idxSpan) {
+      // const idx = btn?.textContent?.trim() || "";
+const idx = btn?.dataset?.remarkIndex || btn?.dataset?.index || "";
+const creator = btn?.dataset?.creator || "";
+idxSpan.textContent = creator ? `${idx} – ${creator}` : idx;
+    }
 
-  // set footer index
- const idxSpan = clone.querySelector(".label-index");
-if (idxSpan) {
-  const idx = btn?.textContent?.trim() || "";
-  idxSpan.textContent = window.__EMPLOYEE_NAME__
-    ? `${idx} – ${window.__EMPLOYEE_NAME__}`
-    : idx;
-}
+    // input -> span
+    clone.querySelectorAll("input").forEach((input) => {
+      const span = document.createElement("span");
+      span.textContent = input.value || "—";
+      span.style.display = "inline-block";
+      span.style.width = "100%";
+      span.style.textAlign = "center";
+      input.replaceWith(span);
+    });
 
-  // input -> span
-  clone.querySelectorAll("input").forEach((input) => {
-    const span = document.createElement("span");
-    span.textContent = input.value || "—";
-    span.style.display = "inline-block";
-    span.style.width = "100%";
-    span.style.textAlign = "center";
-    input.replaceWith(span);
-  });
-
-  return `
+    return `
   <div class="print-root">
     <div class="preview-content">
       ${clone.innerHTML}
@@ -977,8 +1006,7 @@ if (idxSpan) {
   </div>
   ${isLast ? "" : `<div class="page-break"></div>`}
 `;
-}
-
+  }
 
   function buildPrintHtml({ title, qcStyle, bodyHtml, extraScript = "" }) {
     return `<!DOCTYPE html>
@@ -1000,48 +1028,45 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
   // =========================
   // 2) Electron PRINT: send html to main
   // =========================
-async function printHtmlViaElectron(html, options = {}) {
-  const silent =
-    typeof options.silent === "boolean"
-      ? options.silent
-      : isSilentPrint();
-  beginPrintLoading();
-  // 🔥 CHỈ SHOW PROGRESS KHI silent
-  if (silent) {
-    showPrintProgress("🖨 Đang gửi lệnh in...");
-  }
-
-  try {
-    await window.kbAPI.printHtml({
-      html,
-      silent,
-      title: options.title || ""
-    });
-
+  async function printHtmlViaElectron(html, options = {}) {
+    const silent =
+      typeof options.silent === "boolean" ? options.silent : isSilentPrint();
+    beginPrintLoading();
+    // 🔥 CHỈ SHOW PROGRESS KHI silent
     if (silent) {
-      showPrintProgress("✅ Máy in đã nhận lệnh");
-      hidePrintProgress(1500);
+      showPrintProgress("🖨 Đang gửi lệnh in...");
     }
-  } catch (e) {
-    hidePrintProgress(0);
-    throw e;
-  } finally {
-    endPrintLoading();
-  }
-}
 
+    try {
+      await window.kbAPI.printHtml({
+        html,
+        silent,
+        title: options.title || "",
+      });
+
+      if (silent) {
+        showPrintProgress("✅ Máy in đã nhận lệnh");
+        hidePrintProgress(1500);
+      }
+    } catch (e) {
+      hidePrintProgress(0);
+      throw e;
+    } finally {
+      endPrintLoading();
+    }
+  }
 
   // =========================
   // 3) PRINT ALL (Electron)
   // =========================
-async function printAllLabels() {
-  const ok = await confirmBox({
-    title: ti("confirm.print_all.title"),
-    message: ti("confirm.print_all.message"),
-    okText: ti("confirm.print_all.ok"),
-    cancelText: ti("confirm.print_all.cancel"),
-    danger: false,
-  });
+  async function printAllLabels() {
+    const ok = await confirmBox({
+      title: ti("confirm.print_all.title"),
+      message: ti("confirm.print_all.message"),
+      okText: ti("confirm.print_all.ok"),
+      cancelText: ti("confirm.print_all.cancel"),
+      danger: false,
+    });
 
     if (!ok) return;
 
@@ -1050,7 +1075,7 @@ async function printAllLabels() {
       return Swal.fire("⚠️ Chưa có RI_no — không in được!", "", "warning");
 
     const ridButtons = Array.from(
-      document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+      document.querySelectorAll('#rid-items button[id^="rid-btn-"]'),
     );
     if (!ridButtons.length)
       return Swal.fire("⚠️ Chưa có tem RID nào để in!", "", "warning");
@@ -1070,23 +1095,25 @@ async function printAllLabels() {
       const ridNo = btn.id.replace("rid-btn-", "");
 
       // ✅ HIỂN THỊ TIẾN TRÌNH
-      showPrintProgress(`🖨 Đang in ${i + 1} / ${ridButtons.length} — ${ridNo}`);
+      showPrintProgress(
+        `🖨 Đang in ${i + 1} / ${ridButtons.length} — ${ridNo}`,
+      );
 
       await loadRIDDetail(ridNo, riNo);
       await nextFrame(2);
 
-     pagesHtml += clonePreviewToPrintable(
-  btn,
-  i,
-  i === ridButtons.length - 1 // 👈 TEM CUỐI
-);
+      pagesHtml += clonePreviewToPrintable(
+        btn,
+        i,
+        i === ridButtons.length - 1, // 👈 TEM CUỐI
+      );
     }
 
     const html = buildPrintHtml({
       title: "In tất cả tem QC",
       qcStyle,
       bodyHtml: pagesHtml,
- extraScript: QC_FIT_SCRIPT,
+      extraScript: QC_FIT_SCRIPT,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print All" });
@@ -1110,7 +1137,7 @@ async function printAllLabels() {
     const qcStyle =
       document.getElementById("qc-print-style")?.textContent || "";
     const clone = source.cloneNode(true);
-clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id")); // thêm
     clone.querySelectorAll("input").forEach((input) => {
       const span = document.createElement("span");
       span.textContent = input.value || "—";
@@ -1120,7 +1147,7 @@ clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
       input.parentNode.replaceChild(span, input);
     });
 
-const extraScript = `
+    const extraScript = `
   // Hàm xử lý thu nhỏ chữ cho các phần tử
   function fitOne(el, min = 8) {
     if (!el) return;
@@ -1164,9 +1191,10 @@ const extraScript = `
   setTimeout(runFit, 200);
 `;
 
-document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`);
-
-
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      `<script>${extraScript}</script>`,
+    );
 
     const html = buildPrintHtml({
       title: "In tem QC",
@@ -1185,24 +1213,29 @@ document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`)
   // =========================
 
   function bindQtyLiveUpdate() {
-  const qtyInputs = document.querySelectorAll(
-    '#preview-content input[id^="RID_qty"]'
-  );
+    const qtyInputs = document.querySelectorAll(
+      '#preview-content input[id^="RID_qty"]',
+    );
 
-  const debouncedUpdate = debounce(updateTotalQty, 80);
-
-  qtyInputs.forEach((input) => {
-    input.addEventListener("input", () => {
-      hasUnsavedRID = true;     // 🔥 đánh dấu dirty
-      debouncedUpdate();        // 🔥 update tổng realtime
+    qtyInputs.forEach((input) => {
+      input.addEventListener("input", () => {
+        hasUnsavedRID = true;
+      });
     });
 
-    input.addEventListener("change", () => {
-      updateTotalQty();         // đảm bảo blur vẫn chuẩn
-    });
-  });
-}
+    const debouncedUpdate = debounce(updateTotalQty, 80);
 
+    qtyInputs.forEach((input) => {
+      input.addEventListener("input", () => {
+        hasUnsavedRID = true; // 🔥 đánh dấu dirty
+        debouncedUpdate(); // 🔥 update tổng realtime
+      });
+
+      input.addEventListener("change", () => {
+        updateTotalQty(); // đảm bảo blur vẫn chuẩn
+      });
+    });
+  }
 
   async function createNewRID(event) {
     const riNo = document.querySelector('[name="RI_no"]')?.value?.trim() || "";
@@ -1212,11 +1245,13 @@ document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`)
       return;
     }
 
-if (hasDraftRID()) {
-  showToastWarning("⚠️ Còn tem chưa lưu – vui lòng lưu trước khi tạo tem mới");
-  window.__CREATING_NEW_RID__ = false;
-  return;
-}
+    if (hasDraftRID()) {
+      showToastWarning(
+        "⚠️ Còn tem chưa lưu – vui lòng lưu trước khi tạo tem mới",
+      );
+      window.__CREATING_NEW_RID__ = false;
+      return;
+    }
 
     if (isCreatingRID) {
       Swal.fire(`⚠️ Đang tạo tem, vui lòng đợi!`, "", "warning");
@@ -1228,8 +1263,8 @@ if (hasDraftRID()) {
 
     const btn = event?.target || document.getElementById("btn-create-rid");
     if (btn && !btn.dataset._oldHtml) {
-  btn.dataset._oldHtml = btn.innerHTML;
-}
+      btn.dataset._oldHtml = btn.innerHTML;
+    }
     if (btn) {
       btn.dataset._oldHtml = btn.innerHTML; // ⭐ lưu icon
       btn.innerHTML = "⏳ Đang tạo...";
@@ -1237,12 +1272,12 @@ if (hasDraftRID()) {
     }
 
     try {
-      for (let i = 1; i <= 14; i++) {
-        const input = document.getElementById(`RID_qty${i}`);
-        if (input) input.value = "";
-      }
-      document.getElementById("RID_rankcolor") &&
-        (document.getElementById("RID_rankcolor").value = "");
+      // for (let i = 1; i <= 14; i++) {
+      //   const input = document.getElementById(`RID_qty${i}`);
+      //   if (input) input.value = "";
+      // }
+      // document.getElementById("RID_rankcolor") &&
+      //   (document.getElementById("RID_rankcolor").value = "");
       clearBarcode();
 
       const previewTotalEl = document.getElementById("preview-total");
@@ -1258,25 +1293,25 @@ if (hasDraftRID()) {
         return;
       }
       const existed = document.getElementById(`rid-btn-${newRID}`);
-if (existed) {
-  // chỉ active lại, tuyệt đối không append thêm
-  setActiveRidButton(existed);
-  setActiveRidIndex(existed);
-  scrollRidToView(existed);
+      if (existed) {
+        // chỉ active lại, tuyệt đối không append thêm
+        setActiveRidButton(existed);
+        setActiveRidIndex(existed);
+        scrollRidToView(existed);
 
-  clearBarcode();
-  renderBarcode?.("#preview-barcode", newRID);
+        clearBarcode();
+        renderBarcode?.("#preview-barcode", newRID);
 
-  window.__CREATING_NEW_RID__ = false;
-  isCreatingRID = false;
+        window.__CREATING_NEW_RID__ = false;
+        isCreatingRID = false;
 
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = btn.dataset._oldHtml;
-    delete btn.dataset._oldHtml;
-  }
-  return;
-}
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = btn.dataset._oldHtml;
+          delete btn.dataset._oldHtml;
+        }
+        return;
+      }
 
       const listContainer = document.getElementById("rid-items");
       if (!listContainer) return;
@@ -1284,26 +1319,26 @@ if (existed) {
       listContainer
         .querySelectorAll("button")
         .forEach((b) =>
-          b.classList.remove("bg-blue-300", "font-bold", "text-white")
+          b.classList.remove("bg-blue-300", "font-bold", "text-white"),
         );
 
       // set lab date = RI_date
       const date = (document.querySelector('[name="RI_date"]')?.value || "")
         .trim()
         .slice(0, 10);
-  const labEl = document.getElementById("RID_LabDate");
-if (labEl && date) {
-  console.log(labEl,'labEl')
-  console.log(date,'date')
-  labEl.value = date;
-  labEl.dispatchEvent(new Event("change", { bubbles: true }));
-}
+      const labEl = document.getElementById("RID_LabDate");
+      if (labEl && date) {
+        console.log(labEl, "labEl");
+        console.log(date, "date");
+        labEl.value = date;
+        labEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
 
       const newBtn = document.createElement("button");
       newBtn.id = `rid-btn-${newRID}`;
       newBtn.className = "block w-full border-b p-2 transition-colors";
-      newBtn.dataset.draft = "1";  
-
+      newBtn.dataset.draft = "1";
+newBtn.dataset.creator = window.__EMPLOYEE_NAME__ || "";
       newBtn.onclick = (e) => onRidButtonClick(e, newRID, riNo);
       document
         .querySelectorAll("#rid-items button.rid-active")
@@ -1313,7 +1348,6 @@ if (labEl && date) {
 
       // ✅ CHỈ SAU KHI APPEND → SYNC
       syncRidIndexes();
-newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       newBtn.scrollIntoView({ behavior: "smooth", block: "center" });
 
       setActiveRidButton(newBtn);
@@ -1322,15 +1356,19 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       // ✅ set STT (index)
 
       // ✅ LOAD RID DETAIL → đây là bước QUAN TRỌNG NHẤT
-      await loadRIDDetail(newRID, riNo);
+      if (!window.__FAST_MODE__) {
+        await loadRIDDetail(newRID, riNo);
+      }
 
-      // ✅ focus vào ô đầu tiên
+      // 🔥 FAST MODE / CREATE NEW → RESET FORM
+      if (window.__FAST_MODE__) {
+        resetRIDForm();
+      }
+
       await focusFirstQtyLater();
-
       clearBarcode();
       renderBarcode?.("#preview-barcode", newRID);
 
-      hasUnsavedRID = true;
       lockAllInputs(false);
 
       await focusFirstQtyLater();
@@ -1344,15 +1382,14 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       console.error(err);
       showToastError(`💥 Lỗi khi tạo RID_no mới!`);
     } finally {
-      
       isCreatingRID = false;
+        resetRIDForm();
       if (btn) {
         btn.disabled = false;
-    btn.innerHTML = btn.dataset._oldHtml;
-    delete btn.dataset._oldHtml;
+        btn.innerHTML = btn.dataset._oldHtml;
+        delete btn.dataset._oldHtml;
 
-    // 🔥 BẮT BUỘC
-    
+        // 🔥 BẮT BUỘC
       }
     }
 
@@ -1388,15 +1425,21 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       id="rid-btn-${r.RID_no}"
       class="block w-full border-b p-2 hover:bg-blue-100">
     </button>
-  `
+  `,
         )
         .join("");
+        data.records.forEach((r) => {
+  const btn = document.getElementById(`rid-btn-${r.RID_no}`);
+  if (btn) btn.dataset.creator = r.RID_created_by || "";
+});
+
       syncRidIndexes();
+
       // bind click bằng addEventListener (tránh inline onclick trong Electron)
       data.records.forEach((r, idx) => {
         const btn = document.getElementById(`rid-btn-${r.RID_no}`);
         btn?.addEventListener("click", (e) =>
-          onRidButtonClick(e, r.RID_no, riNo)
+          onRidButtonClick(e, r.RID_no, riNo),
         );
       });
       return data.records.length;
@@ -1438,18 +1481,18 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       await loadRIDDetail(ridNo, riNo);
       await nextFrame(2); // ✅ chờ DOM render xong
 
-pagesHtml += clonePreviewToPrintable(
-  btn,
-  idx,
-  k === indexList.length - 1 // 👈 TEM CUỐI
-);
+      pagesHtml += clonePreviewToPrintable(
+        btn,
+        idx,
+        k === indexList.length - 1, // 👈 TEM CUỐI
+      );
     }
 
     const html = buildPrintHtml({
       title: "In tem QC đã chọn",
       qcStyle,
       bodyHtml: pagesHtml,
- extraScript: QC_FIT_SCRIPT,
+      extraScript: QC_FIT_SCRIPT,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print Picked" });
@@ -1469,7 +1512,7 @@ pagesHtml += clonePreviewToPrintable(
 
     // ✅ SET ACTIVE NGAY
     setActiveRidButton(btn);
-  setActiveRidIndex(btn); // 🔥 BẮT BUỘC PHẢI CÓ
+    setActiveRidIndex(btn); // 🔥 BẮT BUỘC PHẢI CÓ
     // ✅ SCROLL VÀO VIEW
     scrollRidToView?.(btn);
 
@@ -1515,103 +1558,117 @@ pagesHtml += clonePreviewToPrintable(
   // LOAD RID DETAIL (Electron IPC)
   // kbAPI.getRidDetail({ rid_no }) -> { success, records, RID_rank, RID_color, RID_LabDate }
   // =========================
-async function loadRIDDetail(ridNo, riNo) {
-  if (window.__CREATING_NEW_RID__) return;
+  async function loadRIDDetail(ridNo, riNo) {
+    if (window.__CREATING_NEW_RID__) return;
 
-  let pendingLabDate = "";
+    // if (window.__FAST_MODE__ && activeBtn?.dataset?.draft === "1") {
+    //   return;
+    // }
 
-  // lấy RI_date ngay từ đầu (fallback)
-  const riDate = toYMD(document.querySelector('[name="RI_date"]')?.value);
+    let pendingLabDate = "";
 
-  try {
-    // fetch trước
-    const data = await window.kbAPI.getRidDetail({ rid_no: ridNo, ri_no: riNo });
+    // lấy RI_date ngay từ đầu (fallback)
+    const riDate = toYMD(document.querySelector('[name="RI_date"]')?.value);
 
-    // disable tabs while loading
-    document.querySelectorAll("#rid-items button").forEach((btn) => {
-      btn.disabled = true;
-      btn.classList.add("disabled");
-    });
-    lockAllInputs(true);
+    try {
+      // fetch trước
+      const data = await window.kbAPI.getRidDetail({
+        rid_no: ridNo,
+        ri_no: riNo,
+      });
 
-    // reset qty + rank
-    for (let i = 1; i <= 14; i++) {
-      const input = document.getElementById(`RID_qty${i}`);
-      if (input) input.value = "";
-    }
-    const rankEl = document.getElementById("RID_rankcolor");
-    if (rankEl) rankEl.value = "";
+      // disable tabs while loading
+      document.querySelectorAll("#rid-items button").forEach((btn) => {
+        btn.disabled = true;
+        btn.classList.add("disabled");
+      });
+      lockAllInputs(true);
 
-    // barcode
-    if (ridNo) {
-      clearBarcode();
-      renderBarcode?.("#preview-barcode", ridNo);
-    }
-
-    // reset total
-    const previewTotalEl = document.getElementById("preview-total");
-    if (previewTotalEl) previewTotalEl.textContent = "0.0";
-
-    // ✅ lấy LabDate từ nhiều khả năng (top-level hoặc record[0])
-    const labFromApi =
-      data?.RID_LabDate ??
-      data?.records?.[0]?.RID_LabDate ??
-      "";
-
-    pendingLabDate = toYMD(labFromApi) || riDate;
-
-    // CASE: chưa có dữ liệu
-    if (!data?.success || !Array.isArray(data.records) || data.records.length === 0) {
-     const activeBtn = document.querySelector("#rid-items button.rid-active");
-
-if (!activeBtn?.dataset?.draft) {
-  hasUnsavedRID = false;
-}
-      return;
-    }
-
-    // fill records
-    data.records.forEach((r) => {
-      const seq = parseInt(r.RID_seqno, 10);
-      const input = document.getElementById(`RID_qty${seq}`);
-      if (input) input.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
-    });
-
-    updateTotalQty?.();
-
-    // rankcolor
-    console.log(data,'data');
-if (rankEl) {
-rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failtype);}
-
-    hasUnsavedRID = false;
-  } catch (err) {
-    console.error("Lỗi khi load RID:", err);
-  } finally {
-    // enable tabs
-    document.querySelectorAll("#rid-items button").forEach((btn) => {
-      btn.disabled = false;
-      btn.classList.remove("disabled");
-    });
-    lockAllInputs(false);
-
-    // ✅ set date sau khi unlock - MUST là YYYY-MM-DD
-    requestAnimationFrame(() => {
-      const labEl = document.getElementById("RID_LabDate");
-      const finalDate = pendingLabDate || riDate;
-
-      if (labEl) {
-        labEl.value = finalDate; // đã là YYYY-MM-DD
-        labEl.dispatchEvent(new Event("input", { bubbles: true }));
-        labEl.dispatchEvent(new Event("change", { bubbles: true }));
+      // reset qty + rank
+      for (let i = 1; i <= 14; i++) {
+        const input = document.getElementById(`RID_qty${i}`);
+        if (input) input.value = "";
       }
-    });
+      const rankEl = document.getElementById("RID_rankcolor");
+      if (rankEl) rankEl.value = "";
 
-    enableEditMode?.();
+      // barcode
+      if (ridNo) {
+        clearBarcode();
+        renderBarcode?.("#preview-barcode", ridNo);
+      }
+
+      // reset total
+      const previewTotalEl = document.getElementById("preview-total");
+      if (previewTotalEl) previewTotalEl.textContent = "0.0";
+
+      // ✅ lấy LabDate từ nhiều khả năng (top-level hoặc record[0])
+      const labFromApi =
+        data?.RID_LabDate ?? data?.records?.[0]?.RID_LabDate ?? "";
+
+      pendingLabDate = toYMD(labFromApi) || riDate;
+
+      // CASE: chưa có dữ liệu
+      if (
+        !data?.success ||
+        !Array.isArray(data.records) ||
+        data.records.length === 0
+      ) {
+        const activeBtn = document.querySelector(
+          "#rid-items button.rid-active",
+        );
+
+        if (!activeBtn?.dataset?.draft) {
+          hasUnsavedRID = false;
+        }
+        return;
+      }
+
+      // fill records
+      data.records.forEach((r) => {
+        const seq = parseInt(r.RID_seqno, 10);
+        const input = document.getElementById(`RID_qty${seq}`);
+        if (input) input.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
+      });
+
+      updateTotalQty?.();
+
+      // rankcolor
+      console.log(data, "data");
+      if (rankEl) {
+        rankEl.value = formatRankColor(
+          data?.RID_rank,
+          data?.RID_color,
+          data?.RID_Failtype,
+        );
+      }
+
+      hasUnsavedRID = false;
+    } catch (err) {
+      console.error("Lỗi khi load RID:", err);
+    } finally {
+      // enable tabs
+      document.querySelectorAll("#rid-items button").forEach((btn) => {
+        btn.disabled = false;
+        btn.classList.remove("disabled");
+      });
+      lockAllInputs(false);
+
+      // ✅ set date sau khi unlock - MUST là YYYY-MM-DD
+      requestAnimationFrame(() => {
+        const labEl = document.getElementById("RID_LabDate");
+        const finalDate = pendingLabDate || riDate;
+
+        if (labEl) {
+          labEl.value = finalDate; // đã là YYYY-MM-DD
+          labEl.dispatchEvent(new Event("input", { bubbles: true }));
+          labEl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+
+      enableEditMode?.();
+    }
   }
-}
-
-
 
   window.loadRIDDetail = loadRIDDetail;
 
@@ -1624,7 +1681,7 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
   // =========================
   document.addEventListener("DOMContentLoaded", function () {
     const qtyInputs = Array.from(
-      document.querySelectorAll('#preview-content input[id^="RID_qty"]')
+      document.querySelectorAll('#preview-content input[id^="RID_qty"]'),
     );
     const dateInput = document.getElementById("RID_rankcolor");
     const inputEnd = document.getElementById("RID_qty14");
@@ -1664,9 +1721,9 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
   // =========================
   async function deleteCurrentRID() {
     if (hasUnsavedRID) {
-  showToastWarning("⚠️ Tem mới chưa lưu – không thể xóa");
-  return;
-}
+      showToastWarning("⚠️ Tem mới chưa lưu – không thể xóa");
+      return;
+    }
     const riNo = document.querySelector('[name="RI_no"]')?.value?.trim() || "";
     if (!riNo) {
       // Swal.fire("⚠️ Chưa có RI_no — không thể xóa tem!", "", "warning");
@@ -1676,9 +1733,9 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
     const activeBtn = document.querySelector("#rid-items button.rid-active");
 
     if (activeBtn?.dataset?.draft === "1") {
-  showToastWarning("⚠️ Tem mới chưa lưu – không thể xóa");
-  return;
-}
+      showToastWarning("⚠️ Tem mới chưa lưu – không thể xóa");
+      return;
+    }
 
     if (!activeBtn) {
       // Swal.fire("⚠️ Chưa chọn tem nào để xóa!", "", "warning");
@@ -1721,7 +1778,7 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
 
       // chọn tem kế bên nếu còn
       const newButtons = Array.from(
-        document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+        document.querySelectorAll('#rid-items button[id^="rid-btn-"]'),
       );
 
       if (newButtons.length) {
@@ -1798,12 +1855,12 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
   async function printCurrentLabelDirect() {
     const source = document.getElementById("preview-content");
     if (!source) return;
-   const silent = isSilentPrint();
+    const silent = isSilentPrint();
 
-const deviceName = silent ? getSavedPrinterName() : null;
+    const deviceName = silent ? getSavedPrinterName() : null;
 
     const clone = source.cloneNode(true);
-clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id")); // thêm
     clone.querySelectorAll("input").forEach((input) => {
       const span = document.createElement("span");
       span.textContent = input.value || "—";
@@ -1814,7 +1871,7 @@ clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
     });
 
     const css = document.getElementById("qc-print-style")?.textContent || "";
-const extraScript = `
+    const extraScript = `
   // Hàm xử lý thu nhỏ chữ cho các phần tử
   function fitOne(el, min = 8) {
     if (!el) return;
@@ -1858,9 +1915,10 @@ const extraScript = `
   setTimeout(runFit, 200);
 `;
 
-document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`);
-
-
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      `<script>${extraScript}</script>`,
+    );
 
     const html = buildPrintHtml2({
       title: "In tem QC",
@@ -1883,16 +1941,15 @@ document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`)
       return;
     }
 
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
 
-await new Promise(r => requestAnimationFrame(r));
-await new Promise(r => requestAnimationFrame(r));
-
-await window.kbAPI.printHtml({
-  html,
-  silent,
-  title: "QC - Print Current",
-  ...(silent && deviceName ? { deviceName } : {})
-});
+    await window.kbAPI.printHtml({
+      html,
+      silent,
+      title: "QC - Print Current",
+      ...(silent && deviceName ? { deviceName } : {}),
+    });
     setTimeout(enableEditMode, 300);
   }
   window.printCurrentLabelDirect = printCurrentLabelDirect;
@@ -1905,16 +1962,16 @@ await window.kbAPI.printHtml({
     document.getElementById("pick-modal").classList.add("hidden");
   }
 
-window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
-  const ok = await confirmBox({
-    title: ti("confirm.delete_rid.title"),
-    message: ti("confirm.delete_rid.message", { rid: rid_no }),
-    okText: ti("confirm.delete_rid.ok"),
-    cancelText: ti("confirm.delete_rid.cancel"),
-    danger: true
-  });
+  window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
+    const ok = await confirmBox({
+      title: ti("confirm.delete_rid.title"),
+      message: ti("confirm.delete_rid.message", { rid: rid_no }),
+      okText: ti("confirm.delete_rid.ok"),
+      cancelText: ti("confirm.delete_rid.cancel"),
+      danger: true,
+    });
 
-  if (!ok) return;
+    if (!ok) return;
 
     try {
       if (!window.kbAPI?.deleteRid) {
@@ -1995,7 +2052,7 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
       }
 
       const ridButtons = Array.from(
-        document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+        document.querySelectorAll('#rid-items button[id^="rid-btn-"]'),
       );
 
       if (!ridButtons.length) {
@@ -2012,14 +2069,14 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
     .getElementById("pick-confirm")
     ?.addEventListener("click", async () => {
       const ridButtons = Array.from(
-        document.querySelectorAll('#rid-items button[id^="rid-btn-"]')
+        document.querySelectorAll('#rid-items button[id^="rid-btn-"]'),
       );
 
       const riNo = document.querySelector('[name="RI_no"]')?.value?.trim();
 
       // chip picked
       const chipIdx = Array.from(
-        document.querySelectorAll(".pick-chip.picked")
+        document.querySelectorAll(".pick-chip.picked"),
       ).map((c) => parseInt(c.dataset.idx, 10));
 
       // input range
@@ -2072,7 +2129,7 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
     currentRINo = null;
     hasUnsavedRID = false;
     window.__CREATING_NEW_RID__ = false;
-
+    window.__FAST_MODE__ = false; // ✅ reset tại đây
     clearBarcode?.(); // 👈 thêm dòng này
   }
 
@@ -2107,7 +2164,7 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   // window.toggleRidColumn = function toggleRidColumn() {
   //   document.getElementById("modal-wrap")?.classList.toggle("hide-rid");
   // };
-  // document.addEventListener("click", (e) => { 
+  // document.addEventListener("click", (e) => {
   //   const btn = e.target.closest("#btn-toggle-rid");
   //   if (!btn) return;
 
@@ -2148,14 +2205,13 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
     window.saveRID(e);
   });
 
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("#btn-print-preview");
-  if (!btn) return;
-  e.preventDefault();
-  if (!ensureRankBeforePrint()) return;
-  window.printPreview?.();
-});
-
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("#btn-print-preview");
+    if (!btn) return;
+    e.preventDefault();
+    if (!ensureRankBeforePrint()) return;
+    window.printPreview?.();
+  });
 
   document
     .getElementById("btn-print-all")
@@ -2205,54 +2261,60 @@ document.addEventListener("click", (e) => {
     });
   }
 
-  
-
-  window.addEventListener("app:ready", async() => {
-
+  window.addEventListener("app:ready", async () => {
     const QC_HOTKEY_STORE = "QC_RANK_HOTKEYS_V1";
-const QC_HOTKEY_DEFAULT = { "1":"A","2":"B","3":"C","4":"D","5":"E","6":"F","7":"R" };
+    const QC_HOTKEY_DEFAULT = {
+      1: "A",
+      2: "B",
+      3: "C",
+      4: "D",
+      5: "E",
+      6: "F",
+      7: "R",
+    };
 
-function loadQcHotkeys(){
-  try{
-    const raw = localStorage.getItem(QC_HOTKEY_STORE);
-    const obj = raw ? JSON.parse(raw) : null;
-    const out = { ...QC_HOTKEY_DEFAULT };
-    if (obj && typeof obj === "object"){
-      Object.keys(out).forEach(k=>{
-        const v = String(obj[k]||"").toUpperCase();
-        if (["A","B","C","D","E","F","R",""].includes(v)) out[k]=v;
-      });
+    function loadQcHotkeys() {
+      try {
+        const raw = localStorage.getItem(QC_HOTKEY_STORE);
+        const obj = raw ? JSON.parse(raw) : null;
+        const out = { ...QC_HOTKEY_DEFAULT };
+        if (obj && typeof obj === "object") {
+          Object.keys(out).forEach((k) => {
+            const v = String(obj[k] || "").toUpperCase();
+            if (["A", "B", "C", "D", "E", "F", "R", ""].includes(v)) out[k] = v;
+          });
+        }
+        return out;
+      } catch {
+        return { ...QC_HOTKEY_DEFAULT };
+      }
     }
-    return out;
-  }catch{
-    return { ...QC_HOTKEY_DEFAULT };
-  }
-}
 
-const QC_FAILTYPE_STORE = "QC_FAILTYPE_MAP_V1";
-const QC_FAILTYPE_DEFAULT = {
-  F: { 1:"VET", 2:"VO", 3:"NHIEU", 4:"NHAN", 5:"LD", 6:"log" },
-  R: { 1:"VET", 2:"VO", 3:"NHIEU", 4:"NHAN", 5:"LD", 6:"log" },
-};
+    const QC_FAILTYPE_STORE = "QC_FAILTYPE_MAP_V1";
+    const QC_FAILTYPE_DEFAULT = {
+      F: { 1: "VET", 2: "VO", 3: "NHIEU", 4: "NHAN", 5: "LD", 6: "log" },
+      R: { 1: "VET", 2: "VO", 3: "NHIEU", 4: "NHAN", 5: "LD", 6: "log" },
+    };
 
-function loadFailtypeMap(){
-  try{
-    const raw = localStorage.getItem(QC_FAILTYPE_STORE);
-    const obj = raw ? JSON.parse(raw) : null;
-    return (obj && typeof obj==="object") ? obj : structuredClone(QC_FAILTYPE_DEFAULT);
-  }catch{
-    return structuredClone(QC_FAILTYPE_DEFAULT);
-  }
-}
+    function loadFailtypeMap() {
+      try {
+        const raw = localStorage.getItem(QC_FAILTYPE_STORE);
+        const obj = raw ? JSON.parse(raw) : null;
+        return obj && typeof obj === "object"
+          ? obj
+          : structuredClone(QC_FAILTYPE_DEFAULT);
+      } catch {
+        return structuredClone(QC_FAILTYPE_DEFAULT);
+      }
+    }
 
     const info = await window.kbAPI.getUserInfo();
-window.__EMPLOYEE_NAME__ = info?.employee_name || '';
-     bindQtyLiveUpdate();
+    window.__EMPLOYEE_NAME__ = info?.employee_name || "";
+    bindQtyLiveUpdate();
     bindDeleteRidButton();
     const el = document.getElementById("RID_rankcolor");
     if (!el) return;
 
-    
     let popup = null;
     let activeDisplayMap = null;
 
@@ -2287,7 +2349,7 @@ window.__EMPLOYEE_NAME__ = info?.employee_name || '';
         b.textContent = `${k}: ${displayMap[k]}`;
         b.style.width = "100%";
         b.onclick = () => {
-el.value += String(displayMap[k] || "");   // ✅ không space
+          el.value += String(displayMap[k] || ""); // ✅ không space
           closePopup();
         };
         popup.appendChild(b);
@@ -2300,7 +2362,7 @@ el.value += String(displayMap[k] || "");   // ✅ không space
       if (e.key === "-") {
         e.preventDefault();
         const qtyInputs = Array.from(
-          document.querySelectorAll('#preview-content input[id^="RID_qty"]')
+          document.querySelectorAll('#preview-content input[id^="RID_qty"]'),
         );
         const prev = qtyInputs[qtyInputs.length - 1];
         prev?.focus();
@@ -2308,38 +2370,38 @@ el.value += String(displayMap[k] || "");   // ✅ không space
         return;
       }
 
-if (e.key === "+") {
-  e.preventDefault();
-  const { rank } = parseRankColor(el.value);     // ✅ lấy rank thật
-  const m = loadFailtypeMap();
-  const displayMap = m?.[rank];
-  if (displayMap) createPopup(displayMap);
-  return;
-}
-
+      if (e.key === "+") {
+        e.preventDefault();
+        const { rank } = parseRankColor(el.value); // ✅ lấy rank thật
+        const m = loadFailtypeMap();
+        const displayMap = m?.[rank];
+        if (displayMap) createPopup(displayMap);
+        return;
+      }
 
       if (popup && activeDisplayMap?.[e.key]) {
         e.preventDefault();
-el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
+        el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
         closePopup();
         return;
       }
 
-     if (/^[1-7]$/.test(e.key)) {
-  const hk = loadQcHotkeys();      // luôn đọc mới => đổi trong modal là ăn liền
-  const rank = hk[e.key];          // "A".."R" hoặc ""
-  if (rank) {
-    const v = el.value;
-    const allSelected = el.selectionStart === 0 && el.selectionEnd === v.length;
-    if (!v || allSelected) {
-      e.preventDefault();
-      el.value = RANK_MAP[rank] || rank; // set "A(A/I)"...
-      requestAnimationFrame(() =>
-        el.setSelectionRange(el.value.length, el.value.length)
-      );
-    }
-  }
-}
+      if (/^[1-7]$/.test(e.key)) {
+        const hk = loadQcHotkeys(); // luôn đọc mới => đổi trong modal là ăn liền
+        const rank = hk[e.key]; // "A".."R" hoặc ""
+        if (rank) {
+          const v = el.value;
+          const allSelected =
+            el.selectionStart === 0 && el.selectionEnd === v.length;
+          if (!v || allSelected) {
+            e.preventDefault();
+            el.value = RANK_MAP[rank] || rank; // set "A(A/I)"...
+            requestAnimationFrame(() =>
+              el.setSelectionRange(el.value.length, el.value.length),
+            );
+          }
+        }
+      }
     });
 
     document.addEventListener("click", (e) => {
@@ -2352,7 +2414,7 @@ el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
     // bind các nút cần DOM sẵn
     bindQcToolButtons?.();
     bindPickPrintButton?.();
-bindMonthStamp();
+    bindMonthStamp();
     // sync sign preview (lúc partial đã gắn)
     const srcImg = document.getElementById("sign-preview-inspector");
     const destImg = document.getElementById("preview-sign-inspector");
@@ -2363,7 +2425,7 @@ bindMonthStamp();
 
     // Enter / '-' nav cho RID qty
     const qtyInputs = Array.from(
-      document.querySelectorAll('#preview-content input[id^="RID_qty"]')
+      document.querySelectorAll('#preview-content input[id^="RID_qty"]'),
     );
     const dateInput = document.getElementById("RID_rankcolor");
     const inputEnd = document.getElementById("RID_qty14");
@@ -2412,6 +2474,7 @@ bindMonthStamp();
 
     rankInput.addEventListener("keydown", async (e) => {
       if (e.key !== "Enter") return;
+      window.__FAST_MODE__ = !!fastChk?.checked;
       e.preventDefault();
       e.stopImmediatePropagation();
 

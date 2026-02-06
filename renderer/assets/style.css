@@ -1550,3 +1550,11 @@ background-position:
   font-weight: bold;
 }
 }
+#rid-items button.rid-own {
+  color: #2563eb;        /* xanh nhẹ */
+  font-weight: 600;
+}
+
+#rid-items button.rid-own.rid-active {
+  background: #dbeafe;
+}

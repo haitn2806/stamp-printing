@@ -625,10 +625,15 @@ ipcMain.handle('kb:getRidList', async (e, { ri_no }) => {
     const pool = await getMainDb();
 
     const query = `
-      SELECT DISTINCT RID_no
-      FROM dv_RM_inspectiondet
-      WHERE RI_no = @ri_no AND isactive = 'Y'
-      ORDER BY RID_no
+    SELECT
+  RID_no,
+  MAX(user_name_created) AS RID_created_by,
+  MAX(RID_remark)        AS RID_remark
+FROM dv_RM_inspectiondet
+WHERE RI_no = @ri_no
+  AND isactive = 'Y'
+GROUP BY RID_no
+ORDER BY CAST(MAX(RID_remark) AS INT)
     `;
 
     const result = await pool.request()
@@ -1162,6 +1167,7 @@ ipcMain.handle('kb:deleteRid', async (e, { RI_no, RID_no }) => {
 
 
 ipcMain.handle('kb:saveRid', async (e, { records }) => {
+  let isNewRID = false;
   if (!Array.isArray(records) || !records.length) {
     return { success: true };
   }
@@ -1173,6 +1179,22 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
     await tx.begin();
 
     const riNo = records[0].RI_no;
+// 🔥 map RID_no -> RID_remark hiện có
+const remarkMapRs = await new sql.Request(tx)
+  .input('RI_no', sql.NVarChar, riNo)
+  .query(`
+    SELECT DISTINCT RID_no, RID_remark
+    FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+    WHERE RI_no=@RI_no
+      AND isactive='Y'
+  `);
+
+const remarkMap = {};
+remarkMapRs.recordset.forEach(r => {
+  if (r.RID_no && r.RID_remark != null) {
+    remarkMap[r.RID_no] = String(r.RID_remark);
+  }
+});
 const remarkRs = await new sql.Request(tx)
   .input('RI_no', sql.NVarChar, riNo)
   .query(`
@@ -1189,6 +1211,7 @@ let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
 
     // ===============================
     // 1) UPSERT DETAIL
+    
     // ===============================
     for (const r of records) {
       const keyReq = new sql.Request(tx);
@@ -1206,6 +1229,9 @@ let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
           AND isactive='Y'
       `);
 
+const ridRemark =
+  remarkMap[r.RID_no] ?? String(nextRemark);
+
       const req = new sql.Request(tx);
       req
         .input('RI_no', sql.NVarChar, r.RI_no)
@@ -1216,7 +1242,7 @@ let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
         .input('RID_color', sql.NVarChar, r.RID_color || null)
         .input('RID_Failtype', sql.NVarChar, r.RID_Failtype || null)
         .input('RID_LabDate', sql.Date, r.RID_LabDate || null)
-        .input('RID_remark', sql.NVarChar, String(nextRemark))
+        .input('RID_remark', sql.NVarChar, ridRemark)
         .input('user_code', sql.NVarChar, userCode)
         .input('user_name', sql.NVarChar, userName);
 
@@ -1238,6 +1264,7 @@ let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
             AND isactive='Y'
         `);
       } else {
+          isNewRID = true; 
         await req.query(`
           INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspectiondet (
             RI_no, RID_no, RID_seqno,
@@ -1315,7 +1342,13 @@ let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
     `);
 
     await tx.commit();
-    return { success: true, totals };
+return {
+  success: true,
+  totals,
+  isNewRID,              // 🔥 backend quyết định
+  reloadRidList: isNewRID
+};
+
 
   } catch (err) {
     await tx.rollback();
