@@ -20,22 +20,22 @@ return `RID${yy}${MM}${DD}${hh}${mm}${ss}`;
 
 }
 
-function generateRidOffline() {
-  const prefix = getRidPrefix();
+// function generateRidOffline() {
+//   const prefix = getRidPrefix();
 
-  if (prefix !== __RID_LAST_PREFIX__) {
-    __RID_LAST_PREFIX__ = prefix;
-    __RID_LAST_SERIAL__ = 1;
-  } else {
-    __RID_LAST_SERIAL__++;
-  }
+//   if (prefix !== __RID_LAST_PREFIX__) {
+//     __RID_LAST_PREFIX__ = prefix;
+//     __RID_LAST_SERIAL__ = 1;
+//   } else {
+//     __RID_LAST_SERIAL__++;
+//   }
 
-  if (__RID_LAST_SERIAL__ > 99) {
-    throw new Error("RID vượt quá 99 trong cùng thời gian");
-  }
+//   if (__RID_LAST_SERIAL__ > 99) {
+//     throw new Error("RID vượt quá 99 trong cùng thời gian");
+//   }
 
-  return `${prefix}${pad(__RID_LAST_SERIAL__)}`;
-}
+//   return `${prefix}${pad(__RID_LAST_SERIAL__)}`;
+// }
 
 
 contextBridge.exposeInMainWorld('APP', {
@@ -51,10 +51,8 @@ preloginDone: (data) =>
     ipcRenderer.invoke('get-app-context'),
 
   //login  
-    generateRid: () => {
-    const rid_no = generateRidOffline();
-    return { rid_no };
-  },
+generateRid: (payload = {}) => ipcRenderer.invoke("kb:generateRid", payload),
+
    changeLayout: (layout) => ipcRenderer.send('kb:change-layout', layout),
   saveHistory: (payload) => ipcRenderer.invoke('kb:saveHistory', payload),
    getPrinters: () => ipcRenderer.invoke("kb:get-printers"),
@@ -67,17 +65,21 @@ printHtml: (data) => ipcRenderer.invoke("print-html", data),
   clearRemember: () => ipcRenderer.send("kb:clear-remember"),
   logout: () => ipcRenderer.send('kb:logout'),
 openPrinterSettings: () => ipcRenderer.invoke('kb:open-printer-settings'),
+checkTem: (ri_no) => ipcRenderer.invoke("kb:checkTem", { ri_no }),
   getInspectionDetail: (ri_no) =>
     ipcRenderer.invoke("get-inspection-detail", ri_no),
   dragEvent: (e) => {
     console.log("dragEvent:", e.type);
   }, // Giả sử bạn muốn expose dragEvent
-  // RI
+  // RIaaa
 searchPO: (poNo) => ipcRenderer.invoke('kb:search-po', poNo),
+searchPOSole: (poNo) => ipcRenderer.invoke('kb:search-po-sole', poNo),
   saveInspection: (payload) => ipcRenderer.invoke("kb:saveInspection", payload),
 
   searchTC: (tcCode) => ipcRenderer.invoke("kb:searchTC", tcCode),
 saveRid: (payload) => ipcRenderer.invoke("kb:saveRid", payload),
+saveRidSole: (payload) => ipcRenderer.invoke("kb:saveRidSole", payload),
+
   // lất qty công và hàng về
   getPoQtyCombined: (params) =>
     ipcRenderer.invoke("get-po-qty-combined", params),
@@ -95,10 +97,22 @@ saveRid: (payload) => ipcRenderer.invoke("kb:saveRid", payload),
     ipcRenderer.invoke('inspection:delete', ri_no),
   getRidDetail: (params) => ipcRenderer.invoke("kb:getRidDetail", params),
 
+  saveInspectionDetail: (rows) =>
+  ipcRenderer.invoke('kb:save-inspection-detail', rows),
 
-  //excelllll
+getSizeRunByRI: (data) =>
+  ipcRenderer.invoke("kb:getSizeRunByRI", data),
+  //excelllll checkUpdate: () => ipcRenderer.invoke("app:check-update"),
+  checkUpdate: () => ipcRenderer.invoke("app:check-update"),
+  doUpdate: () => ipcRenderer.invoke("app:do-update"),
+  onUpdateEvent: (cb) =>
+    ipcRenderer.on("app:update-event", (_, data) => cb(data)),
 exportExcel: (payload) =>
     ipcRenderer.invoke('kb:exportExcel', payload),
+  getVersion: () => ipcRenderer.invoke("app:get-version"),
+ openSoleExcelTemplate: (payload) => ipcRenderer.invoke("excel:open-sole-template", payload),
+saveExcelAs: (sourcePath) => ipcRenderer.invoke("excel:save-as", sourcePath),
+getPurchaseSizeRun: (payload) => ipcRenderer.invoke('kb:getPurchaseSizeRun', payload)
   //tem QC
 });
 

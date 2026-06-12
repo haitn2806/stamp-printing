@@ -221,12 +221,12 @@
   });
 
   // OPEN
-  // window.openHistoryModal = function () {
-  //   const modal = document.getElementById('history-modal');
-  //   modal?.classList.remove('hidden');
-  //   renderEmptyHistoryRows();
-  //   calcTotal();
-  // };
+  window.openHistoryModal = function () {
+    const modal = document.getElementById('history-modal');
+    modal?.classList.remove('hidden');
+    renderEmptyHistoryRows();
+    calcTotal();
+  };
 
   // CLOSE (overlay + button)
   document.addEventListener('click', e => {
@@ -260,39 +260,29 @@ function fillHistoryRows(records = []) {
 }
 
 
-async function openHistoryModal() {
+function openHistoryModal() {
   const modal = document.getElementById('history-modal');
   if (!modal) return;
 
-  const riNo = document.querySelector('[name="RI_no"]')?.value;
-  if (!riNo) return;
-
   modal.classList.remove('hidden');
 
+  // 1. render form
   renderEmptyHistoryRows();
 
-  // reset hardness trước
-  const hardnessInput = document.getElementById("hardness-input");
-  if (hardnessInput) hardnessInput.value = "";
-
-  const detail = await window.kbAPI.getInspectionDetail(riNo);
-
-  if (!detail) return;
-
-  if (detail.records?.length) {
-    fillHistoryRows(detail.records);
-
-    if (hardnessInput) {
-      hardnessInput.value = detail.records[0]?.ri_hardness ?? "";
-    }
+  // 2. fill data
+  const cached = window.__INSPECTION_DETAIL_CACHE__;
+  if (cached?.records?.length) {
+    fillHistoryRows(cached.records);
   }
 
+  // 3. 🔥 BẮT BUỘC: tính lại diff + total
   for (let i = 1; i <= 10; i++) {
     calcDiff(i);
   }
-
   calcTotal();
 }
+
+
 // expose
 window.openHistoryModal = openHistoryModal;
 
@@ -309,7 +299,6 @@ async function saveHistoryRecords() {
   isSavingHistory = true;
 
   try {
-    const hardness = document.getElementById("hardness-input")?.value || null;  
     const ri_no = document.querySelector('[name="RI_no"]')?.value;
     if (!ri_no) throw new Error('Missing RI_no');
 
@@ -333,12 +322,12 @@ async function saveHistoryRecords() {
       });
     }
 
-    // if (!records.length) {
-    //   showToastSuccess('Không có dòng nào để lưu');
-    //   return;
-    // }
+    if (!records.length) {
+      showToastSuccess('Không có dòng nào để lưu');
+      return;
+    }
 
-  await window.kbAPI.saveHistory({ ri_no, records, hardness });     
+    await window.kbAPI.saveHistory({ ri_no, records });
     // ✅ UPDATE CACHE SAU KHI SAVE
 if (window.__INSPECTION_DETAIL_CACHE__) {
   window.__INSPECTION_DETAIL_CACHE__.records = records.map(r => ({
@@ -348,7 +337,6 @@ if (window.__INSPECTION_DETAIL_CACHE__) {
     ri_thick_neck: r.ri_thick_neck,
     ri_thick_back: r.ri_thick_back,
     ri_thick_bottom: r.ri_thick_bottom,
-     ri_hardness: hardness
   }));
 }
 
@@ -445,83 +433,102 @@ document.getElementById('btn-export-excel')?.addEventListener('click', async () 
     showToastError?.('Export error');
   }
 });
+let currentExcelWorkingFile = null;
 
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "Enter") return;
+document.getElementById("excel-sole")?.addEventListener("click", async () => {
+  try {
+    const ri_no = document.querySelector('[name="RI_no"]')?.value?.trim();
 
-  const input = e.target;
+    if (!ri_no) {
+      showToastWarning?.("Chưa có RI_no");
+      return;
+    }
 
-  if (!input.closest("#history-rows")) return;
+    const res = await window.kbAPI.openSoleExcelTemplate({ ri_no });
 
-  e.preventDefault();
+    if (!res?.success) {
+      showToastError?.(res?.message || "Không mở được file Excel");
+      return;
+    }
 
-  const name = input.name; 
-  const match = name.match(/history\[(\d+)\]\[(.+)\]/);
-  if (!match) return;
-
-  const row = parseInt(match[1]);
-  const field = match[2];
-
-  const next = document.querySelector(
-    `[name="history[${row + 1}][${field}]"]`
-  );
-
-  if (next) {
-    next.focus();
-    next.select?.();
+    currentExcelWorkingFile = res.filePath;
+    showToastSuccess?.("Đã mở file Excel");
+  } catch (err) {
+    console.error(err);
+    showToastError?.("Mở Excel thất bại");
   }
 });
 
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "+") return;
+document.getElementById("excel-sole-save")?.addEventListener("click", async () => {
+  try {
+    if (!currentExcelWorkingFile) {
+      showToastWarning?.("Chưa mở file Excel");
+      return;
+    }
 
-  const input = e.target;
-  if (!input.closest("#history-rows")) return;
+    const res = await window.kbAPI.saveExcelAs(currentExcelWorkingFile);
 
-  e.preventDefault();
+    if (res?.canceled) return;
 
-  const m = input.name.match(/history\[(\d+)\]\[(.+)\]/);
-  if (!m) return;
+    if (!res?.success) {
+      showToastError?.(res?.message || "Lưu file thất bại");
+      return;
+    }
 
-  const row = parseInt(m[1]);
-  const field = m[2];
-
-  const order = ["origin","actual","neck","back","hip"];
-  const idx = order.indexOf(field);
-  if (idx === -1) return;
-
-  let next;
-
-  // ➜ còn cột kế
-  if (idx < order.length - 1) {
-    const nextField = order[idx + 1];
-    next = document.querySelector(
-      `[name="history[${row}][${nextField}]"]`
-    );
-  }
-  // ➜ cột cuối → xuống dòng
-  else {
-    const nextRow = row + 1;
-
-    next = document.querySelector(
-      `[name="history[${nextRow}][origin]"]`
-    );
-  }
-
-  if (next) {
-    next.focus();
-    next.select?.();
+    showToastSuccess?.("Đã lưu file Excel");
+  } catch (err) {
+    console.error(err);
+    showToastError?.("Download Excel thất bại");
   }
 });
 
-document.addEventListener("blur", (e) => {
-  const input = e.target;
+(function () {
+  const btnOpen = document.getElementById("btn-export-excel-sole");
+  const modal = document.getElementById("excel-sole-modal");
+  const btnClose = document.getElementById("excel-sole-modal-close");
+  const input = document.getElementById("excel-sole-search-input");
+  const btnSearch = document.getElementById("excel-sole-search-btn");
 
-  if (!input.closest("#history-rows")) return;
-  if (input.type !== "number") return;
+  if (!btnOpen || !modal) return;
 
-  if (input.value.trim() === "") {
-    input.value = 0;
+  function openModal() {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    setTimeout(() => input?.focus(), 0);
   }
-}, true);
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  btnOpen.addEventListener("click", openModal);
+  btnClose?.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      btnSearch?.click();
+    }
+    if (e.key === "Escape") {
+      closeModal();
+    }
+  });
+
+  btnSearch?.addEventListener("click", () => {
+    const keyword = input?.value?.trim() || "";
+    console.log("search keyword:", keyword);
+
+    // TODO: gọi API search ở đây
+    // vd:
+    // window.kbAPI.searchSomething(keyword)
+
+    // closeModal(); // muốn search xong đóng thì mở dòng này
+  });
+})();
+
 })();

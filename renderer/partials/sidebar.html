@@ -1,10 +1,10 @@
 <!-- Inspection Sidebar (Electron) -->
+
 <div id="inspection-sidebar"
-     class="fixed top-0 left-0 h-full w-full sm:w-[650px] md:w-[960px]
+     class="fixed top-0 left-0 h-full w-full sm:w-[650px] md:w-[1100px]
             bg-white border-r border-gray-200 shadow-2xl rounded-r-2xl
             transform -translate-x-full transition-transform duration-300
             z-[1050] flex flex-col">
-
   <!-- Header -->
   <div class="sidebar-report-header sticky top-0 flex items-center justify-between gap-3 px-5 py-[27px]">
   <!-- Left: icon + title -->
@@ -105,9 +105,13 @@
   <td colspan="7" class="text-center p-6">
     <img src="./assets/search.gif"
          alt="Loading"
-         class="mx-auto w-12 h-12" />
+         class="mx-auto w-24 h-24" />
   </td>
 </tr>
+<div id="po-tooltip"
+     style="display:none; position:fixed; z-index:9999;"
+     class="max-w-[520px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-xl break-words">
+</div>
         </tbody>
       </table>
     </div>

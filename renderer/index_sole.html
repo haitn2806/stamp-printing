@@ -12,58 +12,88 @@
     <link rel="stylesheet" href="./assets/toastify.min.css" />
     <script src="./assets/toastify.min.js"></script>
     <title>Material Warehouse Application - v.1.4.8 阿海</title>
-    <style id="qc-print-style3" type="text/x-print-css">
-      /* ===== MULTI PAGE PRINT FIX ===== */
-      .print-root {
-        page-break-inside: avoid;
-        break-inside: avoid;
-      }
-      #preview-content .block-qty .r1 {
-        border-bottom: none !important;
-        grid-column: 2 / -1;
-        font-size: 16px;
-        text-align: center;
-      }
-      .preview-content .block-qty .r1 {
-        border-bottom: none !important;
-        grid-column: 2 / -1;
-        font-size: 16px;
-        text-align: center;
-      }
+ <style id="qc-print-style4" type="text/x-print-css">
+  /* ===== MULTI PAGE PRINT FIX ===== */
+.print-root {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
 
-      .page-break {
-        page-break-after: always;
-        break-after: page;
-        height: 0;
-      }
+.fit-color {
+  width: 100%;                    /* Chiếm toàn bộ chiều rộng */
+  height: 10px;                   /* Cố định chiều cao */
+  display: flex;                  /* Dùng Flexbox để căn giữa */
+  justify-content: center;        /* Căn giữa theo chiều ngang */
+  align-items: center;            /* Căn giữa theo chiều dọc */
+  text-align: center;             /* Căn giữa nội dung text */
+  white-space: normal;            /* Cho phép văn bản xuống dòng */
+  word-wrap: break-word;          /* Bẻ từ khi cần thiết */
+  overflow: hidden;               /* Ẩn phần tràn ra ngoài */
+  font-size: 12px;                /* Mặc định kích thước font */
+  line-height: 1;               /* Đảm bảo line-height hợp lý */
+}
 
-      /* ===== PRINT 3.9in × 3.9in (mỗi hàng là 1 grid độc lập + block-8 gộp cột phải) ===== */
-      @page {
+.fit-color span {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+.fit-matname {
+  height: 10px;
+  width: 100%;                  /* Chiếm toàn bộ chiều rộng */
+  display: flex;                /* Dùng Flexbox để căn giữa */
+  justify-content: center;      /* Căn giữa theo chiều ngang */
+  align-items: center;          /* Căn giữa theo chiều dọc */
+  text-align: center;           /* Căn giữa nội dung text */
+  white-space: normal;          /* Cho phép văn bản xuống dòng */
+  word-wrap: break-word;        /* Bẻ từ khi cần thiết */
+  overflow: hidden;             /* Ẩn phần tràn ra ngoài */
+  font-size: 12px;              /* Mặc định kích thước font */
+  line-height: 1;             /* Đảm bảo line-height hợp lý */
+}
+
+.fit-matname span {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+
+
+.page-break {
+    page-break-after: always;
+    break-after: page;
+    height: 0;
+}
+
+  
+    /* ===== PRINT 3.9in × 3.9in (mỗi hàng là 1 grid độc lập + block-8 gộp cột phải) ===== */
+    @page {
         size: 4in 4in;
         margin: 0;
-      }
+    }
 
-      html,
-      body {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        background: #fff;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
+    html,
+    body {
+       font-family: Tahoma, Arial, sans-serif;
+          width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    }
 
-      /* Ẩn phần thừa nếu lỡ chèn */
-      .btn,
-      button,
-      #modal-loading,
-      #modal-preview,
-      #rid-list {
+    /* Ẩn phần thừa nếu lỡ chèn */
+    .btn,
+    button,
+    #modal-loading,
+    #modal-preview,
+    #rid-list {
         display: none !important;
-      }
+    }
 
-      /* KHUNG tem: cố định theo inch, không đặt height để tránh nén */
-      .preview-content {
+    /* KHUNG tem: cố định theo inch, không đặt height để tránh nén */
+    .preview-content {
         border: 1px solid #000;
         background: #fff;
         width: 3.9in;
@@ -72,23 +102,23 @@
         box-sizing: border-box;
         font-size: 10px;
         /* gọn vừa tem */
-        overflow: hidden;
+         overflow: hidden;
         line-height: 1;
-      }
+    }
 
-      /* ====== HÀNG CHÍNH (QC ROW) ====== */
-      .preview-content .qc-row {
+    /* ====== HÀNG CHÍNH (QC ROW) ====== */
+    .preview-content .qc-row {
         display: grid;
         border-bottom: 1px solid #000;
         width: 100%;
-      }
+    }
 
-      .preview-content .qc-row:last-child {
+    .preview-content .qc-row:last-child {
         border-bottom: none;
-      }
+    }
 
-      /* Ô (cell) — padding nhỏ để tiết kiệm chỗ */
-      .preview-content .cell {
+    /* Ô (cell) — padding nhỏ để tiết kiệm chỗ */
+    .preview-content .cell {
         border-right: 1px solid #000;
         padding: 1px 1px;
         display: flex;
@@ -97,78 +127,78 @@
         text-align: center;
         box-sizing: border-box;
         word-break: break-word;
-        min-height: 18px;
+        min-height:20px;
         /* vừa mắt bản in nhỏ */
-      }
+    }
 
-      .preview-content .qc-row .cell:last-child {
+    .preview-content .qc-row .cell:last-child {
         border-right: none;
-      }
+    }
 
-      /* Căn lề phụ và chữ */
-      .preview-content .cell.left-label {
+    /* Căn lề phụ và chữ */
+    .preview-content .cell.left-label {
         justify-content: flex-start;
         text-align: left;
-      }
+    }
 
-      .preview-content .cell.right {
+    .preview-content .cell.right {
         justify-content: flex-end;
         text-align: right;
-      }
+    }
 
-      .preview-content .cell.bold {
+    .preview-content .cell.bold {
         font-weight: 700;
-      }
+    }
 
-      .preview-content .cell.italic {
+    .preview-content .cell.italic {
         font-style: italic;
-      }
+    }
 
-      .preview-content .cell.small {
+    .preview-content .cell.small {
         font-size: 9px;
-      }
+    }
 
-      .preview-content .cell.text-lg {
+    .preview-content .cell.text-lg {
         font-size: 12px;
-      }
+    }
 
-      /* Tiện ích span (trong phạm vi 1 hàng) */
-      .preview-content .c-span-2 {
+    /* Tiện ích span (trong phạm vi 1 hàng) */
+    .preview-content .c-span-2 {
         grid-column: span 2;
-      }
+    }
 
-      .preview-content .c-span-3 {
+    .preview-content .c-span-3 {
         grid-column: span 3;
-      }
+    }
 
-      .preview-content .c-span-4 {
+    .preview-content .c-span-4 {
         grid-column: span 4;
-      }
+    }
 
-      .preview-content .c-span-5 {
+    .preview-content .c-span-5 {
         grid-column: span 5;
-      }
+    }
 
-      .preview-content .c-span-7 {
+    .preview-content .c-span-7 {
         grid-column: span 7;
-      }
+    }
 
-      .preview-content .c-span-all {
+    .preview-content .c-span-all {
         grid-column: 1 / -1;
-      }
+    }
 
-      /* Input (phòng khi còn sót) */
-      .preview-content .cell input[type="text"] {
+    /* Input (phòng khi còn sót) */
+    .preview-content .cell input[type="text"] {
         width: 100%;
         padding: 1px 1px;
         border: 1px solid #777;
         outline: none;
         box-sizing: border-box;
         text-align: center;
-      }
+    }
 
-      /* Ảnh theo đơn vị inch để luôn chuẩn tỉ lệ khi in */
-      .preview-content .barcode {
+    /* Ảnh theo đơn vị inch để luôn chuẩn tỉ lệ khi in */
+    .preview-content .barcode {
         width: 1.2in;
         height: 0.5in;
         /* tăng nhẹ cho rõ nét */
@@ -176,108 +206,109 @@
         display: block;
         margin: 0 auto;
         image-rendering: -webkit-optimize-contrast;
-      }
+    }
 
-      .preview-content .sign {
+    .preview-content .sign {
         width: 0.22in;
         height: 0.22in;
         object-fit: contain;
         display: block;
         margin: 0 auto;
-      }
+    }
 
-      /* Cỡ chữ chuyên biệt */
-      .preview-content .cell.passfail {
+    /* Cỡ chữ chuyên biệt */
+    .preview-content .cell.passfail {
         font-size: 9px;
         line-height: 1;
-      }
+    }
 
-      .preview-content .cell.passfailn {
+    .preview-content .cell.passfailn {
         font-size: 7.5px;
         line-height: 1;
-      }
+    }
 
-      .preview-content .cell.passbig {
+    .preview-content .cell.passbig {
         font-size: 10px;
         line-height: 1;
-      }
+    }
 
-      .preview-content .cell.passsobigi {
+    .preview-content .cell.passsobigi {
         font-size: 12.5px;
         line-height: 1;
-      }
+    }
 
-      .preview-content .cell.passsobigs {
+    .preview-content .cell.passsobigs {
         font-size: 14px;
         line-height: 1;
-      }
+    }
 
-      .km-small {
+    .km-small {
         font-size: 8px !important;
         line-height: 1;
-      }
+    }
 
-      .preview-content .cell.passsobig {
+    .preview-content .cell.passsobig {
         font-size: 12.5px !important;
         line-height: 1;
-      }
+    }
 
-      /* ====== ĐỊNH NGHĨA CỘT THEO TỪNG HÀNG ====== */
-      .preview-content .row-1 {
+    /* ====== ĐỊNH NGHĨA CỘT THEO TỪNG HÀNG ====== */
+    .preview-content .row-1 {
         grid-template-columns: 32% repeat(7, 1fr);
-      }
+         text-align: center;
+    }
 
-      .preview-content .row-2 {
+    .preview-content .row-2 {
         grid-template-columns: 32% repeat(7, 1fr);
-      }
+    }
 
-      .preview-content .row-3 {
+    .preview-content .row-3 {
         grid-template-columns: 32% repeat(7, 1fr);
-      }
+    }
 
-      .preview-content .row-4 {
+    .preview-content .row-4 {
         grid-template-columns: 32% repeat(7, 1fr);
-      }
+    }
 
-      .preview-content .stub {
+    .preview-content .stub {
         background: #fafafa;
-      }
+    }
 
-      .preview-content .row-5 {
+    .preview-content .row-5 {
         grid-template-columns: 32% repeat(4, 1fr) repeat(3, 1fr);
-      }
+    }
 
-      .preview-content .barcode-cell.h-tall {
+    .preview-content .barcode-cell.h-tall {
         min-height: 0.23in;
         display: flex;
         align-items: center;
         justify-content: center;
-      }
+    }
 
-      .preview-content .row-6 {
+    .preview-content .row-6 {
         grid-template-columns: 32% repeat(2, 1fr) repeat(2, 1fr) repeat(3, 1fr);
-      }
+    }
 
-      .preview-content .no-top-border {
+    .preview-content .no-top-border {
         border-top: none;
-      }
+    }
 
-      .preview-content .row-7 {
+    .preview-content .row-7 {
         grid-template-columns: 32% repeat(7, 1fr);
-      }
+    }
 
-      /* ===== Khối H8 gộp cột phải (Tem tháng) — Y HỆT bản màn hình ===== */
-      .preview-content .block-8 {
+    /* ===== Khối H8 gộp cột phải (Tem tháng) — Y HỆT bản màn hình ===== */
+    .preview-content .block-8 {
         display: grid;
         grid-template-columns: 32% 20% 10% 1fr;
         /* label | đạt | không đạt | cột Tem tháng */
         border-bottom: 1px solid #000;
         width: 100%;
         box-sizing: border-box;
-      }
+    }
 
-      /* Cell trong block-8 (3 cột bên trái) */
-      .preview-content .block-8 .cell {
+    /* Cell trong block-8 (3 cột bên trái) */
+    .preview-content .block-8 .cell {
         border-right: 1px solid #000;
         padding: 2px;
         display: flex;
@@ -286,28 +317,28 @@
         text-align: center;
         box-sizing: border-box;
         word-break: break-word;
-      }
+    }
 
-      /* Căn trái cho label */
-      .preview-content .block-8 .cell.left-label {
+    /* Căn trái cho label */
+    .preview-content .block-8 .cell.left-label {
         justify-content: flex-start;
         text-align: left;
-      }
+    }
 
-      /* Thêm đường kẻ ngang giữa các hàng cho 3 cột bên trái */
-      .preview-content .block-8 .cell:not(.col-4) {
+    /* Thêm đường kẻ ngang giữa các hàng cho 3 cột bên trái */
+    .preview-content .block-8 .cell:not(.col-4) {
         border-bottom: 1px solid #000;
-      }
+    }
 
-      /* Bỏ đường kẻ ngang ở hàng cuối cùng bên trái để khớp tổng thể (đặt class no-bb vào 3 cell hàng cuối) */
-      .preview-content .block-8 .no-bb {
+    /* Bỏ đường kẻ ngang ở hàng cuối cùng bên trái để khớp tổng thể (đặt class no-bb vào 3 cell hàng cuối) */
+    .preview-content .block-8 .no-bb {
         border-bottom: none;
-      }
+    }
 
-      /* ===== Cột phải gộp (Tem tháng) — 1 ô duy nhất span 6 hàng ===== */
-      .preview-content .block-8 .col-4 {
+    /* ===== Cột phải gộp (Tem tháng) — 1 ô duy nhất span 6 hàng ===== */
+    .preview-content .block-8 .col-4 {
         grid-column: 4;
-      grid-row: 1 / span 6 !important;
+        grid-row: 1 / span 7;
         /* ăn trọn từ hàng 1 đến hàng 6 của khối H8 */
         border-left: 1px solid #000;
         /* border-right: giữ nguyên (đường viền phải ngoài cùng), có thể bỏ nếu muốn dựa vào border khung ngoài */
@@ -315,168 +346,664 @@
         /* để nội dung bên trong chiếm trọn */
         display: flex;
         flex-direction: column;
-      }
+    }
 
-      /* Nội dung bên trong cột phải */
-      .preview-content .month-title {
+    /* Nội dung bên trong cột phải */
+    .preview-content .month-title {
         font-weight: 700;
         justify-content: center;
         padding: 1px 1px;
         display: flex;
         align-items: center;
         border-bottom: 1px solid #000;
-      }
+    }
 
-      /* Khung vuông nối liền (không border trên/dưới theo yêu cầu cũ – chỉ cần trái/phải do .col-4 đảm nhiệm)
+
+    /* Khung vuông nối liền (không border trên/dưới theo yêu cầu cũ – chỉ cần trái/phải do .col-4 đảm nhiệm)
    Nhưng để có khung riêng, ta vẫn vẽ border dưới để khép ô phải. Nếu bạn muốn không có border dưới,
    chỉ cần bỏ dòng border-bottom dưới đây. */
-      .preview-content .seal-box {
+    .preview-content .seal-box {
         aspect-ratio: 5/6;
         width: 100%;
         min-height: 0;
         /* Không cần top/bottom vì month-box đã có border-bottom; col-4 tạo khung trái/phải */
-      }
-      /* ===== MONTH STAMP ===== */
-      #preview-content .month-box,
-      .preview-content .month-box {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(4, 1fr);
-        gap: 2px;
-        padding: 3px;
-      }
+    }
+    /* ===== MONTH STAMP ===== */
+#preview-content .month-box,
+.preview-content .month-box{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:2px;
+  padding:3px;
+}
 
-      #preview-content .month-dot,
-      .preview-content .month-dot {
-        border: 1px solid #000;
-        border-radius: 999px;
-        aspect-ratio: 1/1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 10px;
-        line-height: 1;
-      }
+#preview-content .month-dot,
+.preview-content .month-dot{
+  border:1px solid #000;
+  border-radius:999px;
+  aspect-ratio:1/1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:10px;
+  line-height:1;
+}
 
-      #preview-content .month-dot.is-active,
-      .preview-content .month-dot.is-active {
-        outline: 2px solid #000;
-        outline-offset: 1px;
-      }
+#preview-content .month-dot.is-active,
+.preview-content .month-dot.is-active{
+  outline:2px solid #000;
+  outline-offset:1px;
+}
 
-      #preview-content .month-box,
-      .preview-content .month-box {
-        display: none !important;
-      }
+#preview-content .month-box,
+.preview-content .month-box { display:none !important; }
 
-      /* tem tháng (1 cái) */
-      #preview-content .seal-box,
-      .preview-content .seal-box {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
+/* tem tháng (1 cái) */
+#preview-content .seal-box,
+.preview-content .seal-box{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
 
-      #preview-content .month-seal,
-      .preview-content .month-seal {
-        width: 85%;
-        aspect-ratio: 1/1;
-        border-radius: 999px;
-        border: 1px solid #000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 900;
-        font-size: 45px;
-      }
+#preview-content .month-seal,
+.preview-content .month-seal{
+  width:85%;
+  aspect-ratio:1/1;
+  border-radius:999px;
+  border:1px solid #000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size: 45px; 
+}
 
-      /* COLOR MAP theo bảng mẫu */
-      .month-1 {
-        background: #fff;
-        color: #000;
-      } /* Jan */
-      .month-2 {
-        background: #fff;
-        color: #000;
-      } /* Feb */
-      .month-3 {
-        background: #fff;
-        color: #000;
-      } /* Mar */
-      .month-4 {
-        background: #fff;
-        color: #000;
-      } /* Apr */
-      .month-5 {
-        background: #fff;
-        color: #000;
-      } /* May */
-      .month-6 {
-        background: #fff;
-        color: #000;
-      } /* Jun */
-      .month-7 {
-        background: #fff;
-        color: #000;
-      } /* Jul */
-      .month-8 {
-        background: #fff;
-        color: #000;
-      } /* Aug */
-      .month-9 {
-        background: #fff;
-        color: #000;
-      } /* Sep */
-      .month-10 {
-        background: #fff;
-        color: #000;
-      } /* Oct */
-      .month-11 {
-        background: #fff;
-        color: #000;
-      } /* Nov */
-      .month-12 {
-        background: #fff;
-        color: #000;
-      } /* Dec */
+/* COLOR MAP theo bảng mẫu */
+.month-1  { background:#fff; color:#000; } /* Jan */
+.month-2  { background:#fff; color:#000; } /* Feb */
+.month-3  { background:#fff; color:#000; } /* Mar */
+.month-4  { background:#fff; color:#000; } /* Apr */
+.month-5  { background:#fff; color:#000; } /* May */
+.month-6  { background:#fff; color:#000; } /* Jun */
+.month-7  { background:#fff; color:#000; } /* Jul */
+.month-8  { background:#fff; color:#000; } /* Aug */
+.month-9  { background:#fff; color:#000; } /* Sep */
+.month-10 { background:#fff; color:#000; } /* Oct */
+.month-11 { background:#fff; color:#000; } /* Nov */
+.month-12 { background:#fff; color:#000; } /* Dec */
 
-      .preview-content .block-8 {
+
+    .preview-content .block-8 {
         font-size: 10px;
         /* nhỏ toàn khối */
-      }
+    }
 
-      .preview-content .block-8 .cell {
+    .preview-content .block-8 .cell {
         padding: 1px;
         /* giảm padding -> khối thấp hơn */
         min-height: 12px;
         line-height: 1;
-      }
+    }
 
-      /* Tiêu đề "月份 Tem tháng" nhỏ lại */
-      .preview-content .block-8 .month-title {
+    /* Tiêu đề "月份 Tem tháng" nhỏ lại */
+    .preview-content .block-8 .month-title {
         font-size: 10px;
         padding: 1px 1px;
-        min-height: 27px;
+        min-height: 22px;
         /* từ ~102px xuống gọn hơn */
-      }
+    }
 
-      /* Ô dấu vuông ở cột phải: thu nhỏ gọn hơn */
-      .preview-content .block-8 .seal-box {
+    /* Ô dấu vuông ở cột phải: thu nhỏ gọn hơn */
+    .preview-content .block-8 .seal-box {
+        aspect-ratio: 5/6;
+        width: 85%;
+        max-height: 40px;
+        /* nhỏ bề ngang -> nhỏ đồng thời bề dọc nhờ aspect-ratio */
+        margin: 6px auto;
+        /* canh giữa theo chiều ngang */
+        /* Nếu vẫn còn cao, có thể hạ xuống 75% hoặc 70% */
+    }
+
+    /* H8.7: Chữ ký QC — 4 cột giống pattern các hàng H8-x */
+    .preview-content .row-8-7 {
+        grid-template-columns: 32% 20% 10% 1fr;
+    }
+
+    /* Footer */
+    .preview-content .row-footer {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-content .row-1 .cell {
+        height: 1.2cm;
+        /* cố định đúng 1cm */
+        max-height: 1.3cm;
+        min-height: 1.3cm;
+        overflow: hidden;
+    }
+
+    .preview-content .zh {
+        font-weight: 300;
+        font-size: 1.05em;
+        /* to hơn khoảng 20% */
+        text-align: center;
+    }
+
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    .preview-content .vn {
+        font-size: 0.7em;
+        /* nhỏ hơn khoảng 15% */
+        font-weight: 400;
+        color: #000;
+    }
+
+    .preview-content .zhb {
+        font-weight: 300;
+        font-size: 1.3em;
+        /* to hơn khoảng 20% */
+        text-align: center;
+    }
+
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    .preview-content .vnb {
+        font-size: 0.8em;
+        /* nhỏ hơn khoảng 15% */
+        font-weight: 400;
+        color: #000;
+    }
+
+    .preview-content .zhbs {
+        font-weight: 300;
+        font-size: 1.25em;
+        /* to hơn khoảng 20% */
+        text-align: center;
+    }
+
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    .preview-content .vnbs {
+        font-size: 0.8em;
+        /* nhỏ hơn khoảng 15% */
+        font-weight: 400;
+        color: #000;
+    }
+
+    .preview-content .zhbx {
+        font-weight: 300;
+        font-size: 1.2em;
+        /* to hơn khoảng 20% */
+        text-align: center;
+    }
+
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    .preview-content .vnbx {
+        font-size: 0.6em;
+        /* nhỏ hơn khoảng 15% */
+        font-weight: 400;
+        color: #000;
+    }
+
+    .preview-content .qc-block {
+        display: grid;
+        width: 100%;
+        border-bottom: 1px solid #000;
+        grid-template-columns: 32% repeat(7, 1fr);
+
+    }
+
+    .preview-content .qc-block .cell {
+        border-right: 1px solid #000;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        word-break: break-word;
+        min-height: 10px;
+    }
+
+    .preview-content .qc-block .cell:last-child {
+        border-right: none;
+    }
+
+    .preview-content .qc-block .cell.left-label {
+        text-align: center;
+    }
+
+    /* Số lượng: label gộp dọc 2 hàng */
+    .preview-content .block-qty .qty-label {
+        grid-row: 1 / span 2;
+    }
+
+    /* Kẻ đường phân tách giữa 2 hàng số lượng (áp vào các ô của hàng 1) */
+    .preview-content .block-qty .r1 {
+        border-bottom: 1px solid #000;
+        font-size: 11px;
+    }
+
+    .preview-content .block-vendor {
+        grid-template-columns: 32% 1.4fr 1.4fr 0.8fr 0.8fr 1.3fr 1.6fr 1.6fr;
+    }
+
+    /* Đặt vị trí barcode ở cột 6-8 và gộp dọc 2 hàng */
+    .preview-content .block-vendor .barcode-cell {
+        grid-column: 6 / span 3;
+        /* cột 6-8 */
+        grid-row: 1 / span 2;
+        /* gộp 2 hàng */
+        max-height: 42px;
+        /* cao hơn để “ăn” xuống dưới */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Kẻ đường phân tách giữa 2 hàng ở nửa trái (vendor/po/brand) */
+    .preview-content .block-vendor .r1 {
+        border-bottom: 1px solid #000;
+    }
+
+    .preview-content .block-vendor .barcode-cell {
+        border-left: 1px solid #000;
+        /* đảm bảo luôn có vạch ở ranh cột 5|6 */
+        border-right: none;
+        padding-left: 5px;
+    }
+
+    /* PRINT: hàng mã vật liệu nhỏ lại */
+    .preview-content .block-vendor .cell:nth-child(4),
+    .preview-content .block-vendor .cell:nth-child(5),
+    .preview-content .block-vendor .cell:nth-child(6) {
+        min-height: 10px;
+        padding: 1px;
+        line-height: 1.0;
+        font-size: 8px;
+    }
+
+    .preview-content .block-vendor .cell:nth-child(4) .passsobig {
+        font-size: 10px;
+    }
+
+    .preview-content .sign-inspector {
+        width: 40px;
+        height: 20px;
+        object-fit: contain;
+    }
+
+    .preview-content .footer-meta {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    .preview-content .label-index {
+        font-weight: 700;
+        font-style: normal;
+        /* ép không italic */
+        margin-right: 4px;
+        /* tách số với QIP */
+    }
+
+    .preview-content .footer-code {
+        margin-left: auto;
+    }
+          .fa-print2 {
+min-height: 30px !important;
+}
+
+
+    @media print {
+      .hide-on-screen {
+        visibility: visible !important;
+  }
+        .preview-content .cell {
+            overflow: visible;
+            /* cho ảnh tràn nhẹ mà không kéo hàng */
+        }
+
+     .sign-inspector {
+            transform: scale(2);
+            /* phóng to chữ ký */
+            transform-origin: center center;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        .preview-content,
+        .preview-content * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+    }
+
+    /* ===== PRINT 3.9in × 3.9in (mỗi hàng là 1 grid độc lập + block-8 gộp cột phải) ===== */
+   
+    /* KHUNG tem: cố định theo inch, không đặt height để tránh nén */
+    #preview-content {
+        border: 1px solid #000;
+        background: #fff;
+        width: 3.9in;
+        margin-left: 0.05in;
+        margin-top: 0.05in;
+        box-sizing: border-box;
+        font-size: 10px;
+        /* gọn vừa tem */
+         overflow: hidden;
+        line-height: 1;
+    }
+
+    /* ====== HÀNG CHÍNH (QC ROW) ====== */
+    #preview-content .qc-row {
+        display: grid;
+        border-bottom: 1px solid #000;
+        width: 100%;
+    }
+
+    #preview-content .qc-row:last-child {
+        border-bottom: none;
+    }
+
+    /* Ô (cell) — padding nhỏ để tiết kiệm chỗ */
+    #preview-content .cell {
+        border-right: 1px solid #000;
+        padding: 1px 1px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        word-break: break-word;
+        min-height: 20px;
+        /* vừa mắt bản in nhỏ */
+    }
+
+    #preview-content .qc-row .cell:last-child {
+        border-right: none;
+    }
+
+    /* Căn lề phụ và chữ */
+    #preview-content .cell.left-label {
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    #preview-content .cell.right {
+        justify-content: flex-end;
+        text-align: right;
+    }
+
+    #preview-content .cell.bold {
+        font-weight: 700;
+    }
+
+    #preview-content .cell.italic {
+        font-style: italic;
+    }
+
+    #preview-content .cell.small {
+        font-size: 9px;
+    }
+
+    #preview-content .cell.text-lg {
+        font-size: 12px;
+    }
+
+    /* Tiện ích span (trong phạm vi 1 hàng) */
+    #preview-content .c-span-2 {
+        grid-column: span 2;
+    }
+
+    #preview-content .c-span-3 {
+        grid-column: span 3;
+    }
+
+    #preview-content .c-span-4 {
+        grid-column: span 4;
+    }
+
+    #preview-content .c-span-5 {
+        grid-column: span 5;
+    }
+
+    #preview-content .c-span-7 {
+        grid-column: span 7;
+    }
+
+    #preview-content .c-span-all {
+        grid-column: 1 / -1;
+    }
+
+    /* Input (phòng khi còn sót) */
+    #preview-content .cell input[type="text"] {
+        width: 100%;
+        padding: 1px 1px;
+        border: 1px solid #777;
+        outline: none;
+        box-sizing: border-box;
+        text-align: center;
+    }
+
+    /* Ảnh theo đơn vị inch để luôn chuẩn tỉ lệ khi in */
+    #preview-content .barcode {
+        width: 1.2in;
+        height: 0.5in;
+        /* tăng nhẹ cho rõ nét */
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+        image-rendering: -webkit-optimize-contrast;
+    }
+
+    #preview-content .sign {
+        width: 0.22in;
+        height: 0.22in;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+    }
+
+    /* Cỡ chữ chuyên biệt */
+    #preview-content .cell.passfail {
+        font-size: 9px;
+        line-height: 1;
+    }
+
+    #preview-content .cell.passfailn {
+        font-size: 7.5px;
+        line-height: 1;
+    }
+
+    #preview-content .cell.passbig {
+        font-size: 10px;
+        line-height: 1;
+    }
+
+    #preview-content .cell.passsobigi {
+        font-size: 12.5px;
+        line-height: 1;
+    }
+
+    #preview-content .cell.passsobigs {
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    .km-small {
+        font-size: 8px !important;
+        line-height: 1;
+    }
+
+    #preview-content .cell.passsobig {
+        font-size: 12.5px !important;
+        line-height: 1;
+    }
+
+    /* ====== ĐỊNH NGHĨA CỘT THEO TỪNG HÀNG ====== */
+    #preview-content .row-1 {
+        grid-template-columns: 32% repeat(7, 1fr);
+    }
+
+    #preview-content .row-2 {
+        grid-template-columns: 32% repeat(7, 1fr);
+    }
+
+    #preview-content .row-3 {
+        grid-template-columns: 32% repeat(7, 1fr);
+    }
+
+    #preview-content .row-4 {
+        grid-template-columns: 32% repeat(7, 1fr);
+    }
+
+    #preview-content .stub {
+        background: #fafafa;
+    }
+
+    #preview-content .row-5 {
+        grid-template-columns: 32% repeat(4, 1fr) repeat(3, 1fr);
+    }
+
+    #preview-content .barcode-cell.h-tall {
+        min-height: 0.23in;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #preview-content .row-6 {
+        grid-template-columns: 32% repeat(2, 1fr) repeat(2, 1fr) repeat(3, 1fr);
+    }
+
+    #preview-content .no-top-border {
+        border-top: none;
+    }
+
+    #preview-content .row-7 {
+        grid-template-columns: 32% repeat(7, 1fr);
+    }
+
+    /* ===== Khối H8 gộp cột phải (Tem tháng) — Y HỆT bản màn hình ===== */
+    #preview-content .block-8 {
+        display: grid;
+        grid-template-columns: 32% 20% 10% 1fr;
+        /* label | đạt | không đạt | cột Tem tháng */
+        border-bottom: 1px solid #000;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Cell trong block-8 (3 cột bên trái) */
+    #preview-content .block-8 .cell {
+        border-right: 1px solid #000;
+        padding: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        word-break: break-word;
+    }
+
+    /* Căn trái cho label */
+    #preview-content .block-8 .cell.left-label {
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    /* Thêm đường kẻ ngang giữa các hàng cho 3 cột bên trái */
+    #preview-content .block-8 .cell:not(.col-4) {
+        border-bottom: 1px solid #000;
+    }
+
+    /* Bỏ đường kẻ ngang ở hàng cuối cùng bên trái để khớp tổng thể (đặt class no-bb vào 3 cell hàng cuối) */
+    #preview-content .block-8 .no-bb {
+        border-bottom: none;
+    }
+
+    /* ===== Cột phải gộp (Tem tháng) — 1 ô duy nhất span 6 hàng ===== */
+    #preview-content .block-8 .col-4 {
+        grid-column: 4;
+        grid-row: 1 / span 7;
+        /* ăn trọn từ hàng 1 đến hàng 6 của khối H8 */
+        border-left: 1px solid #000;
+        /* border-right: giữ nguyên (đường viền phải ngoài cùng), có thể bỏ nếu muốn dựa vào border khung ngoài */
+        padding: 1px;
+        /* để nội dung bên trong chiếm trọn */
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Nội dung bên trong cột phải */
+    #preview-content .month-title {
+        font-weight: 700;
+        justify-content: center;
+        padding: 1px 1px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #000;
+    }
+
+
+    /* Khung vuông nối liền (không border trên/dưới theo yêu cầu cũ – chỉ cần trái/phải do .col-4 đảm nhiệm)
+   Nhưng để có khung riêng, ta vẫn vẽ border dưới để khép ô phải. Nếu bạn muốn không có border dưới,
+   chỉ cần bỏ dòng border-bottom dưới đây. */
+    #preview-content .seal-box {
+        aspect-ratio: 5/6;
+        width: 100%;
+        min-height: 0;
+        /* Không cần top/bottom vì month-box đã có border-bottom; col-4 tạo khung trái/phải */
+    }
+
+    #preview-content .block-8 {
+        font-size: 10px;
+        /* nhỏ toàn khối */
+    }
+
+    #preview-content .block-8 .cell {
+        padding: 1px;
+        /* giảm padding -> khối thấp hơn */
+        min-height: 12px;
+        line-height: 1;
+    }
+
+    /* Tiêu đề "月份 Tem tháng" nhỏ lại */
+    #preview-content .block-8 .month-title {
+        font-size: 10px;
+        padding: 1px 1px;
+        min-height: 22px;
+        /* từ ~102px xuống gọn hơn */
+    }
+
+    /* Ô dấu vuông ở cột phải: thu nhỏ gọn hơn */
+    #preview-content .block-8 .seal-box {
         aspect-ratio: 5/6;
         width: 85%;
         /* nhỏ bề ngang -> nhỏ đồng thời bề dọc nhờ aspect-ratio */
         margin: 6px auto;
         /* canh giữa theo chiều ngang */
         /* Nếu vẫn còn cao, có thể hạ xuống 75% hoặc 70% */
-      }
+    }
 
-      /* H8.7: Chữ ký QC — 4 cột giống pattern các hàng H8-x */
-      .preview-content .row-8-7 {
+    /* H8.7: Chữ ký QC — 4 cột giống pattern các hàng H8-x */
+    #preview-content .row-8-7 {
         grid-template-columns: 32% 20% 10% 1fr;
-      }
+    }
 
-      /* Footer */
+    /* Footer */
+    #preview-content .row-footer {
+        grid-template-columns: 1fr;
+    }
+
 #preview-content .row-footer .cell,
   .preview-content .row-footer .cell{
     padding: 0 !important;
@@ -498,87 +1025,87 @@
   .preview-content .label-index{
     font-size: 12px !important;
   }
-
-
-      .preview-content .row-1 .cell {
+    #preview-content .row-1 .cell {
         height: 1.2cm;
         /* cố định đúng 1cm */
-         text-align: center;
         max-height: 1.3cm;
         min-height: 1.3cm;
         overflow: hidden;
-         display: flex;
-        justify-content: center;
-      }
+    }
 
-      .preview-content .zh {
+    #preview-content .zh {
         font-weight: 300;
         font-size: 1.05em;
         /* to hơn khoảng 20% */
         text-align: center;
-      }
+    }
 
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      .preview-content .vn {
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    #preview-content .vn {
         font-size: 0.7em;
         /* nhỏ hơn khoảng 15% */
         font-weight: 400;
         color: #000;
-      }
+    }
 
-      .preview-content .zhb {
+    #preview-content .zhb {
         font-weight: 300;
         font-size: 1.3em;
         /* to hơn khoảng 20% */
         text-align: center;
-      }
+    }
 
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      .preview-content .vnb {
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    #preview-content .vnb {
         font-size: 0.8em;
         /* nhỏ hơn khoảng 15% */
         font-weight: 400;
         color: #000;
-      }
+    }
 
-      .preview-content .zhbs {
+    #preview-content .zhbs {
         font-weight: 300;
         font-size: 1.25em;
         /* to hơn khoảng 20% */
         text-align: center;
-      }
+    }
 
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      .preview-content .vnbs {
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    #preview-content .vnbs {
         font-size: 0.8em;
         /* nhỏ hơn khoảng 15% */
         font-weight: 400;
         color: #000;
-      }
+    }
 
-      .preview-content .zhbx {
+    #preview-content .zhbx {
         font-weight: 300;
         font-size: 1.2em;
         /* to hơn khoảng 20% */
         text-align: center;
-      }
+    }
 
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      .preview-content .vnbx {
+
+    /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
+    #preview-content .vnbx {
         font-size: 0.6em;
         /* nhỏ hơn khoảng 15% */
         font-weight: 400;
         color: #000;
-      }
+    }
 
-      .preview-content .qc-block {
+    #preview-content .qc-block {
         display: grid;
         width: 100%;
         border-bottom: 1px solid #000;
         grid-template-columns: 32% repeat(7, 1fr);
-      }
 
-      .preview-content .qc-block .cell {
+    }
+
+    #preview-content .qc-block .cell {
         border-right: 1px solid #000;
         padding: 4px;
         display: flex;
@@ -588,642 +1115,156 @@
         box-sizing: border-box;
         word-break: break-word;
         min-height: 10px;
-      }
+    }
 
-      .preview-content .qc-block .cell:last-child {
+    #preview-content .qc-block .cell:last-child {
         border-right: none;
-      }
+    }
 
-      .preview-content .qc-block .cell.left-label {
+    #preview-content .qc-block .cell.left-label {
         text-align: center;
-      }
+    }
 
-      /* Số lượng: label gộp dọc 2 hàng */
-      .preview-content .block-qty .qty-label {
+    /* Số lượng: label gộp dọc 2 hàng */
+    #preview-content .block-qty .qty-label {
         grid-row: 1 / span 2;
-      }
+    }
 
-      /* Kẻ đường phân tách giữa 2 hàng số lượng (áp vào các ô của hàng 1) */
-      .preview-content .block-qty .r1 {
+    /* Kẻ đường phân tách giữa 2 hàng số lượng (áp vào các ô của hàng 1) */
+    #preview-content .block-qty .r1 {
+      font-size: 11px;
+      font-weight: 600;
         border-bottom: 1px solid #000;
-      }
-
-      .preview-content .block-vendor {
-        grid-template-columns: 32% 1.4fr 1.4fr 0.8fr 0.8fr 1.3fr 1.6fr 1.6fr;
-      }
-
-      /* Đặt vị trí barcode ở cột 6-8 và gộp dọc 2 hàng */
-      .preview-content .block-vendor .barcode-cell {
-        grid-column: 6 / span 3;
-        /* cột 6-8 */
-        grid-row: 1 / span 2;
-        /* gộp 2 hàng */
-        max-height: 42px;
-        /* cao hơn để “ăn” xuống dưới */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      /* Kẻ đường phân tách giữa 2 hàng ở nửa trái (vendor/po/brand) */
-      .preview-content .block-vendor .r1 {
-        border-bottom: 1px solid #000;
-      }
-
-      .preview-content .block-vendor .barcode-cell {
-        border-left: 1px solid #000;
-        /* đảm bảo luôn có vạch ở ranh cột 5|6 */
-        border-right: none;
-        padding-left: 5px;
-      }
-
-      /* PRINT: hàng mã vật liệu nhỏ lại */
-      .preview-content .block-vendor .cell:nth-child(4),
-      .preview-content .block-vendor .cell:nth-child(5),
-      .preview-content .block-vendor .cell:nth-child(6) {
-        min-height: 10px;
-        padding: 1px;
-        line-height: 1;
-        font-size: 8px;
-      }
-
-      .preview-content .block-vendor .cell:nth-child(4) .passsobig {
-        font-size: 10px;
-      }
-
-      .preview-content .sign-inspector {
-        width: 40px;
-        height: 20px;
-        object-fit: contain;
-      }
-
-      .preview-content .footer-meta {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-      }
-
-      .preview-content .label-index {
-        font-weight: 700;
-        font-style: normal;
-        /* ép không italic */
-        margin-right: 4px;
-        /* tách số với QIP */
-      }
-
-      .preview-content .footer-code {
-        margin-left: auto;
-      }
-
-      @media print {
-        .hide-on-screen {
-          visibility: visible !important;
-        }
-        .preview-content .cell {
-          overflow: visible;
-          /* cho ảnh tràn nhẹ mà không kéo hàng */
-        }
-
-        .sign-inspector {
-          transform: scale(2);
-          /* phóng to chữ ký */
-          transform-origin: center center;
-        }
-
-        .no-print {
-          display: none !important;
-        }
-
-        .preview-content,
-        .preview-content * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-
-      /* ===== PRINT 3.9in × 3.9in (mỗi hàng là 1 grid độc lập + block-8 gộp cột phải) ===== */
-
-      /* KHUNG tem: cố định theo inch, không đặt height để tránh nén */
-      #preview-content {
-        border: 1px solid #000;
-        background: #fff;
-        width: 3.9in;
-        margin-left: 0.05in;
-        margin-top: 0.05in;
-        box-sizing: border-box;
-        font-size: 10px;
-        /* gọn vừa tem */
-        overflow: hidden;
-        line-height: 1;
-      }
-
-      /* ====== HÀNG CHÍNH (QC ROW) ====== */
-      #preview-content .qc-row {
-        display: grid;
-        border-bottom: 1px solid #000;
-        width: 100%;
-      }
-
-      #preview-content .qc-row:last-child {
-        border-bottom: none;
-      }
-
-      /* Ô (cell) — padding nhỏ để tiết kiệm chỗ */
-      #preview-content .cell {
-        border-right: 1px solid #000;
-        padding: 1px 1px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        box-sizing: border-box;
-        word-break: break-word;
-        min-height: 27px;
-        /* vừa mắt bản in nhỏ */
-      }
-
-      #preview-content .qc-row .cell:last-child {
-        border-right: none;
-      }
-
-      /* Căn lề phụ và chữ */
-      #preview-content .cell.left-label {
-        justify-content: flex-start;
-        text-align: left;
-      }
-
-      #preview-content .cell.right {
-        justify-content: flex-end;
-        text-align: right;
-      }
-
-      #preview-content .cell.bold {
-        font-weight: 700;
-      }
-
-      #preview-content .cell.italic {
-        font-style: italic;
-      }
-
-      #preview-content .cell.small {
-        font-size: 9px;
-      }
-
-      #preview-content .cell.text-lg {
-        font-size: 12px;
-      }
-
-      /* Tiện ích span (trong phạm vi 1 hàng) */
-      #preview-content .c-span-2 {
-        grid-column: span 2;
-      }
-
-      #preview-content .c-span-3 {
-        grid-column: span 3;
-      }
-
-      #preview-content .c-span-4 {
-        grid-column: span 4;
-      }
-
-      #preview-content .c-span-5 {
-        grid-column: span 5;
-      }
-
-      #preview-content .c-span-7 {
-        grid-column: span 7;
-      }
-
-      #preview-content .c-span-all {
-        grid-column: 1 / -1;
-      }
-
-      /* Input (phòng khi còn sót) */
-      #preview-content .cell input[type="text"] {
-        width: 100%;
-        padding: 1px 1px;
-        border: 1px solid #777;
-        outline: none;
-        box-sizing: border-box;
-        text-align: center;
-      }
-
-      /* Ảnh theo đơn vị inch để luôn chuẩn tỉ lệ khi in */
-      #preview-content .barcode {
-        width: 1.2in;
-        height: 0.5in;
-        /* tăng nhẹ cho rõ nét */
-        object-fit: contain;
-        display: block;
-        margin: 0 auto;
-        image-rendering: -webkit-optimize-contrast;
-      }
-
-      #preview-content .sign {
-        width: 0.22in;
-        height: 0.22in;
-        object-fit: contain;
-        display: block;
-        margin: 0 auto;
-      }
-
-      /* Cỡ chữ chuyên biệt */
-      #preview-content .cell.passfail {
-        font-size: 9px;
-        line-height: 1;
-      }
-
-      #preview-content .cell.passfailn {
-        font-size: 7.5px;
-        line-height: 1;
-      }
-
-      #preview-content .cell.passbig {
-        font-size: 10px;
-        line-height: 1;
-      }
-
-      #preview-content .cell.passsobigi {
-        font-size: 12.5px;
-        line-height: 1;
-      }
-
-      #preview-content .cell.passsobigs {
-        font-size: 14px;
-        line-height: 1;
-      }
-
-      .km-small {
-        font-size: 8px !important;
-        line-height: 1;
-      }
-
-      #preview-content .cell.passsobig {
-        font-size: 12.5px !important;
-        line-height: 1;
-      }
-
-      /* ====== ĐỊNH NGHĨA CỘT THEO TỪNG HÀNG ====== */
-      #preview-content .row-1 {
-        grid-template-columns: 32% repeat(7, 1fr);
-      }
-
-      #preview-content .row-2 {
-        grid-template-columns: 32% repeat(7, 1fr);
-      }
-
-      #preview-content .row-3 {
-        grid-template-columns: 32% repeat(7, 1fr);
-      }
-
-      #preview-content .row-4 {
-        grid-template-columns: 32% repeat(7, 1fr);
-      }
-
-      #preview-content .stub {
-        background: #fafafa;
-      }
-
-      #preview-content .row-5 {
-        grid-template-columns: 32% repeat(4, 1fr) repeat(3, 1fr);
-      }
-
-      #preview-content .barcode-cell.h-tall {
-        min-height: 0.23in;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #preview-content .row-6 {
-        grid-template-columns: 32% repeat(2, 1fr) repeat(2, 1fr) repeat(3, 1fr);
-      }
-
-      #preview-content .no-top-border {
-        border-top: none;
-      }
-
-      #preview-content .row-7 {
-        grid-template-columns: 32% repeat(7, 1fr);
-      }
-
-      /* ===== Khối H8 gộp cột phải (Tem tháng) — Y HỆT bản màn hình ===== */
-      #preview-content .block-8 {
-        display: grid;
-        grid-template-columns: 32% 20% 10% 1fr;
-        /* label | đạt | không đạt | cột Tem tháng */
-        border-bottom: 1px solid #000;
-        width: 100%;
-        box-sizing: border-box;
-      }
-
-      /* Cell trong block-8 (3 cột bên trái) */
-      #preview-content .block-8 .cell {
-        border-right: 1px solid #000;
-        padding: 2px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        box-sizing: border-box;
-        word-break: break-word;
-      }
-
-      /* Căn trái cho label */
-      #preview-content .block-8 .cell.left-label {
-        justify-content: flex-start;
-        text-align: left;
-      }
-
-      /* Thêm đường kẻ ngang giữa các hàng cho 3 cột bên trái */
-      #preview-content .block-8 .cell:not(.col-4) {
-        border-bottom: 1px solid #000;
-      }
-
-      /* Bỏ đường kẻ ngang ở hàng cuối cùng bên trái để khớp tổng thể (đặt class no-bb vào 3 cell hàng cuối) */
-      #preview-content .block-8 .no-bb {
-        border-bottom: none;
-      }
-
-      /* ===== Cột phải gộp (Tem tháng) — 1 ô duy nhất span 6 hàng ===== */
-      #preview-content .block-8 .col-4 {
-        grid-column: 4;
-        grid-row: 1 / span 6 !important;
-        /* ăn trọn từ hàng 1 đến hàng 6 của khối H8 */
-        border-left: 1px solid #000;
-        /* border-right: giữ nguyên (đường viền phải ngoài cùng), có thể bỏ nếu muốn dựa vào border khung ngoài */
-        padding: 1px;
-        /* để nội dung bên trong chiếm trọn */
-        display: flex;
-        flex-direction: column;
-      }
-
-      /* Nội dung bên trong cột phải */
-      #preview-content .month-title {
-        font-weight: 700;
-        justify-content: center;
-        padding: 1px 1px;
-        display: flex;
-        align-items: center;
-        border-bottom: 1px solid #000;
-      }
-
-      /* Khung vuông nối liền (không border trên/dưới theo yêu cầu cũ – chỉ cần trái/phải do .col-4 đảm nhiệm)
-   Nhưng để có khung riêng, ta vẫn vẽ border dưới để khép ô phải. Nếu bạn muốn không có border dưới,
-   chỉ cần bỏ dòng border-bottom dưới đây. */
-      #preview-content .seal-box {
-        aspect-ratio: 5/6;
-        width: 100%;
-        min-height: 0;
-        /* Không cần top/bottom vì month-box đã có border-bottom; col-4 tạo khung trái/phải */
-      }
-
-      #preview-content .block-8 {
-        font-size: 10px;
-        /* nhỏ toàn khối */
-      }
-
-      #preview-content .block-8 .cell {
-        padding: 1px;
-        /* giảm padding -> khối thấp hơn */
-        min-height: 12px;
-        line-height: 1;
-      }
-
-      /* Tiêu đề "月份 Tem tháng" nhỏ lại */
-      #preview-content .block-8 .month-title {
-        font-size: 10px;
-        padding: 1px 1px;
-        min-height: 27px;
-        /* từ ~102px xuống gọn hơn */
-      }
-
-      /* Ô dấu vuông ở cột phải: thu nhỏ gọn hơn */
-      #preview-content .block-8 .seal-box {
-        aspect-ratio: 5/6;
-        width: 85%;
-        /* nhỏ bề ngang -> nhỏ đồng thời bề dọc nhờ aspect-ratio */
-        margin: 6px auto;
-        /* canh giữa theo chiều ngang */
-        /* Nếu vẫn còn cao, có thể hạ xuống 75% hoặc 70% */
-      }
-
-      /* H8.7: Chữ ký QC — 4 cột giống pattern các hàng H8-x */
-      #preview-content .row-8-7 {
-        grid-template-columns: 32% 20% 10% 1fr;
-      }
-
-      /* Footer */
-
-
-      #preview-content .row-1 .cell {
-        height: 1.2cm;
-        /* cố định đúng 1cm */
-         text-align: center;
-        max-height: 1.3cm;
-        min-height: 1.3cm;
-        overflow: hidden;
-        display: flex;
-        justify-content: center;
-      }
-
-      #preview-content .zh {
-        font-weight: 300;
-        font-size: 1.05em;
-        /* to hơn khoảng 20% */
-        text-align: center;
-      }
-
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      #preview-content .vn {
-        font-size: 0.7em;
-        /* nhỏ hơn khoảng 15% */
-        font-weight: 400;
-        color: #000;
-      }
-
-      #preview-content .zhb {
-        font-weight: 300;
-        font-size: 1.3em;
-        /* to hơn khoảng 20% */
-        text-align: center;
-      }
-
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      #preview-content .vnb {
-        font-size: 0.8em;
-        /* nhỏ hơn khoảng 15% */
-        font-weight: 400;
-        color: #000;
-      }
-
-      #preview-content .zhbs {
-        font-weight: 300;
-        font-size: 1.25em;
-        /* to hơn khoảng 20% */
-        text-align: center;
-      }
-
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      #preview-content .vnbs {
-        font-size: 0.8em;
-        /* nhỏ hơn khoảng 15% */
-        font-weight: 400;
-        color: #000;
-      }
-
-      #preview-content .zhbx {
-        font-weight: 300;
-        font-size: 1.2em;
-        /* to hơn khoảng 20% */
-        text-align: center;
-      }
-
-      /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
-      #preview-content .vnbx {
-        font-size: 0.6em;
-        /* nhỏ hơn khoảng 15% */
-        font-weight: 400;
-        color: #000;
-      }
-
-      #preview-content .qc-block {
-        display: grid;
-        width: 100%;
-        border-bottom: 1px solid #000;
-        grid-template-columns: 32% repeat(7, 1fr);
-      }
-
-      #preview-content .qc-block .cell {
-        border-right: 1px solid #000;
-        padding: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        box-sizing: border-box;
-        word-break: break-word;
-        min-height: 10px;
-      }
-
-      #preview-content .qc-block .cell:last-child {
-        border-right: none;
-      }
-
-      #preview-content .qc-block .cell.left-label {
-        text-align: center;
-      }
-
-      /* Số lượng: label gộp dọc 2 hàng */
-      #preview-content .block-qty .qty-label {
-        grid-row: 1 / span 2;
-      }
-
-      /* Kẻ đường phân tách giữa 2 hàng số lượng (áp vào các ô của hàng 1) */
-      #preview-content .block-qty .r1 {
-        border-bottom: 1px solid #000;
-      }
-
-      #preview-content .block-vendor {
-        grid-template-columns: 32% 1.4fr 1.4fr 0.8fr 0.8fr 1.3fr 1.6fr 1.6fr;
-      }
-
-      /* Đặt vị trí barcode ở cột 6-8 và gộp dọc 2 hàng */
-      #preview-content .block-vendor .barcode-cell {
-        grid-column: 6 / span 3;
-        /* cột 6-8 */
-        grid-row: 1 / span 2;
-        /* gộp 2 hàng */
-        max-height: 42px;
-        /* cao hơn để “ăn” xuống dưới */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      /* Kẻ đường phân tách giữa 2 hàng ở nửa trái (vendor/po/brand) */
-      #preview-content .block-vendor .r1 {
-        border-bottom: 1px solid #000;
-      }
-
-      #preview-content .block-vendor .barcode-cell {
-        border-left: 1px solid #000;
-        /* đảm bảo luôn có vạch ở ranh cột 5|6 */
-        border-right: none;
-        padding-left: 5px;
-      }
-
-      /* PRINT: hàng mã vật liệu nhỏ lại */
-      #preview-content .block-vendor .cell:nth-child(4),
-      #preview-content .block-vendor .cell:nth-child(5),
-      #preview-content .block-vendor .cell:nth-child(6) {
-        min-height: 10px;
-        padding: 1px;
-        line-height: 1;
-        font-size: 8px;
-      }
-
-      #preview-content .block-vendor .cell:nth-child(4) .passsobig {
-        font-size: 10px;
-      }
-
-      #preview-content .sign-inspector {
-        width: 40px;
-        height: 20px;
-        object-fit: contain;
-      }
-
-      #preview-content .footer-meta {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-      }
-
-      #preview-content .label-index {
-        font-weight: 700;
-        font-style: normal;
-        /* ép không italic */
-        margin-right: 4px;
-        /* tách số với QIP */
-      }
-
-      #preview-content .footer-code {
-        margin-left: auto;
-      }
- .fa-color{
-  grid-column: 2 / -1 !important;
- }
-      .fa-print2 {
-min-height: 30px !important;
+    }
+
+    #preview-content .block-qty .cell:not(.r1):not(.qty-label) span,
+.preview-content .block-qty .cell:not(.r1):not(.qty-label) span {
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
 }
+#preview-content .block-qty .r1 span,
+.preview-content .block-qty .r1 span,
+#preview-content select[id^="RID_size"],
+.preview-content select[id^="RID_size"] {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: center !important;
+}
+    #preview-content .block-vendor {
+        grid-template-columns: 32% 1.4fr 1.4fr 0.8fr 0.8fr 1.3fr 1.6fr 1.6fr;
+    }
 
+    /* Đặt vị trí barcode ở cột 6-8 và gộp dọc 2 hàng */
+    #preview-content .block-vendor .barcode-cell {
+        grid-column: 6 / span 3;
+        /* cột 6-8 */
+        grid-row: 1 / span 2;
+        /* gộp 2 hàng */
+        max-height: 42px;
+        /* cao hơn để “ăn” xuống dưới */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
-      @media print {
-        .hide-on-screen {
-          visibility: visible !important;
-        }
+    /* Kẻ đường phân tách giữa 2 hàng ở nửa trái (vendor/po/brand) */
+    #preview-content .block-vendor .r1 {
+        border-bottom: 1px solid #000;
+    }
+
+    #preview-content .block-vendor .barcode-cell {
+        border-left: 1px solid #000;
+        /* đảm bảo luôn có vạch ở ranh cột 5|6 */
+        border-right: none;
+        padding-left: 5px;
+    }
+
+    /* PRINT: hàng mã vật liệu nhỏ lại */
+    #preview-content .block-vendor .cell:nth-child(4),
+    #preview-content .block-vendor .cell:nth-child(5),
+    #preview-content .block-vendor .cell:nth-child(6) {
+        min-height: 10px;
+        padding: 1px;
+        line-height: 1.0;
+        font-size: 8px;
+    }
+
+    #preview-content .block-vendor .cell:nth-child(4) .passsobig {
+        font-size: 10px;
+    }
+
+    #preview-content .sign-inspector {
+        width: 40px;
+        height: 20px;
+        object-fit: contain;
+    }
+
+    #preview-content .footer-meta {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    #preview-content .label-index {
+        font-weight: 700;
+        font-style: normal;
+        /* ép không italic */
+        margin-right: 4px;
+        /* tách số với QIP */
+    }
+
+    #preview-content .footer-code {
+        margin-left: auto;
+    }
+#preview-content .block-qty .cell span,
+.preview-content .block-qty .cell span {
+  font-size: 14px !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+    @media print {
+      .hide-on-screen {
+        visibility: visible !important;
+  }
         #preview-content .cell {
-          overflow: visible;
-          /* cho ảnh tràn nhẹ mà không kéo hàng */
+            overflow: visible;
+            /* cho ảnh tràn nhẹ mà không kéo hàng */
         }
 
-        .sign-inspector {
-          transform: scale(2);
-          /* phóng to chữ ký */
-          transform-origin: center center;
+     .sign-inspector {
+            transform: scale(2);
+            /* phóng to chữ ký */
+            transform-origin: center center;
         }
 
         .no-print {
-          display: none !important;
+            display: none !important;
         }
 
         #preview-content,
         #preview-content * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
+
+    
+                
       }
-    </style>
+
+    
+
+
+
+    
+</style>
     <style>
       /* =========================
    PICK MODAL - UI đồng bộ (glass / gradient)
@@ -1642,23 +1683,23 @@ min-height: 30px !important;
     <!-- Layout -->
     <div class="flex transition-all duration-300">
       <!-- Sidebar mount -->
-      <div id="mount-sidebar3"></div>
+      <div id="mount-sidebar4"></div>
 
       <div id="main-content" class="flex-1 transition-all duration-300">
         <div class="text-xl">
           <!-- Toolbar mount -->
-          <div id="mount-toolbar3"></div>
+          <div id="mount-toolbar4"></div>
 
           <!-- Form mount -->
-          <div id="mount-form3"></div>
+          <div id="mount-form4"></div>
 
           <!-- Modals mount -->
-          <div id="mount-modal-history3"></div>
-          <div id="mount-modal-qr3"></div>
-          <div id="mount-modal-preview3"></div>
+          <div id="mount-modal-history4"></div>
+          <div id="mount-modal-qr4"></div>
+          <div id="mount-modal-preview4"></div>
 
           <!-- Signatures mount -->
-          <div id="mount-signatures3"></div>
+          <div id="mount-signatures4"></div>
         </div>
       </div>
     </div>
@@ -1787,7 +1828,7 @@ min-height: 30px !important;
     </script>
     <!-- Loader partials -->
     <script src="./js/i18n.js"></script>
-    <script src="./renderer3.js"></script>
+    <script src="./renderer4.js"></script>
     <script src="./assets/libs/signature_pad.min.js"></script>
     <!-- Your existing JS files -->
 

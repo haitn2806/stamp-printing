@@ -1,6 +1,6 @@
 {
-  "name": "kb-electron",
-  "version": "1.1.2",
+  "name": "inspection-warehouse",
+  "version": "1.4.8",
   "main": "main.js",
   "author": "阿海",
   "type": "commonjs",
@@ -11,9 +11,16 @@
     "predist": "npm run css:build",
     "dist": "electron-builder --win"
   },
+   "publish": [
+      {
+        "provider": "github",
+        "owner": "haitn2806",
+        "repo": "stamp-printing"
+      }
+    ],
   "build": {
     "appId": "com.inspection.warehouse",
-    "productName": "inspection Warehouse",
+    "productName": "Inspection-Warehouse",
     "asar": true,
     "extraResources": [
       {
@@ -23,7 +30,11 @@
       {
         "from": "assets",
         "to": "assets"
-      }
+      },
+       {
+    "from": "./renderer/assets/templates",
+    "to": "./renderer/assets/templates"
+  }
     ],
     "files": [
       "main.js",
@@ -37,7 +48,9 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "./renderer/assets/icon.ico"
+      "icon": "./renderer/assets/icon.ico",
+      "artifactName": "Inspection-Warehouse-Setup-${version}.${ext}"
+ 
     },
     "nsis": {
       "oneClick": true,
@@ -56,6 +69,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.7.3",
     "exceljs": "^4.4.0",
     "jsbarcode": "^3.12.1",
     "mssql": "^12.2.0"

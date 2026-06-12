@@ -9,13 +9,62 @@
   <link rel="stylesheet" href="../renderer/dist/style.css" />
 <link rel="stylesheet" href="./assets/toastify.min.css">
 <script src="./assets/toastify.min.js"></script>
-  <title>Material Warehouse Application - v.1.1.2 阿海</title>
+  <title>Material Warehouse Application - v.1.4.8 阿海</title>
 <style id="qc-print-style" type="text/x-print-css">
   /* ===== MULTI PAGE PRINT FIX ===== */
 .print-root {
     page-break-inside: avoid;
     break-inside: avoid;
 }
+.print-qty-span {
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1;
+}
+.fit-color {
+  width: 100%;                    /* Chiếm toàn bộ chiều rộng */
+  height: 10px;                   /* Cố định chiều cao */
+  display: flex;                  /* Dùng Flexbox để căn giữa */
+  justify-content: center;        /* Căn giữa theo chiều ngang */
+  align-items: center;            /* Căn giữa theo chiều dọc */
+  text-align: center;             /* Căn giữa nội dung text */
+  white-space: normal;            /* Cho phép văn bản xuống dòng */
+  word-wrap: break-word;          /* Bẻ từ khi cần thiết */
+  overflow: hidden;               /* Ẩn phần tràn ra ngoài */
+  font-size: 12px;                /* Mặc định kích thước font */
+  line-height: 1;               /* Đảm bảo line-height hợp lý */
+}
+
+.fit-color span {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+.fit-matname {
+  height: 10px;
+  width: 100%;                  /* Chiếm toàn bộ chiều rộng */
+  display: flex;                /* Dùng Flexbox để căn giữa */
+  justify-content: center;      /* Căn giữa theo chiều ngang */
+  align-items: center;          /* Căn giữa theo chiều dọc */
+  text-align: center;           /* Căn giữa nội dung text */
+  white-space: normal;          /* Cho phép văn bản xuống dòng */
+  word-wrap: break-word;        /* Bẻ từ khi cần thiết */
+  overflow: hidden;             /* Ẩn phần tràn ra ngoài */
+  font-size: 12px;              /* Mặc định kích thước font */
+  line-height: 1;             /* Đảm bảo line-height hợp lý */
+}
+
+.fit-matname span {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+
 
 .page-break {
     page-break-after: always;
@@ -32,6 +81,7 @@
 
     html,
     body {
+     font-family: Tahoma, Arial, sans-serif;
           width: 100%;
     margin: 0;
     padding: 0;
@@ -212,6 +262,7 @@
     /* ====== ĐỊNH NGHĨA CỘT THEO TỪNG HÀNG ====== */
     .preview-content .row-1 {
         grid-template-columns: 32% repeat(7, 1fr);
+         text-align: center;
     }
 
     .preview-content .row-2 {
@@ -498,7 +549,7 @@
 
     /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
     .preview-content .vnbx {
-        font-size: 0.7em;
+        font-size: 0.6em;
         /* nhỏ hơn khoảng 15% */
         font-weight: 400;
         color: #000;
@@ -1020,7 +1071,7 @@
 
     /* Chữ tiếng Việt nhỏ hơn, nhẹ hơn */
     #preview-content .vnbx {
-        font-size: 0.7em;
+        font-size: 0.6em;
         /* nhỏ hơn khoảng 15% */
         font-weight: 400;
         color: #000;

@@ -8,6 +8,29 @@
   GL4: 'KHRU'
 };
 
+function formatReleaseNotes(notes){
+  if(!notes) return "<em>No release notes</em>";
+
+  // electron-updater có thể trả array
+  if(Array.isArray(notes)){
+    return notes.map(n=>`<div>• ${n.note}</div>`).join("");
+  }
+
+  // string markdown thường
+  return String(notes)
+    .replace(/\r?\n/g, "<br>")
+    .replace(/^### (.*)$/gm, "<b>$1</b>")
+    .replace(/^- /gm, "• ");
+}
+
+function ti(key, params = {}) {
+  let s = window.i18n?.t(key) || key;
+  Object.keys(params).forEach(k => {
+    s = s.replaceAll(`{{${k}}}`, params[k]);
+  });
+  return s;
+}
+
 function fmtYMDSlash(v){
   if(!v) return "";
   const d = new Date(v);
@@ -138,6 +161,16 @@ window.dragEvent = window.dragEvent || function dragEvent(e) {
   const el = root.querySelector(selector);
   if (el) el.value = value ?? "";
 }
+
+function setRidTotalQty(value) {
+  const el = document.getElementById('rid-qty-display');
+  if (!el) return;
+
+  const qty = Number(value || 0);
+  el.value = qty.toFixed(2);
+}
+
+window.setRidTotalQty = setRidTotalQty;
 
   function toastError(msg) {
     // Nếu bạn chưa tích hợp Swal trong Electron thì dùng alert cho chắc
@@ -366,6 +399,10 @@ const oldMatCode = document.querySelector('[name="RI_mat_oldcode"]')?.value.trim
         el.innerHTML = `<div><span class="zh">${zh}</span><span class="vn">${other}</span></div>`;
         return;
       }
+        if (key === "defect") {
+        el.innerHTML = `<div><span class="zh">${zh}</span><span class="vnbx">${other}</span></div>`;
+        return;
+      }
 
       el.innerHTML = `<div><span class="zhbs">${zh}</span><span class="vnbs">${other}</span></div>`;
     });
@@ -437,6 +474,12 @@ if (cbFix) {
       toastError("Không tìm thấy dữ liệu");
       return;
     }
+    // ✅ Tổng số lượng hàng kiểm = tổng RID_qty trong bảng det
+const totalRidQty = Array.isArray(data?.sizes)
+  ? data.sizes.reduce((sum, row) => sum + (Number(row.qty) || 0), 0)
+  : 0;
+
+setRidTotalQty(totalRidQty);
   const riDate = convertDateString(data?.inspection?.RI_date) || '';
   const riii = document.getElementById("RI_date");
   if (riii) riii.value = riDate;
@@ -609,12 +652,15 @@ async function loadSidebarInspections(rmType = 'B') {
 
 function renderSidebarTable(data) {
   const tbody = document.getElementById('sidebar-inspection-table');
+  
   if (!tbody) return;
+
+  
 
   if (!data.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="text-center p-2 text-gray-500">
+        <td colspan="9" class="text-center p-2 text-gray-500">
           Không có dữ liệu
         </td>
       </tr>`;
@@ -622,18 +668,49 @@ function renderSidebarTable(data) {
   }
 
   tbody.innerHTML = data.map(row => {
+
+const poQty = Number(row.RM_po_qty || 0);
+const checkedQty = Number(row.total_inspection_qty || 0);
+
+const poQtyText = poQty.toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+const checkedQtyText = checkedQty.toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 const created = fmtYMDSlash(row.created);
     const riDate  = fmtYMDSlash(row.RI_date);
-
+const po = String(row.ERP_po_no || '').toUpperCase();
+const esc = s => String(s).replace(/[&<>"']/g, m => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[m]));
     return `
       <tr class="hover:bg-blue-50 cursor-pointer">
         <td class="px-2 py-1">${created}</td>
         <td class="px-2 py-1 font-medium">${String(row.RI_no || '').toUpperCase()}</td>
-        <td class="px-2 py-1">${String(row.ERP_po_no || '').toUpperCase()}</td>
+<td class="px-2 py-1">
+  <div class="po-cell max-w-[140px] truncate cursor-pointer"
+       data-fullpo="${esc(po)}">
+    ${po}
+  </div>
+</td>
         <td class="px-2 py-1">${row.RI_vend_name || ''}</td>
         <td class="px-2 py-1">${row.RI_mat_code || ''}</td>
         <td class="px-2 py-1">${riDate}</td>
+  <td class="sidebar-poqty-cell">
+      <span class="sidebar-qty-pill sidebar-poqty-pill">
+        ${poQtyText}
+      </span>
+    </td>
 
+    <td class="sidebar-checkedqty-cell">
+      <span class="sidebar-qty-pill sidebar-checkedqty-pill">
+        ${checkedQtyText}
+      </span>
+    </td>
         <!-- ✅ ACTION: DELETE ICON -->
         <td class="px-2 py-1 text-center">
           <button
@@ -670,6 +747,33 @@ const created = fmtYMDSlash(row.created);
       confirmDelete?.(ri);
     });
   });
+
+  const tip = document.getElementById('po-tooltip');
+
+tbody.querySelectorAll('.po-cell').forEach(el => {
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();             // khỏi ảnh hưởng row
+    if (!tip) return;
+
+    const full = el.getAttribute('data-fullpo') || '';
+    if (!full) return;
+
+    // toggle same cell
+    if (tip.style.display === 'block' && tip.dataset.owner === full) {
+      tip.style.display = 'none';
+      tip.dataset.owner = '';
+      return;
+    }
+
+    tip.textContent = full;
+    tip.dataset.owner = full;
+
+    const r = el.getBoundingClientRect();
+    tip.style.left = r.left + 'px';
+    tip.style.top  = (r.bottom + 6) + 'px';
+    tip.style.display = 'block';
+  });
+});
 }
 
 
@@ -731,11 +835,13 @@ modalSetting?.addEventListener('click', e => {
 });
 window.confirmDelete = async function (ri_no) {
   const ok = await confirmBox({
-    title: 'Delete inspection',
-    message: `Do you want to delete RI: ${ri_no}?`,
-    okText: 'Delete',
+    title: ti("confirm.delete.title"),
+    message: ti("confirm.delete.message", { ri: ri_no }),
+    okText: ti("confirm.delete.ok"),
+    cancelText:ti("confirm.delete.cancel"),
     danger: true
   });
+
 
   if (!ok) return;
 
@@ -755,9 +861,10 @@ window.confirmDelete = async function (ri_no) {
 
 window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   const ok = await confirmBox({
-    title: 'Delete QC label',
-    message: `Do you want to delete RID: ${rid_no}?`,
-    okText: 'Delete',
+    title: ti("confirm.delete_rid.title"),
+    message: ti("confirm.delete_rid.message", { rid: rid_no }),
+    okText: ti("confirm.delete_rid.ok"),
+    cancelText: ti("confirm.delete_rid.cancel"),
     danger: true
   });
 
@@ -1888,18 +1995,19 @@ function ensureModalInBody() {
   }
 }
 
-  window.logout =  async function logout() {
+window.logout = async function logout() {
   const ok = await confirmBox({
-    title: 'Logout',
-    message: 'Do you want to logout?',
-    okText: 'Logout',
+    title: ti("confirm.logout.title"),
+    message: ti("confirm.logout.message"),
+    okText: ti("confirm.logout.ok"),
+    cancelText: ti("confirm.logout.cancel"),
     danger: false
   });
 
   if (!ok) return;
 
   window.kbAPI.logout();
-}
+};
 
 async function applyLanguage(lang) {
   if (!window.i18n) return;
@@ -2203,7 +2311,17 @@ function bindFailtypeUI(){
   });
 }
 
-
+function showUpdateToast(){
+  document.getElementById("update-toast")?.classList.remove("hidden");
+}
+function hideUpdateToast(){
+  document.getElementById("update-toast")?.classList.add("hidden");
+}
+function setUpdateProgress(p){
+  const v = Math.max(0, Math.min(100, Number(p)||0));
+  document.getElementById("ut-bar-fill").style.width = v + "%";
+  document.getElementById("ut-percent").textContent = v + "%";
+}
 window.addEventListener("app:ready", async() => {
   renderUserFactory();
  bindQcHotkeysModal(); 
@@ -2341,6 +2459,97 @@ document.querySelectorAll('.layout-btn').forEach(btn=>{
 const cur = localStorage.getItem('app_layout') || 'leather';
 document.querySelector(`[data-layout="${cur}"]`)?.classList.add('btn-primary');
 
+  // ===== UPDATE MODAL =====
+// ===== UPDATE MODAL =====
+window.openUpdateModal = function(info) {
+  if (!info) return;
 
+  const modal = document.getElementById("update-modal");
+  if (!modal) return;
+
+  document.getElementById("update-desc").textContent =
+    `New version ${info.version}`;
+
+  const notesEl = document.getElementById("update-notes");
+  if (notesEl) {
+  notesEl.innerHTML = formatReleaseNotes(info.notes);
+  }
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+
+  const btnUpdate = document.getElementById("btn-update-now");
+  btnUpdate.disabled = false;
+  btnUpdate.classList.remove("opacity-60","pointer-events-none");
+
+  btnUpdate.onclick = () => {
+    btnUpdate.disabled = true;
+    btnUpdate.classList.add("opacity-60","pointer-events-none");
+    window.kbAPI.doUpdate();
+  };
+
+  document.getElementById("btn-update-skip").onclick = () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  };
+};
+
+
+window.kbAPI.onUpdateEvent?.((e)=>{
+   if(e.type === "available"){
+    openUpdateModal({
+      version: e.version,
+      notes: e.notes
+    });
+  }
+  if(e.type==="start"){
+    showUpdateToast();
+    setUpdateProgress(0);
+  }
+  if(e.type==="progress"){
+    setUpdateProgress(e.percent);
+  }
+  if(e.type==="done"){
+    setUpdateProgress(100);
+    setTimeout(hideUpdateToast, 800);
+  }
+  if(e.type==="error"){
+    hideUpdateToast();
+    alert(e.message);
+  }
+});
+
+
+
+
+document.getElementById("btn-check-update")
+  ?.addEventListener("click", async () => {
+    try {
+      showLoading("Checking for updates...", 10);
+
+    const btn = document.getElementById("btn-check-update");
+btn.disabled = true;
+btn.classList.add("opacity-60","pointer-events-none");
+
+const info = await window.kbAPI.checkUpdate();
+
+      hideLoading();
+      btn.disabled = false;
+btn.classList.remove("opacity-60","pointer-events-none");
+
+      if (!info) {
+        showToastSuccess?.(ti("update_new"));
+        return;
+      }
+
+    } catch (e) {
+      hideLoading();
+      showToastError?.("Check update failed");
+      btn.disabled = false;
+btn.classList.remove("opacity-60","pointer-events-none");
+    }
+  });
+
+  
 
 })();

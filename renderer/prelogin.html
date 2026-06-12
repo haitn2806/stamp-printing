@@ -1,4 +1,4 @@
- <title>Application Material Warehouse</title>
+ <title>Application Inspection Warehouse</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
    .card {
@@ -115,7 +115,7 @@ label input:checked + span {
 
       <!-- Header giống login -->
       <div class="rounded-t-2xl bg-gradient-to-r from-sky-600 to-indigo-600 px-8 py-6 text-white">
-        <h1 class="text-xl font-semibold tracking-wide" data-i18n="app.title">Material Warehouse System</h1>
+        <h1 class="text-xl font-semibold tracking-wide" data-i18n="app.title">Inspection Warehouse System</h1>
         <p class="mt-1 text-sm text-white/80"data-i18n="prelogin.subtitle">Select language & factory</p>
       </div>
 
@@ -167,7 +167,7 @@ label input:checked + span {
 
       <!-- Footer -->
       <div class="rounded-b-2xl border-t border-slate-200 px-8 py-4 text-center text-xs text-slate-500">
-        © 2026 Material Warehouse Application
+        © 2026 Inspection Warehouse Application
       </div>
     </div>
   </div>
@@ -176,28 +176,48 @@ label input:checked + span {
 <script>
 async function applyLang(lang) {
   await window.i18n.loadLang(lang);
-  document.querySelectorAll('[data-i18n]').forEach(el=>{
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = window.i18n.t(el.dataset.i18n);
   });
+
   localStorage.setItem('app_lang', lang);
 }
 
+// init khi mở màn
 document.addEventListener('DOMContentLoaded', async () => {
-  const savedLang = localStorage.getItem('app_lang') || 'en';
-  document.querySelector(`input[name="lang"][value="${savedLang}"]`)?.click();
-  await applyLang(savedLang);
+  const saved = localStorage.getItem('app_lang') || 'en';
+  const radio = document.querySelector(`input[name="lang"][value="${saved}"]`);
+  if (radio) radio.checked = true;
+  await applyLang(saved);
 });
 
-document.querySelectorAll('input[name="lang"]').forEach(r=>{
-  r.addEventListener('change', e=>applyLang(e.target.value));
+// change language ngay khi click radio
+document.querySelectorAll('input[name="lang"]').forEach(r => {
+  r.addEventListener('change', e => {
+    applyLang(e.target.value);
+  });
 });
 
+// continue
 document.getElementById('btn-continue').onclick = () => {
-  const lang = document.querySelector('input[name="lang"]:checked')?.value;
-  const factory = document.querySelector('input[name="factory"]:checked')?.value;
-  if (!factory) return alert('Select factory');
-  kbAPI.preloginDone({ lang, factory });
+  const langVal = document.querySelector('input[name="lang"]:checked')?.value || 'en';
+  const factoryVal = document.querySelector('input[name="factory"]:checked')?.value || 'GL1';
+  kbAPI.preloginDone({ lang: langVal, factory: factoryVal });
 };
 </script>
 
+<script>
+const lang = document.querySelector('input[name="lang"]:checked');
+const factory = document.querySelector('input[name="factory"]:checked');
 
+document.getElementById('btn-continue').onclick = () => {
+  const langVal = document.querySelector('input[name="lang"]:checked')?.value || 'en';
+  const factoryVal = document.querySelector('input[name="factory"]:checked')?.value || 'GL1';
+
+  localStorage.setItem('app_lang', langVal);
+  localStorage.setItem('factory', factoryVal);
+
+  kbAPI.preloginDone({ lang: langVal, factory: factoryVal });
+};
+</script>

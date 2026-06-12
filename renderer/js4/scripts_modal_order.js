@@ -11,6 +11,100 @@ function beginPrintLoading() {
   __PRINT_LOADING_DEPTH__++;
   showFormLoading();          // dùng overlay hiện có
 }
+
+// function getCurrentSizeRuns() {
+//   return window.__CURRENT_SIZE_RUNS__ || [];
+// }
+function replaceFormControlsForPrint(clone, sourceRoot = document) {
+  if (!clone) return;
+
+  // input
+  clone.querySelectorAll("input").forEach((input) => {
+    const span = document.createElement("span");
+
+    const original = input.id
+      ? sourceRoot.querySelector(`#${CSS.escape(input.id)}`)
+      : null;
+
+    span.textContent = original?.value || input.value || "—";
+    span.style.display = "inline-block";
+    span.style.width = "100%";
+    span.style.textAlign = "center";
+
+    input.replaceWith(span);
+  });
+
+  // select
+  clone.querySelectorAll("select").forEach((sel) => {
+    const span = document.createElement("span");
+
+    const original = sel.id
+      ? sourceRoot.querySelector(`#${CSS.escape(sel.id)}`)
+      : null;
+
+    let text = "—";
+
+    if (original && original.tagName === "SELECT") {
+      const idx = original.selectedIndex;
+      text =
+        idx >= 0 && original.options[idx]
+          ? original.options[idx].textContent
+          : (original.value || "—");
+    } else {
+      const idx = sel.selectedIndex;
+      text =
+        idx >= 0 && sel.options[idx]
+          ? sel.options[idx].textContent
+          : (sel.value || "—");
+    }
+
+    span.textContent = text || "—";
+    span.style.display = "inline-block";
+    span.style.width = "100%";
+    span.style.textAlign = "center";
+
+    sel.replaceWith(span);
+  });
+}
+function renderQtySizes(sizeRuns = [], opts = {}) {
+  const { fillQty = true, defaultQty = "" } = opts;
+
+  const allSizes = (window.__CURRENT_SIZE_RUNS__ || [])
+    .map(x => String(x.size || "").trim())
+    .filter(Boolean);
+
+  for (let i = 1; i <= 7; i++) {
+    const sizeEl = document.getElementById(`RID_size${i}`);
+    const qtyEl  = document.getElementById(`RID_qty${i}`);
+    const item   = sizeRuns[i - 1] || {};
+
+    if (sizeEl) {
+      if (sizeEl.tagName === "SELECT") {
+        const selectedSize = item.size ? String(item.size).trim() : "";
+        sizeEl.innerHTML =
+          `<option value="">--</option>` +
+          allSizes.map(sz =>
+            `<option value="${sz}" ${sz === selectedSize ? "selected" : ""}>${sz}#</option>`
+          ).join("");
+      } else {
+        sizeEl.value = item.size ? `${item.size}#` : "";
+      }
+    }
+
+    if (qtyEl) {
+      qtyEl.value = fillQty ? (item.qty || "") : defaultQty;
+    }
+  }
+}
+function ensureRankBeforePrint() {
+  const v = document.getElementById("RID_rankcolor")?.value?.trim();
+  // if (!v) {
+  //   showToastWarning(ti("not_rank"));
+  //   return false;
+  // }
+  return true;
+}
+
 function ti(key, params = {}) {
   let s = window.i18n?.t(key) || key;
   Object.keys(params).forEach(k => {
@@ -46,34 +140,70 @@ function endPrintLoading() {
 };
 
 const QC_FIT_SCRIPT = `
-  function fitOne(el, min=6){
-    if(!el) return;
-    const cell = el.closest('.cell') || el.parentElement;
-    if(!cell) return;
+  window.__QC_FIT_DONE__ = false;
 
-    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 14;
+  function fitOne(el, min = 8) {
+    if (!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if (!cell) return;
+
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 12;
     const maxH = cell.getBoundingClientRect().height;
     const maxW = cell.getBoundingClientRect().width;
-    if(!maxH || !maxW) return;
+    if (!maxH || !maxW) return;
 
     const oldAlign = cell.style.alignItems;
-    cell.style.alignItems = 'flex-start';
+    cell.style.alignItems = 'center';
 
-    el.style.whiteSpace = 'nowrap';
+    el.style.whiteSpace = 'normal';
     el.style.display = 'block';
     el.style.minWidth = '0';
     el.style.overflow = 'hidden';
 
-    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min){
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
       fontSize -= 0.5;
       el.style.fontSize = fontSize + 'px';
     }
+
     cell.style.alignItems = oldAlign || '';
   }
 
-  function runFit(){
-    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 12));
-    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 6));
+  function fitQtySpan(el, min = 6, max = 14) {
+    if (!el) return;
+
+    const cell = el.closest('.cell');
+    if (!cell) return;
+
+    el.style.display = 'inline-block';
+    el.style.width = '100%';
+    el.style.maxWidth = '100%';
+    el.style.textAlign = 'center';
+    el.style.whiteSpace = 'nowrap';
+    el.style.overflow = 'hidden';
+    el.style.lineHeight = '1';
+    el.style.fontWeight = '700';
+
+    let fontSize = max;
+    el.style.fontSize = fontSize + 'px';
+
+    const maxW = cell.getBoundingClientRect().width - 2;
+    const maxH = cell.getBoundingClientRect().height - 2;
+
+    if (!maxW || !maxH) return;
+
+    while ((el.scrollWidth > maxW || el.scrollHeight > maxH) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
+    }
+  }
+
+  function runFit() {
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+
+    document
+      .querySelectorAll('.block-qty .cell:not(.r1):not(.qty-label) span')
+      .forEach(el => fitQtySpan(el, 6, 14));
   }
 
   const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
@@ -83,6 +213,10 @@ const QC_FIT_SCRIPT = `
   setTimeout(runFit, 80);
   setTimeout(runFit, 200);
 `;
+
+
+
+
 
 function formatRankColor(rank, color, failtype) {
   const r = (rank || "").toUpperCase();
@@ -137,7 +271,7 @@ async function silentPrintCurrentRID() {
   let currentRINo = null;
   let hasUnsavedRID = false; // nếu bạn có dùng
   let isCreatingRID = false; // bạn có dùng ở openPreviewModal
-  window.__FAST_MODE__ = false; // bạn có dùng trong saveRID
+  window.__FAST_MODE__ = false; // bạn có dùng trong saveRidSole
 
 function syncRidIndexes() {
   const buttons = Array.from(
@@ -157,6 +291,8 @@ function syncRidIndexes() {
     }
   });
 }
+
+
 
 
   function toYMD(v) {
@@ -199,19 +335,16 @@ function buildPrintableHtmlSnapshot() {
   if (!source) return null;
 
   const clone = source.cloneNode(true);
+    // ✅ input -> span (lấy đúng current value)
+replaceFormControlsForPrint(clone, source);
+
+  // (optional) remove ids nếu muốn sạch
   clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
-  // ✅ input -> span (lấy đúng value hiện tại)
-  clone.querySelectorAll("input").forEach((input) => {
-    const span = document.createElement("span");
-    span.textContent = input.value || "—";
-    span.style.display = "inline-block";
-    span.style.width = "100%";
-    span.style.textAlign = "center";
-    input.replaceWith(span);
-  });
 
-  const css = document.getElementById('qc-print-style2')?.textContent || '';
+
+
+  const css = document.getElementById('qc-print-style4')?.textContent || '';
 
   return `<!DOCTYPE html>
 <html>
@@ -277,10 +410,13 @@ function getSavedPrinterName() {
   }
 
 function lockAllInputs(lock) {
-  const inputs = document.querySelectorAll("#preview-content input:not(#RID_LabDate)");
-  inputs.forEach((i) => {
-    i.disabled = lock;
-    i.classList.toggle("input-disabled", !!lock);
+  const fields = document.querySelectorAll(
+    "#preview-content input:not(#RID_LabDate), #preview-content select"
+  );
+
+  fields.forEach((el) => {
+    el.disabled = lock;
+    el.classList.toggle("input-disabled", !!lock);
   });
 }
 
@@ -433,10 +569,10 @@ if (footer) {
 
   function updateTotalQty() {
     let total = 0;
-    for (let i = 1; i <= 14; i++) {
-      const v = parseFloat(document.getElementById(`RID_qty${i}`)?.value || 0);
-      if (!isNaN(v)) total += v;
-    }
+for (let i = 1; i <= 7; i++) {
+  const v = parseFloat(document.getElementById(`RID_qty${i}`)?.value || 0);
+  if (!isNaN(v)) total += v;
+}
     const elTotal = document.getElementById("preview-total");
     if (elTotal) elTotal.textContent = total.toFixed(1);
 
@@ -454,6 +590,10 @@ if (footer) {
       showToastWarning("Chưa có RI_no, vui lòng nhập mã RI.");
       return;
     }
+
+
+
+
     // Chạy hàm mở modal nếu có giá trị RI_no hợp lệ.
     const matCode = document.getElementById("mat_codeone")?.value?.trim() || "";
 
@@ -519,6 +659,25 @@ if (footer) {
     }
 
     currentRINo = riNo;
+    // ===== LOAD SIZE RUN ONCE =====
+try {
+
+  const sizeRes = await window.kbAPI.getSizeRunByRI({
+    ri_no: riNo,
+    remark: 1
+  });
+
+  if (sizeRes?.success) {
+
+    window.__CURRENT_SIZE_RUNS__ = sizeRes.sizes || [];
+
+    renderQtySizes(window.__CURRENT_SIZE_RUNS__);
+
+  }
+
+} catch (err) {
+  console.warn("Load size run failed:", err);
+}
 
     try {
       // reset inputs
@@ -651,9 +810,14 @@ if (footer) {
   }
   window.closePreviewModal = closePreviewModal;
 
-  // ===== Electron: saveRID (thay fetch generate + save + reload detail) =====
-  async function saveRID(event) {
+  // ===== Electron: saveRidSole (thay fetch generate + save + reload detail) =====
+  async function saveRidSole(event) {
     const autoPrint = document.getElementById("mode-print")?.checked;
+
+
+    const rankColorVal =
+  document.getElementById("RID_rankcolor")?.value?.trim() || "";
+
 
     // chặn khi đang loading
     if (
@@ -751,47 +915,104 @@ if (rid_rank && !rid_color && rid_rank !== "R") {
   const activeBtn = document.querySelector("#rid-items button.rid-active");
 const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
 
-      const records = [];
 
-      for (let i = 1; i <= 14; i++) {
-        const raw = document.getElementById(`RID_qty${i}`)?.value;
-        const val = parseFloat(raw);
 
-        // ❌ bỏ qua nếu rỗng, NaN hoặc <= 0
-        if (!val || isNaN(val) || val <= 0) continue;
+    const records = [];
 
-        records.push({
-          RI_no: riNo,
-          RID_no: finalRID,
-          RID_seqno: i,
-          RID_qty: val,
-          RID_date: new Date().toISOString(),
-          RID_rank: rid_rank,
-          RID_color: rid_color,
-            RID_Failtype: rid_failtype,   // NEW
-         RID_LabDate: finalLabDate || null,
-          RID_remark: String(remarkIndex  || ""),
-        });
-      }
+for (let i = 1; i <= 7; i++) {
+  const qtyEl = document.getElementById(`RID_qty${i}`);
+  const sizeEl = document.getElementById(`RID_size${i}`);
+
+  const val = parseFloat(qtyEl?.value || "");
+  const size = String(sizeEl?.value || "").replace("#", "").trim();
+
+  // bỏ qua nếu chưa chọn size hoặc qty rỗng
+  if (!size || isNaN(val)) continue;
+
+  records.push({
+    RI_no: riNo,
+    RID_no: finalRID,
+    RID_seqno: i,
+    RID_qty: val,
+    RID_date: new Date().toISOString(),
+    RID_rank: size,
+    RID_color: rid_color,
+    RID_Failtype: rid_failtype,
+    RID_LabDate: finalLabDate || null,
+    RID_remark: String(remarkIndex || ""),
+  });
+}
+      console.log(records,'records')
 
       showFormLoading();
 
-      // ===== Electron: saveRID =====
-      if (!window.kbAPI?.saveRid) throw new Error("kbAPI.saveRid chưa có");
-      const result = await window.kbAPI.saveRid({ records });
+      // ===== Electron: saveRidSole =====
+      if (!window.kbAPI?.saveRidSole) throw new Error("kbAPI.saveRidSole chưa có");
+      const result = await window.kbAPI.saveRidSole({ records });
 
       if (!result?.success) {
         showToastError("Lưu thất bại");
         return;
       }
+try {
+  const detail = await window.kbAPI.getInspectionDetail(riNo);
 
+  const sizes = Array.isArray(detail?.sizes) ? detail.sizes : [];
+  const inspectMap = new Map(
+    sizes.map(s => [String(s.size).trim(), Number(s.qty || 0)])
+  );
 
+  const poStr = String(detail?.inspection?.ERP_po_no || "").trim();
+  const matCode = String(detail?.inspection?.RI_mat_code || "").trim();
+
+  // ✅ lấy lại purchase size run chuẩn từ backend
+  const purchaseRes = await window.kbAPI.getPurchaseSizeRun({
+    po_list: poStr,
+    mat_code: matCode
+  });
+
+  const purchaseRuns = Array.isArray(purchaseRes?.sizes) ? purchaseRes.sizes : [];
+  const purchaseMap = new Map(
+    purchaseRuns.map(x => [String(x.size).trim(), Number(x.purchase_qty || 0)])
+  );
+
+  const allSizes = purchaseRuns
+    .map(x => String(x.size).trim())
+    .sort((a, b) => Number(a) - Number(b));
+
+  const merged = allSizes.map(size => ({
+    size,
+    purchase_qty: purchaseMap.get(size) || 0,
+    inspect_qty: inspectMap.get(size) || 0
+  }));
+
+  const inspectTotal = sizes.reduce(
+    (sum, s) => sum + Number(s.qty || 0),
+    0
+  );
+
+  const supplierTotal = Number(
+    detail?.inspection?.RM_po_qty ??
+    document.getElementById("po-purchase-qty")?.value ??
+    document.getElementById("po-purchase-qty-display")?.value ??
+    0
+  );
+
+  window.__CURRENT_SIZE_RUNS__ = merged;
+  window.renderSizeRuns?.(merged, {
+    total_purchase: supplierTotal,
+    total_inspect: inspectTotal
+  });
+} catch (e) {
+  console.warn("Reload inspection sizes failed:", e);
+}
       if (result?.totals) {
         Object.entries(result.totals).forEach(([k, v]) => {
           const input = document.querySelector(`[name="${k}"]`);
           if (input) input.value = Number(v).toFixed(2);
         });
       }
+      
 
       hasUnsavedRID = false;
       const btn = document.getElementById(`rid-btn-${finalRID}`);
@@ -810,14 +1031,29 @@ if (btn) delete btn.dataset.draft;
             window.updateTotalsAndPercent?.();
             window.calcWeightedTotal?.();
 
-            // nếu bạn muốn fill toàn bộ input name=...
-            Object.keys(detail.inspection).forEach((key) => {
-              const input = document.querySelector(`[name="${key}"]`);
-              if (!input) return;
-              let v = detail.inspection[key];
-              if (input.type === "date" && v) v = String(v).slice(0, 10);
-              input.value = v ?? "";
-            });
+Object.keys(detail.inspection).forEach((key) => {
+  const input = document.querySelector(`[name="${key}"]`);
+  if (!input) return;
+
+  let v = detail.inspection[key];
+
+  // Chuyển đổi ngày đúng định dạng "yyyy-MM-dd"
+  if (input.type === "date" && v) {
+    if (typeof v === "string") {
+      const date = new Date(v);
+      if (!isNaN(date.getTime())) {
+        v = date.toISOString().slice(0, 10); // Đảm bảo định dạng yyyy-MM-dd
+      } else {
+        v = ""; // Nếu ngày không hợp lệ, để trống
+      }
+    } else if (v instanceof Date) {
+      v = v.toISOString().slice(0, 10); // Chuyển đổi từ đối tượng Date thành chuỗi yyyy-MM-dd
+    }
+  }
+
+  input.value = v ?? "";
+});
+
 
             document.querySelectorAll('input[type="number"]').forEach((inp) => {
               if (!inp.value) return;
@@ -858,12 +1094,12 @@ const shouldFastCreate = isFast && hasQty && isActiveLastRID();
       }
 
 if (autoPrint) {
+  if (!ensureRankBeforePrint()) return;
   try {
     if (isSilentPrint()) await silentPrintCurrentRID();
     else await window.printCurrentLabelDirect?.();
   } catch (e) {
-    console.error("Print failed:", e);
-    showToastError("In thất bại (đã lưu thành công)");
+    showToastError("In thất bại (đã lưu)");
   }
 }
 // ===== FAST MODE =====
@@ -892,7 +1128,7 @@ window.applyLanguage?.(localStorage.getItem("app_lang") || "en");
     }
   }
 
-  window.saveRID = saveRID;
+  window.saveRidSole = saveRidSole;
 
   // =========================
   // 1) Helper build printable html
@@ -901,7 +1137,6 @@ function clonePreviewToPrintable(btn, i, isLast = false) {
   const source = document.getElementById("preview-content");
   if (!source) return "";
   const clone = source.cloneNode(true);
-clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // ✅ thêm
   // ❌ XÓA TOÀN BỘ ID (CỰC KỲ QUAN TRỌNG)
 
 
@@ -914,15 +1149,8 @@ if (idxSpan) {
     : idx;
 }
 
-  // input -> span
-  clone.querySelectorAll("input").forEach((input) => {
-    const span = document.createElement("span");
-    span.textContent = input.value || "—";
-    span.style.display = "inline-block";
-    span.style.width = "100%";
-    span.style.textAlign = "center";
-    input.replaceWith(span);
-  });
+replaceFormControlsForPrint(clone, source);
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
 
   return `
   <div class="print-root">
@@ -945,7 +1173,7 @@ if (idxSpan) {
 </head>
 <body>
 ${bodyHtml || ""}
-${extraScript ? `<script>${extraScript}<\/script>` : ""}
+${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
 </body>
 </html>`;
   }
@@ -997,6 +1225,7 @@ async function printAllLabels() {
     cancelText: ti("confirm.print_all.cancel"),
     danger: false,
   });
+
     if (!ok) return;
 
     const riNo = document.querySelector('[name="RI_no"]')?.value?.trim() || "";
@@ -1010,7 +1239,7 @@ async function printAllLabels() {
       return Swal.fire("⚠️ Chưa có tem RID nào để in!", "", "warning");
 
     const qcStyle =
-      document.getElementById("qc-print-style2")?.textContent || "";
+      document.getElementById("qc-print-style4")?.textContent || "";
 
     const nextFrame = (n = 1) =>
       new Promise((res) => {
@@ -1040,7 +1269,7 @@ async function printAllLabels() {
       title: "In tất cả tem QC",
       qcStyle,
       bodyHtml: pagesHtml,
-       extraScript: QC_FIT_SCRIPT, // ✅
+ extraScript: QC_FIT_SCRIPT,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print All" });
@@ -1062,19 +1291,56 @@ async function printAllLabels() {
     if (!source) return;
 
     const qcStyle =
-      document.getElementById("qc-print-style2")?.textContent || "";
+      document.getElementById("qc-print-style4")?.textContent || "";
     const clone = source.cloneNode(true);
-    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+replaceFormControlsForPrint(clone, source);
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
 
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.parentNode.replaceChild(span, input);
-    });
+const extraScript = `
+  // Hàm xử lý thu nhỏ chữ cho các phần tử
+  function fitOne(el, min = 8) {
+    if (!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if (!cell) return;
 
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const maxH = cell.getBoundingClientRect().height;
+    const maxW = cell.getBoundingClientRect().width;
+    if (!maxH || !maxW) return;
+
+    const oldAlign = cell.style.alignItems;
+    cell.style.alignItems = 'center';  // Căn giữa dọc
+
+    // Đảm bảo cho phép xuống dòng
+    el.style.whiteSpace = 'normal';
+    el.style.display = 'block';
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+
+    // Giảm font-size cho đến khi vừa vặn
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
+    }
+
+    cell.style.alignItems = oldAlign || '';
+  }
+
+  function runFit() {
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+  }
+
+  // Chạy script sớm và vài lần để đảm bảo kết quả chính xác khi in
+  const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
+  document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('beforeprint', runFit);
+  setTimeout(runFit, 0);
+  setTimeout(runFit, 80);
+  setTimeout(runFit, 200);
+`;
+
+document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`);
 
 
 
@@ -1082,7 +1348,7 @@ async function printAllLabels() {
       title: "In tem QC",
       qcStyle,
       bodyHtml: `<div id="preview-content">${clone.innerHTML}</div>`,
-       extraScript: QC_FIT_SCRIPT, // ✅
+      extraScript,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print Current" });
@@ -1135,7 +1401,10 @@ if (hasDraftRID()) {
 
     isCreatingRID = true;
     window.__CREATING_NEW_RID__ = true;
-
+    renderQtySizes(window.__CURRENT_SIZE_RUNS__ || [], {
+  fillQty: false,
+  defaultQty: null
+});
     const btn = event?.target || document.getElementById("btn-create-rid");
     if (btn && !btn.dataset._oldHtml) {
   btn.dataset._oldHtml = btn.innerHTML;
@@ -1327,7 +1596,7 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       .sort((a, b) => a - b);
 
     const qcStyle =
-      document.getElementById("qc-print-style2")?.textContent || "";
+      document.getElementById("qc-print-style4")?.textContent || "";
     let pagesHtml = "";
 
     const nextFrame = (n = 1) =>
@@ -1359,7 +1628,7 @@ pagesHtml += clonePreviewToPrintable(
       title: "In tem QC đã chọn",
       qcStyle,
       bodyHtml: pagesHtml,
-     extraScript: QC_FIT_SCRIPT, // ✅
+ extraScript: QC_FIT_SCRIPT,
     });
 
     await printHtmlViaElectron(html, { title: "QC - Print Picked" });
@@ -1432,10 +1701,13 @@ async function loadRIDDetail(ridNo, riNo) {
 
   // lấy RI_date ngay từ đầu (fallback)
   const riDate = toYMD(document.querySelector('[name="RI_date"]')?.value);
-
+const activeBtn = document.querySelector("#rid-items button.rid-active");
+const remarkIndex =
+  activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
   try {
     // fetch trước
     const data = await window.kbAPI.getRidDetail({ rid_no: ridNo, ri_no: riNo });
+
 
     // disable tabs while loading
     document.querySelectorAll("#rid-items button").forEach((btn) => {
@@ -1445,10 +1717,19 @@ async function loadRIDDetail(ridNo, riNo) {
     lockAllInputs(true);
 
     // reset qty + rank
-    for (let i = 1; i <= 14; i++) {
-      const input = document.getElementById(`RID_qty${i}`);
-      if (input) input.value = "";
+for (let i = 1; i <= 14; i++) {
+  const qtyInput = document.getElementById(`RID_qty${i}`);
+  if (qtyInput) qtyInput.value = "";
+
+  const sizeEl = document.getElementById(`RID_size${i}`);
+  if (sizeEl) {
+    if (sizeEl.tagName === "SELECT") {
+      sizeEl.value = "";
+    } else {
+      sizeEl.value = "";
     }
+  }
+}
     const rankEl = document.getElementById("RID_rankcolor");
     if (rankEl) rankEl.value = "";
 
@@ -1477,15 +1758,52 @@ async function loadRIDDetail(ridNo, riNo) {
 if (!activeBtn?.dataset?.draft) {
   hasUnsavedRID = false;
 }
-      return;
-    }
+for (let i = 1; i <= 14; i++) {
+  const qtyInput = document.getElementById(`RID_qty${i}`);
+  if (qtyInput) qtyInput.value = "";
+
+  const sizeEl = document.getElementById(`RID_size${i}`);
+  if (sizeEl) sizeEl.value = "";
+}
+  renderQtySizes(window.__CURRENT_SIZE_RUNS__ || [], {
+  fillQty: false,
+  defaultQty: null
+});
+
+  return;    }
+
 
     // fill records
-    data.records.forEach((r) => {
-      const seq = parseInt(r.RID_seqno, 10);
-      const input = document.getElementById(`RID_qty${seq}`);
-      if (input) input.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
-    });
+data.records.forEach((r) => {
+  const seq = parseInt(r.RID_seqno, 10);
+
+  const qtyInput = document.getElementById(`RID_qty${seq}`);
+  if (qtyInput) {
+    qtyInput.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
+  }
+
+  const sizeEl = document.getElementById(`RID_size${seq}`);
+  const savedSize = String(r.RID_rank || "").trim();
+
+  if (sizeEl) {
+    if (sizeEl.tagName === "SELECT") {
+      // nếu option chưa có thì add tạm
+      if (
+        savedSize &&
+        !Array.from(sizeEl.options).some(opt => String(opt.value) === savedSize)
+      ) {
+        const opt = document.createElement("option");
+        opt.value = savedSize;
+        opt.textContent = `${savedSize}#`;
+        sizeEl.appendChild(opt);
+      }
+
+      sizeEl.value = savedSize;
+    } else {
+      sizeEl.value = savedSize ? `${savedSize} #` : "";
+    }
+  }
+});
 
     updateTotalQty?.();
 
@@ -1526,7 +1844,50 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
   window.loadRIDDetail = loadRIDDetail;
 
   // =========================
+  // Sync inspector sign into preview
+  // =========================
 
+  // =========================
+  // Enter / '-' nav inside RID qty inputs
+  // =========================
+  document.addEventListener("DOMContentLoaded", function () {
+    const qtyInputs = Array.from(
+      document.querySelectorAll('#preview-content input[id^="RID_qty"]')
+    );
+    const dateInput = document.getElementById("RID_rankcolor");
+    const inputEnd = document.getElementById("RID_qty14");
+
+    qtyInputs.forEach((el, idx) => {
+      el.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== "-") return;
+        e.preventDefault();
+
+        const curVal = (el.value || "").trim();
+
+        if (e.key === "-") {
+          const prevIdx = (idx - 1 + qtyInputs.length) % qtyInputs.length;
+          qtyInputs[prevIdx].focus();
+          qtyInputs[prevIdx].select?.();
+          return;
+        }
+
+        // Enter
+        if (el === inputEnd || curVal === "") {
+          dateInput?.focus();
+          dateInput?.select?.();
+          return;
+        }
+
+        const dir = e.shiftKey ? -1 : 1;
+        const next = (idx + dir + qtyInputs.length) % qtyInputs.length;
+        qtyInputs[next].focus();
+        qtyInputs[next].select?.();
+      });
+    });
+  });
+
+  // =========================
+  // DELETE RID (Electron IPC)
   // kbAPI.deleteRid({ RI_no, RID_no }) -> { success, message, totals }
   // =========================
   async function deleteCurrentRID() {
@@ -1658,7 +2019,7 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
 </head>
 <body>
 ${body || ""}
-${extraScript ? `<script>${extraScript}<\/script>` : ""}
+${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
 </body>
 </html>`;
   }
@@ -1671,18 +2032,55 @@ ${extraScript ? `<script>${extraScript}<\/script>` : ""}
 const deviceName = silent ? getSavedPrinterName() : null;
 
     const clone = source.cloneNode(true);
-    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
+replaceFormControlsForPrint(clone, source);
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
 
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.parentNode.replaceChild(span, input);
-    });
+    const css = document.getElementById("qc-print-style4")?.textContent || "";
+const extraScript = `
+  // Hàm xử lý thu nhỏ chữ cho các phần tử
+  function fitOne(el, min = 8) {
+    if (!el) return;
+    const cell = el.closest('.cell') || el.parentElement;
+    if (!cell) return;
 
-    const css = document.getElementById("qc-print-style2")?.textContent || "";
+    let fontSize = parseFloat(getComputedStyle(el).fontSize) || 12;
+    const maxH = cell.getBoundingClientRect().height;
+    const maxW = cell.getBoundingClientRect().width;
+    if (!maxH || !maxW) return;
+
+    const oldAlign = cell.style.alignItems;
+    cell.style.alignItems = 'center';  // Căn giữa dọc
+
+    // Đảm bảo cho phép xuống dòng
+    el.style.whiteSpace = 'normal';
+    el.style.display = 'block';
+    el.style.minWidth = '0';
+    el.style.overflow = 'hidden';
+
+    // Giảm font-size cho đến khi vừa vặn
+    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
+    }
+
+    cell.style.alignItems = oldAlign || '';
+  }
+
+  function runFit() {
+    document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
+    document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+  }
+
+  // Chạy script sớm và vài lần để đảm bảo kết quả chính xác khi in
+  const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
+  document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('beforeprint', runFit);
+  setTimeout(runFit, 0);
+  setTimeout(runFit, 80);
+  setTimeout(runFit, 200);
+`;
+
+document.head.insertAdjacentHTML('beforeend', `<script>${extraScript}</script>`);
 
 
 
@@ -1690,7 +2088,7 @@ const deviceName = silent ? getSavedPrinterName() : null;
       title: "In tem QC",
       css,
       body: `<div id="preview-content">${clone.innerHTML}</div>`,
-     extraScript: QC_FIT_SCRIPT, // ✅
+      extraScript,
     });
 
     if (!window.kbAPI?.printHtml) {
@@ -1720,7 +2118,7 @@ await window.kbAPI.printHtml({
     setTimeout(enableEditMode, 300);
   }
   window.printCurrentLabelDirect = printCurrentLabelDirect;
-  function openPickModal() {
+ function openPickModal() {
     document.getElementById("pick-input").value = "";
     document.getElementById("pick-modal").classList.remove("hidden");
   }
@@ -1728,6 +2126,7 @@ await window.kbAPI.printHtml({
   function closePickModal() {
     document.getElementById("pick-modal").classList.add("hidden");
   }
+
 
 window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   const ok = await confirmBox({
@@ -1739,6 +2138,7 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   });
 
   if (!ok) return;
+
     try {
       if (!window.kbAPI?.deleteRid) {
         throw new Error("deleteRid API not found");
@@ -1958,8 +2358,8 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
 
     console.log("[QC] btn-save-rid clicked");
 
-    if (typeof window.saveRID !== "function") {
-      console.error("❌ saveRID chưa tồn tại");
+    if (typeof window.saveRidSole !== "function") {
+      console.error("❌ saveRidSole chưa tồn tại");
       return;
     }
 
@@ -1968,16 +2368,17 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
       return;
     }
 
-    window.saveRID(e);
+    window.saveRidSole(e);
   });
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#btn-print-preview");
-    if (!btn) return;
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("#btn-print-preview");
+  if (!btn) return;
+  e.preventDefault();
+  if (!ensureRankBeforePrint()) return;
+  window.printPreview?.();
+});
 
-    e.preventDefault();
-    window.printPreview?.();
-  });
 
   document
     .getElementById("btn-print-all")
@@ -2071,7 +2472,8 @@ function loadFailtypeMap(){
 window.__EMPLOYEE_NAME__ = info?.employee_name || '';
      bindQtyLiveUpdate();
     bindDeleteRidButton();
-
+    const el = document.getElementById("RID_rankcolor");
+    if (!el) return;
 
     
     let popup = null;
@@ -2117,10 +2519,51 @@ el.value += String(displayMap[k] || "");   // ✅ không space
       document.body.appendChild(popup);
     };
 
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "-") {
+        e.preventDefault();
+        const qtyInputs = Array.from(
+          document.querySelectorAll('#preview-content input[id^="RID_qty"]')
+        );
+        const prev = qtyInputs[qtyInputs.length - 1];
+        prev?.focus();
+        prev?.select?.();
+        return;
+      }
+
+if (e.key === "+") {
+  e.preventDefault();
+  const { rank } = parseRankColor(el.value);     // ✅ lấy rank thật
+  const m = loadFailtypeMap();
+  const displayMap = m?.[rank];
+  if (displayMap) createPopup(displayMap);
+  return;
+}
 
 
+      if (popup && activeDisplayMap?.[e.key]) {
+        e.preventDefault();
+el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
+        closePopup();
+        return;
+      }
 
-  
+     if (/^[1-7]$/.test(e.key)) {
+  const hk = loadQcHotkeys();      // luôn đọc mới => đổi trong modal là ăn liền
+  const rank = hk[e.key];          // "A".."R" hoặc ""
+  if (rank) {
+    const v = el.value;
+    const allSelected = el.selectionStart === 0 && el.selectionEnd === v.length;
+    if (!v || allSelected) {
+      e.preventDefault();
+      el.value = RANK_MAP[rank] || rank; // set "A(A/I)"...
+      requestAnimationFrame(() =>
+        el.setSelectionRange(el.value.length, el.value.length)
+      );
+    }
+  }
+}
+    });
 
     document.addEventListener("click", (e) => {
       if (popup && !popup.contains(e.target) && e.target !== el) closePopup();
@@ -2132,7 +2575,7 @@ el.value += String(displayMap[k] || "");   // ✅ không space
     // bind các nút cần DOM sẵn
     bindQcToolButtons?.();
     bindPickPrintButton?.();
-bindMonthStamp();
+     bindMonthStamp();
     // sync sign preview (lúc partial đã gắn)
     const srcImg = document.getElementById("sign-preview-inspector");
     const destImg = document.getElementById("preview-sign-inspector");
@@ -2175,19 +2618,22 @@ bindMonthStamp();
         qtyInputs[next].select?.();
       });
     });
-
+    const rankInput = document.getElementById("RID_rankcolor");
+    // rank input Enter => save
+    rankInput?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const btn =
+        document.getElementById("btn-save-rid") ||
+        document.querySelector('[data-action="save-rid"]');
+      if (!btn || btn.disabled) return;
+      btn.click();
+    });
 
     const fastChk = document.getElementById("mode-fast");
+    if (!rankInput) return;
 
-
-    
-
-      // =========================
-const qtyInput = document.getElementById("RID_qty1");
-
-
-
-    qtyInput.addEventListener("keydown", async (e) => {
+    rankInput.addEventListener("keydown", async (e) => {
       if (e.key !== "Enter") return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -2198,7 +2644,6 @@ const qtyInput = document.getElementById("RID_qty1");
       if (!saveBtn || saveBtn.disabled) return;
 
       window.__FAST_MODE__ = !!fastChk?.checked;
-        saveBtn.click(); // 🔥 BẮT BUỘC
     });
   });
 })();

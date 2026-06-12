@@ -1,4 +1,104 @@
 <style>
+.update-toast{
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 280px;
+  padding: 16px 16px 14px;
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #f8fafc 100%
+  );
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 30px 60px rgba(15,23,42,.25),
+    0 6px 14px rgba(15,23,42,.14);
+  z-index: 9999;
+  font-size: 13px;
+  backdrop-filter: blur(8px);
+  animation: toast-in .25s cubic-bezier(.16,.84,.44,1);
+}
+.update-toast.hidden{
+  display:none;
+}
+
+@keyframes toast-in{
+  from{
+    transform: translateY(12px) scale(.96);
+    opacity:0;
+  }
+  to{
+    transform: translateY(0) scale(1);
+    opacity:1;
+  }
+}
+
+/* header */
+.ut-title{
+  font-weight:800;
+  font-size:14px;
+  margin-bottom:10px;
+  color:#0f172a;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.ut-title::before{
+  content:"⬆";
+  width:22px;
+  height:22px;
+  border-radius:7px;
+  background:#e0e7ff;
+  color:#2563eb;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+}
+
+/* progress bar */
+.ut-bar{
+  position:relative;
+  height:10px;
+  background:#e5e7eb;
+  border-radius:999px;
+  overflow:hidden;
+}
+#ut-bar-fill{
+  height:100%;
+  width:0%;
+  background:
+    linear-gradient(
+      90deg,
+      #3b82f6,
+      #2563eb
+    );
+  border-radius:999px;
+  box-shadow: 0 0 0 rgba(37,99,235,0);
+  transition:
+    width .35s ease,
+    box-shadow .35s ease;
+}
+#ut-bar-fill.active{
+  box-shadow: 0 0 12px rgba(37,99,235,.55);
+}
+
+/* footer */
+.ut-percent{
+  margin-top:8px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:12px;
+  color:#475569;
+}
+.ut-percent::after{
+  content:"Downloading…";
+  font-style:italic;
+  opacity:.85;
+}
 
 /* ===== FACTORY BADGE BASE ===== */
 .user-factory {
@@ -535,7 +635,117 @@
     border-radius: 18px;
   }
 }
+/* ===== UPDATE MODAL (APP STYLE) ===== */
+#update-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15,23,42,.45);      /* slate-900 */
+  backdrop-filter: blur(6px);
+}
+#update-modal.flex{ display:flex }
 
+/* panel */
+#update-modal .update-panel{
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow:
+    0 25px 60px rgba(15,23,42,.22),
+    0 4px 10px rgba(15,23,42,.12);
+  animation: upd-pop .16s ease-out;
+}
+
+@keyframes upd-pop{
+  from{ transform: scale(.96); opacity:.6 }
+  to{ transform: scale(1); opacity:1 }
+}
+
+/* header */
+.update-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.update-icon{
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  background:#e0e7ff;                 /* blue-100 */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#2563eb;                       /* blue-600 */
+}
+.update-title{
+  font-size:18px;
+  font-weight:800;
+  color:#0f172a;
+}
+#update-desc{
+  font-size:14px;
+  color:#475569;
+}
+
+/* notes */
+.update-notes{
+  margin-top:14px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:#f8fafc;                  /* slate-50 */
+  border:1px solid #e2e8f0;             /* slate-200 */
+  max-height:200px;
+  overflow:auto;
+  font-size:13px;
+  line-height:1.6;
+  color:#334155;
+}
+.update-notes ul{
+  list-style: disc;
+  padding-left:18px;
+}
+.update-notes li{
+  margin-bottom:4px;
+}
+
+/* footer */
+.update-actions{
+  margin-top:18px;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+}
+
+/* buttons */
+.update-btn{
+  height:40px;
+  padding:0 18px;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  border:1px solid transparent;
+}
+.update-btn.primary{
+  background:#2563eb;
+  color:#fff;
+}
+.update-btn.primary:hover{
+  background:#1d4ed8;
+}
+.update-btn.ghost{
+  background:#fff;
+  color:#334155;
+  border-color:#e2e8f0;
+}
+.update-btn.ghost:hover{
+  background:#f8fafc;
+}
 
 </style>
 <body class="bg-slate-100">
@@ -550,7 +760,18 @@
       </div>
       <div class="user-name"></div>
       <div class="user-factory" id="user-factory"></div>
-      <div class="user-role">QC Inspector</div>
+         <button
+  id="btn-check-update"
+  class="btn mt-3 w-full text-sm flex items-center justify-center gap-2">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+       fill="none" stroke="currentColor" stroke-width="2"
+       class="w-4 h-4">
+    <path d="M21 12a9 9 0 1 1-3-6.7"/>
+    <path d="M21 3v6h-6"/>
+  </svg>
+  <span data-i18n="update_c"></span>
+</button>
+
     </div>
 
 <!-- RIGHT -->
@@ -601,7 +822,7 @@
         <rect x="14" y="14" width="7" height="7"/>
       </svg>
       <div>
-        <div class="settings-label">Layout</div>
+        <div class="settings-label" data-i18n="material">Layout</div>
         <div class="settings-desc">Switch UI layout</div>
       </div>
     </div>
@@ -611,6 +832,8 @@
     <button class="btn layout-btn" data-layout="leather" data-i18n="prelogin.type1">Leather</button>
     <button class="btn layout-btn" data-layout="fabric" data-i18n="prelogin.type2">Fabric</button>
     <button class="btn layout-btn" data-layout="accessory" data-i18n="prelogin.type3">Accessory</button>
+        <button class="btn layout-btn" data-layout="sole" data-i18n="prelogin.type4">Accessory</button>
+
   </div>
 </div>
   <!-- ===== LANGUAGE ===== -->
@@ -1041,73 +1264,90 @@
                 />
               </div>
 
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="purchase.order"
-                  ></label
-                >
-                <div class="input-wrap relative">
-                  <input
-                    type="text"
-                    id="bill-code-input"
-                    name="ERP_po_no"
-                    placeholder="_"
-                    autocomplete="off"
-                    class="block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                  <div id="po-loader" class="loader-po hidden"></div>
-                </div>
+     <div>
+  <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="purchase.order"
+    ></label
+  >
+  <div class="input-wrap relative">
+    <input
+      type="text"
+      id="bill-code-input"
+      name="ERP_po_no"
+      placeholder="_"
+      autocomplete="off"
+      class="block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+    />
+    <div id="po-loader" class="loader-po hidden"></div>
+  </div>
 
-                <div id="po-tooltip" class="custom-po-tooltip"></div>
+  <div id="po-tooltip" class="custom-po-tooltip"></div>
 
-                <select
-                  id="bill-code-select"
-                  multiple
-                  size="4"
-                  class="hidden w-full min-h-[100px] max-h-[105px] rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 overflow-y-auto"
-                ></select>
-              </div>
+  <select
+    id="bill-code-select"
+    multiple
+    size="4"
+    class="hidden w-full min-h-[100px] max-h-[105px] rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 overflow-y-auto"
+  ></select>
 
-              <div
-                id="po-selected-display"
-                class="text-sm hidden text-sky-700 font-medium min-w-[120px] pt-2"
-              ></div>
+  <!-- ✅ Số lượng container chuyển sang cột thứ 3 -->
+  <div class="mt-3">
+    <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="quantity.container"
+      ></label
+    >
+    <input
+      type="number"
+      id="container-qty-display"
+      min="0"
+      step="0.01"
+      name="RM_container_qty"
+      value="0"
+      class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 px-3 py-2 text-base shadow-sm"
+    />
+    <input
+      type="hidden"
+      name="RM_container_qty"
+      id="container-qty"
+    />
+  </div>
+</div>
 
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700"  data-i18n="quantity.supplier"
-                  ></label
-                >
-                <input
-                  type="number"
-                  id="po-purchase-qty-display"
-                  readonly
-                  min="0"
-                  step="0.01"
-                 name="RM_po_qty"
-                  value="0"
-                  class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm"
-                />
-                <input type="hidden" name="RM_po_qty" id="po-purchase-qty" />
+<div
+  id="po-selected-display"
+  class="text-sm hidden text-sky-700 font-medium min-w-[120px] pt-2"
+></div>
 
-                <div class="mt-3">
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700"  data-i18n="quantity.container"
-                    ></label
-                  >
-                  <input
-                    type="number"
-                    id="container-qty-display"
-                    min="0"
-                    step="0.01"
-                    name="RM_container_qty"
-                    value="0"
-                    class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 px-3 py-2 text-base shadow-sm"
-                  />
-<input
-  type="hidden"
-  name="RM_container_qty"
-  id="container-qty"
-/>
-                </div>
-              </div>
+<div>
+  <!-- ✅ Cột 4: chỉ còn Số lượng hàng kiểm + SL nhà cung cấp -->
+  <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="total_inspected_quantity">
+    Số lượng hàng kiểm
+  </label>
+  <input
+    type="number"
+    id="rid-qty-display"
+    readonly
+    min="0"
+    step="0.01"
+    value="0"
+    class="block w-full h-11 md:h-12 rounded-xl border border-sky-300 bg-sky-50 text-sky-700 font-semibold cursor-not-allowed px-3 py-2 text-base shadow-sm"
+  />
+
+  <div class="mt-3">
+    <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="quantity.supplier"
+      ></label
+    >
+    <input
+      type="number"
+      id="po-purchase-qty-display"
+      readonly
+      min="0"
+      step="0.01"
+      name="RM_po_qty"
+      value="0"
+      class="block w-full h-11 md:h-12 rounded-xl border border-gray-300 bg-slate-100 text-slate-600 cursor-not-allowed px-3 py-2 text-base shadow-sm"
+    />
+    <input type="hidden" name="RM_po_qty" id="po-purchase-qty" />
+  </div>
+</div>
             </div>
           </div>
 
@@ -1446,4 +1686,39 @@ class="select-ui"                >
       </div>
     </div>
   </form>
+  <div id="update-modal" class="hidden">
+  <div class="update-panel">
+
+    <div class="update-header">
+      <div class="update-icon">
+        ⬆️
+      </div>
+      <div>
+        <div class="update-title" data-i18n="update_a">Update available</div>
+        <div id="update-desc" data-i18n="new_v">New version</div>
+      </div>
+    </div>
+
+    <div id="update-notes" class="update-notes"></div>
+
+    <div class="update-actions">
+      <button id="btn-update-skip" class="update-btn ghost" data-i18n="confirm.delete.cancel">
+        Skip
+      </button>
+      <button id="btn-update-now" class="update-btn primary" data-i18n="update">
+        Update
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<div id="update-toast" class="update-toast hidden">
+  <div class="ut-title" data-i18n="update_p">Updating…</div>
+  <div class="ut-bar">
+    <div id="ut-bar-fill"></div>
+  </div>
+  <div id="ut-percent" class="ut-percent">0%</div>
+</div>
 </body>
