@@ -211,7 +211,7 @@ function buildPrintableHtmlSnapshot() {
     input.replaceWith(span);
   });
 
-  const css = document.getElementById('qc-print-style2')?.textContent || '';
+  const css = document.getElementById('qc-print-style3')?.textContent || '';
 
   return `<!DOCTYPE html>
 <html>
@@ -1010,7 +1010,7 @@ async function printAllLabels() {
       return Swal.fire("⚠️ Chưa có tem RID nào để in!", "", "warning");
 
     const qcStyle =
-      document.getElementById("qc-print-style2")?.textContent || "";
+      document.getElementById("qc-print-style3")?.textContent || "";
 
     const nextFrame = (n = 1) =>
       new Promise((res) => {
@@ -1062,7 +1062,7 @@ async function printAllLabels() {
     if (!source) return;
 
     const qcStyle =
-      document.getElementById("qc-print-style2")?.textContent || "";
+      document.getElementById("qc-print-style3")?.textContent || "";
     const clone = source.cloneNode(true);
     clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
@@ -1327,7 +1327,7 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       .sort((a, b) => a - b);
 
     const qcStyle =
-      document.getElementById("qc-print-style2")?.textContent || "";
+      document.getElementById("qc-print-style3")?.textContent || "";
     let pagesHtml = "";
 
     const nextFrame = (n = 1) =>
@@ -1635,8 +1635,9 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
     JsBarcode(img, text, {
       format: "CODE128",
       displayValue: true,
-      fontSize: 25,
-      textMargin: 4,
+ fontSize: 50,   // tăng từ 25 lên 36
+ fontOptions: "bold",
+  textMargin: 6,  // tăng nhẹ khoảng cách với barcode
       margin: 0,
       width: 3,
       height: 100,
@@ -1681,7 +1682,7 @@ const deviceName = silent ? getSavedPrinterName() : null;
       input.parentNode.replaceChild(span, input);
     });
 
-    const css = document.getElementById("qc-print-style2")?.textContent || "";
+    const css = document.getElementById("qc-print-style3")?.textContent || "";
 
 
 

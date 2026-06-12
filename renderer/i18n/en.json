@@ -83,6 +83,7 @@
   "quantity.container": "Container Quantity",
 "loading":"Processing...",
   "fix": "FIX",
+  "fix2": "Random inspection",
   "fixed": "FIXED",
   "material":"Material",
   "Brand":"Brand",
@@ -164,7 +165,15 @@
   "update_a": "New update available",
   "update_p": "Updating...",
    "update_c":"Check update",
-   "update_new":"Already latest version"
-  
+   "update_new":"Already latest version",
+   "record_hardness":"Record hardness",
+  "size":"Size",
+  "inspection_quantity":"Inspection Quantity",
+  "procurement_quantity":"Procurement Quantity",
+  "total_purchase_quantity":"Total purchase Quantity",
+  "total_inspected_quantity":"Total Inspected Quantity",
+  "qc.qty_limit_exceeded":
+      "⚠️ Cannot save label. Total inspected quantity after saving is {{total}}, exceeding the allowed limit {{max}} (RM_po_qty {{po}} + 1%). Exceeded by {{over}}."
+
 
 }

@@ -161,6 +161,13 @@
   "update_a": "មានបច្ចុប្បន្នភាពថ្មី",
   "update_p": "កំពុងធ្វើបច្ចុប្បន្នភាព...",
   "update_c":"ពិនិត្យមើលបច្ចុប្បន្នភាព",
-     "update_new":"ជាកំណែចុងក្រោយរួចហើយ"
+     "update_new":"ជាកំណែចុងក្រោយរួចហើយ",
+       "record_hardness":"កត់ត្រាភាពរឹង",
+       "fix2": "ការត្រួតពិនិត្យដោយចៃដន្យ",
+        "size":"Size",
+  "inspection_quantity":"Iចំនួនត្រួតពិនិត្យទំនិញ",
+  "procurement_quantity":"បរិមាណទិញ",
+  "total_purchase_quantity":"បរិមាណទិញសរុប៖",
+  "total_inspected_quantity":"ចំនួនត្រួតពិនិត្យទំនិញសរុប៖"
 
 }

@@ -26,12 +26,12 @@
 
 .sr-table th{
   background:#f1f5f9;
-  font-weight:800;
+  font-weight:600;
   color:#0f172a;
 }
 
 .sr-table td{
-  font-weight:800;
+  font-weight:600;
   color:#1d4ed8;
 }
 
@@ -798,7 +798,356 @@
 .update-btn.ghost:hover{
   background:#f8fafc;
 }
+/* =========================
+   SIZE RUN — PREMIUM CARD
+   ========================= */
 
+#size-run-section{
+  position: relative;
+  overflow: hidden;
+}
+
+#size-run-section::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, rgba(14,165,233,.10), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(99,102,241,.08), transparent 24%);
+}
+
+.sr-layout{
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 22px;
+  align-items: start;
+}
+
+.size-run-grid{
+  min-width: 0;
+}
+
+/* ===== table wrap ===== */
+.sr-table-wrap{
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(226,232,240,.95);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.98) 100%);
+  box-shadow:
+    0 20px 45px rgba(15,23,42,.08),
+    0 6px 16px rgba(15,23,42,.06);
+  padding: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #e2e8f0;
+}
+
+.sr-table-wrap::-webkit-scrollbar{
+  height: 10px;
+}
+.sr-table-wrap::-webkit-scrollbar-track{
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+.sr-table-wrap::-webkit-scrollbar-thumb{
+  background: linear-gradient(90deg, #94a3b8, #64748b);
+  border-radius: 999px;
+}
+
+/* ===== table ===== */
+.sr-table.sr-horizontal{
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ô chung */
+.sr-table th,
+.sr-table td{
+  min-width: 82px;
+  padding: 14px 14px;
+  text-align: center;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background .18s ease, transform .12s ease;
+}
+
+/* ô label đầu dòng */
+.sr-table tr > th:first-child{
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 130px;
+  text-align: left;
+  padding-left: 18px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: #0f172a;
+  background:
+    linear-gradient(135deg, #e0f2fe 0%, #f8fafc 100%);
+  box-shadow: 6px 0 12px rgba(15,23,42,.04);
+}
+
+/* header size row */
+.sr-size-row th{
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.sr-size-row th:not(:first-child){
+  color: #1e293b;
+  text-align: center;
+  letter-spacing: .02em;
+}
+
+/* inspect row */
+.sr-inspect-row th{
+  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+  color: #166534;
+}
+
+.sr-inspect-row td{
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* purchase row */
+.sr-purchase-row th{
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  color: #1d4ed8;
+}
+
+.sr-purchase-row td{
+  background: #f8fbff;
+  color: #1d4ed8;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* bo góc ngoài */
+.sr-table tr:first-child th:first-child{ border-top-left-radius: 16px; }
+.sr-table tr:first-child th:last-child{ border-top-right-radius: 16px; }
+.sr-table tr:last-child th:first-child{ border-bottom-left-radius: 16px; }
+.sr-table tr:last-child td:last-child{ border-bottom-right-radius: 16px; }
+
+/* bỏ border thừa cuối */
+.sr-table th:last-child,
+.sr-table td:last-child{
+  border-right: none;
+}
+.sr-table tr:last-child th,
+.sr-table tr:last-child td{
+  border-bottom: none;
+}
+
+/* hover theo cột nhìn sang hơn */
+.sr-table td:hover{
+  background: #fefce8;
+  transform: translateY(-1px);
+}
+
+/* ===== summary card ===== */
+.sr-summary{
+  position: relative;
+  border-radius: 22px;
+  border: 1px solid rgba(226,232,240,.95);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow:
+    0 20px 45px rgba(15,23,42,.08),
+    0 6px 16px rgba(15,23,42,.06);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.sr-summary::before{
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: linear-gradient(90deg, #0ea5e9, #2563eb, #4f46e5);
+}
+
+.sr-summary-row{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 12px;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+.sr-summary-row:last-child{
+  margin-bottom: 0;
+}
+
+.sr-summary-row:nth-child(1){
+  background: linear-gradient(135deg, rgba(59,130,246,.10), rgba(14,165,233,.08));
+  border: 1px solid rgba(147,197,253,.45);
+}
+
+.sr-summary-row:nth-child(2){
+  background: linear-gradient(135deg, rgba(34,197,94,.10), rgba(16,185,129,.08));
+  border: 1px solid rgba(134,239,172,.45);
+}
+
+.sr-summary-label{
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: #334155;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.sr-summary-value{
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+  color: #0f172a;
+  text-shadow: 0 2px 8px rgba(15,23,42,.06);
+}
+
+/* màu riêng từng số */
+.sr-summary-row:nth-child(1) .sr-summary-value{
+  color: #1d4ed8;
+}
+
+.sr-summary-row:nth-child(2) .sr-summary-value{
+  color: #15803d;
+}
+
+/* ===== responsive ===== */
+@media (max-width: 1100px){
+  .sr-layout{
+    grid-template-columns: 1fr;
+  }
+
+  .sr-summary{
+    width: 100%;
+  }
+
+  .sr-summary-row{
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sr-summary-value{
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 640px){
+  .sr-table th,
+  .sr-table td{
+    min-width: 72px;
+    padding: 12px 10px;
+    font-size: 15px;
+  }
+
+  .sr-table tr > th:first-child{
+    min-width: 112px;
+    padding-left: 14px;
+    font-size: 14px;
+  }
+
+  .sr-summary{
+    padding: 12px;
+  }
+
+  .sr-summary-label{
+    font-size: 15px;
+  }
+
+  .sr-summary-value{
+    font-size: 24px;
+  }
+}
+
+/* ===== SIZE RUN BIGGER ===== */
+
+.sr-table th,
+.sr-table td{
+  min-width: 96px;
+  padding: 18px 18px;
+}
+
+.sr-table tr > th:first-child{
+  min-width: 150px;
+  padding-left: 20px;
+  font-size: 17px;
+}
+
+.sr-size-row th{
+  font-size: 20px;
+}
+
+.sr-inspect-row td,
+.sr-purchase-row td{
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.sr-summary{
+  padding: 20px;
+}
+
+.sr-summary-row{
+  padding: 18px 16px;
+}
+
+.sr-summary-label{
+  font-size: 18px;
+}
+
+.sr-summary-value{
+  font-size: 40px;
+}
+
+@media (max-width: 640px){
+  .sr-table th,
+  .sr-table td{
+    min-width: 82px;
+    padding: 14px 12px;
+  }
+
+  .sr-table tr > th:first-child{
+    min-width: 126px;
+    font-size: 15px;
+  }
+
+  .sr-size-row th{
+    font-size: 15px;
+  }
+
+  .sr-inspect-row td,
+  .sr-purchase-row td{
+    font-size: 17px;
+  }
+
+  .sr-summary-value{
+    font-size: 28px;
+  }
+}
 </style>
 <body class="bg-slate-100">
   <!-- SETTINGS MODAL BACKDROP -->
@@ -1116,7 +1465,7 @@
   </div>
 </div>
 
-<div id="qc-failtype-grid" class="qc-plus-grid"></div>
+<!-- <div id="qc-failtype-grid" class="qc-plus-grid"></div> -->
 
 
 <div id="qc-failtype-grid" style="margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px"></div>
@@ -1138,7 +1487,7 @@
     </div>
 
     <div class="inspection-wrapper">
-      <input type="hidden" name="RM_type" id="rm-type-field" value="B" />
+      <input type="hidden" name="RM_type" id="rm-type-field" value="D" />
 
       <!-- HEADER -->
       <div class="inspection-header">
@@ -1203,14 +1552,17 @@
   <span  data-i18n="nav.create">Create</span>
 </button>
 
-<!-- <button id="btn-history" type="button" class="toolbar-btn">
-  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-       fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M12 8v4l3 3m6-3a9 9 0 11-9-9 9 9 0 019 9z" />
+<button id="excel-sole" type="button" class="toolbar-btn">
+ <svg viewBox="0 0 24 24"
+       class="h-4 w-4 excel-icon"
+       xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="18" height="18" rx="3"
+          fill="#16A34A"/>
+    <path d="M9 7l2.5 5L9 17h2l1.5-3.5L14 17h2l-2.5-5L16 7h-2l-1.5 3.5L11 7H9z"
+          fill="white"/>
   </svg>
   <span data-i18n="nav.history">History</span>
-</button> -->
+</button>
 
 
 <button id="btn-qc-tool" class="toolbar-btn toolbar-btn-primary">
@@ -1222,7 +1574,7 @@
   <span data-i18n="nav.qc_label">QC Label</span>
 </button>
 
-<!-- <button id="btn-export-excel" type="button" class="toolbar-btn">
+<!-- <button id="btn-export-excel-sole" type="button" class="toolbar-btn">
  <svg viewBox="0 0 24 24"
        class="h-4 w-4 excel-icon"
        xmlns="http://www.w3.org/2000/svg">
@@ -1232,9 +1584,9 @@
           fill="white"/>
   </svg>
   <span  data-i18n="btn.export_excel">Export Excel</span>
-</button>
+</button> -->
 
-<button id="btn-export-deckers" type="button" class="toolbar-btn">
+<!-- <button id="btn-export-deckers" type="button" class="toolbar-btn">
   <svg viewBox="0 0 24 24"
        class="h-4 w-4 excel-icon"
        xmlns="http://www.w3.org/2000/svg">
@@ -1308,38 +1660,43 @@
                   id="tc-code-hidden"
                   name="ERP_tc_code_hidden"
                 />
-                <input
-                  type="hidden"
-                  id="bill-code-hidden"
-                  name="ERP_po_no_hidden"
-                />
+               
               </div>
 
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="purchase.order"
-                  ></label
-                >
-                <div class="input-wrap relative">
-                  <input
-                    type="text"
-                    id="bill-code-input"
-                    name="ERP_po_no"
-                    placeholder="_"
-                    autocomplete="off"
-                    class="block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                  <div id="po-loader" class="loader-po hidden"></div>
-                </div>
+<div>
+  <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="purchase.order"></label>
 
-                <div id="po-tooltip" class="custom-po-tooltip"></div>
+  <!-- 🔥 container nhiều input -->
+  <div id="po-input-list" class="space-y-2">
 
-                <select
-                  id="bill-code-select"
-                  multiple
-                  size="4"
-                  class="hidden w-full min-h-[100px] max-h-[105px] rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 overflow-y-auto"
-                ></select>
-              </div>
+    <!-- dòng đầu -->
+    <div class="po-input-row flex gap-2">
+      <div class="input-wrap relative flex-1">
+        <input
+          type="text"
+          id="bill-code-input"
+          placeholder="_"
+          autocomplete="off"
+          class="po-code-input block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+        />
+        <div id="po-loader" class="loader-po hidden"></div>
+      </div>
+
+      <!-- nút + -->
+      <button
+        type="button"
+        id="btn-add-po"
+        class="inline-flex h-11 md:h-12 w-11 items-center justify-center rounded-xl border border-slate-300 bg text-lg font-bold shadow-sm px-2"
+      >+</button>
+    </div>
+
+  </div>
+
+  <!-- hidden để gửi backend -->
+  <input type="hidden" id="bill-code-hidden" name="ERP_po_no" />
+
+  <div id="po-tooltip" class="custom-po-tooltip"></div>
+</div>
 
               <div
                 id="po-selected-display"
@@ -1490,7 +1847,7 @@ class="select-ui"                >
                 <label class="fix-toggle">
   <input type="checkbox" name="RI_ischanged" />
   <span class="fix-slider"></span>
-  <span class="fix-label" data-i18n="fix">Fix</span>
+  <span class="fix-label" data-i18n="fix2">Fix</span>
 </label>
               </div>
             </div>
@@ -1540,12 +1897,12 @@ class="select-ui"                >
                   class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white"
                 />
               </div>
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="thickness.actual"
-                  >Actual Thickness</label
+          <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700" data-i18n="hardness.spec"
+                  >Hardness Spec</label
                 >
                 <input
-                  name="RI_thickness_actual"
+                  name="RI_hardness_spec"
                   class="mt-1 h-11 w-full rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white"
                 />
               </div>
@@ -1557,10 +1914,23 @@ class="select-ui"                >
 <div class="section-card" id="size-run-section">
   <h2 class="mb-5 text-lg font-semibold text-slate-800 flex items-center gap-2">
     <span class="text-sky-600">●</span>
-    4️⃣ <span class="text-sky-600">Size Run</span>
+    4️⃣ <span class="text-sky-600" data-i18n="size">Size Run</span>
   </h2>
 
-  <div id="size-run-grid" class="size-run-grid"></div>
+  <div class="sr-layout">
+    <div id="size-run-grid" class="size-run-grid"></div>
+
+    <div id="size-run-summary" class="sr-summary">
+      <div class="sr-summary-row">
+        <span class="sr-summary-label" data-i18n="total_purchase_quantity">采购数量合计：</span>
+        <span id="sr-total-purchase" class="sr-summary-value">0</span>
+      </div>
+      <div class="sr-summary-row">
+        <span class="sr-summary-label" data-i18n="total_inspected_quantity">验货数量合计：</span>
+        <span id="sr-total-inspect" class="sr-summary-value">0</span>
+      </div>
+    </div>
+  </div>
 </div>
 
           <!-- 7 Signatures -->
@@ -1761,5 +2131,50 @@ class="select-ui"                >
     <div id="ut-bar-fill"></div>
   </div>
   <div id="ut-percent" class="ut-percent">0%</div>
-</div>
+<div id="excel-sole-modal" class="fixed inset-0 z-50 hidden">
+
+  <!-- overlay -->
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+       data-close="excel-sole"></div>
+
+  <!-- dialog -->
+  <div class="relative z-10 flex min-h-full items-center justify-center p-4">
+    <div class="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+
+      <!-- header -->
+      <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 bg-white/80 backdrop-blur">
+        <h2 class="text-lg font-semibold text-gray-900">
+          Export Excel
+        </h2>
+
+        <button id="btn-close-excel-sole"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+          &times;
+        </button>
+      </div>
+
+      <!-- body -->
+      <div class="p-5">
+        <div class="flex gap-2">
+
+          <input
+            id="excel-sole-search-input"
+            type="text"
+            placeholder="Nhập mã / từ khóa..."
+            class="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+          />
+
+          <button
+            id="excel-sole-search-btn"
+            class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-sky-700">
+            Search
+          </button>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div></div>
+
 </body>

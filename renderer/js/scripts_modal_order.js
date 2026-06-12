@@ -83,16 +83,16 @@
     if (!maxH || !maxW) return;
 
     const oldAlign = cell.style.alignItems;
-    cell.style.alignItems = 'center';  // Căn giữa dọc
+    cell.style.alignItems = 'center';
 
-    // Đảm bảo cho phép xuống dòng
-    el.style.whiteSpace = 'normal';
-    el.style.display = 'block';
+    el.style.whiteSpace = 'nowrap';
+    el.style.display = 'inline-block';
     el.style.minWidth = '0';
+    el.style.maxWidth = '100%';
     el.style.overflow = 'hidden';
+    el.style.textOverflow = 'clip';
 
-    // Giảm font-size cho đến khi vừa vặn
-    while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
+    while ((el.scrollWidth > maxW || el.scrollHeight > maxH) && fontSize > min) {
       fontSize -= 0.5;
       el.style.fontSize = fontSize + 'px';
     }
@@ -103,15 +103,20 @@
   function runFit() {
     document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
     document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+    document.querySelectorAll('.fit-vendor').forEach(el => fitOne(el, 8));
+
+    /* fit thêm qty */
+    document.querySelectorAll('.print-qty-span').forEach(el => fitOne(el, 6));
   }
 
-  // Chạy sớm và vài lần để tránh sự cố in nhanh
   const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
   document.addEventListener('DOMContentLoaded', raf2);
+  window.addEventListener('load', raf2);
   window.addEventListener('beforeprint', runFit);
   setTimeout(runFit, 0);
   setTimeout(runFit, 80);
   setTimeout(runFit, 200);
+  setTimeout(runFit, 400);
 `;
 
   function formatRankColor(rank, color, failtype) {
@@ -232,14 +237,25 @@ if (creator === window.__EMPLOYEE_NAME__) btn.classList.add("rid-own");
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
 
     // ✅ input -> span (lấy đúng current value)
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.replaceWith(span);
-    });
+clone.querySelectorAll("input").forEach((input) => {
+  const span = document.createElement("span");
+  const cs = window.getComputedStyle(input);
+
+  span.textContent = input.value || "—";
+  span.className = "print-qty-span";
+  span.style.display = "inline-block";
+  span.style.width = "100%";
+  span.style.textAlign = "center";
+  span.style.fontSize = cs.fontSize;
+  span.style.fontFamily = cs.fontFamily;
+  span.style.fontWeight = cs.fontWeight;
+  span.style.lineHeight = cs.lineHeight;
+  span.style.letterSpacing = cs.letterSpacing;
+  span.style.whiteSpace = "nowrap";
+  span.style.overflow = "hidden";
+
+  input.replaceWith(span);
+});
 
     const css = document.getElementById("qc-print-style")?.textContent || "";
 
@@ -674,6 +690,136 @@ footer.textContent = creator ? `${idx} – ${creator}` : idx;
   }
   window.closePreviewModal = closePreviewModal;
 
+
+  function num(v) {
+  return Number(String(v ?? '').replace(',', '.')) || 0;
+}
+
+function getRMPOQty() {
+  return num(
+    document.getElementById('po-purchase-qty')?.value ||
+    document.getElementById('po-purchase-qty-display')?.value ||
+    document.querySelector('[name="RM_po_qty"]')?.value ||
+    0
+  );
+}
+
+function getRIDDraftQty() {
+  let total = 0;
+
+  for (let i = 1; i <= 14; i++) {
+    total += num(document.getElementById(`RID_qty${i}`)?.value);
+  }
+
+  return total;
+}
+
+function getSavedInspectionTotalFromMainForm() {
+  const levels = ['A', 'B', 'C', 'D', 'E', 'F', 'R'];
+
+  return levels.reduce((sum, lv) => {
+    return sum + num(document.querySelector(`[name="RI_${lv}_qty"]`)?.value);
+  }, 0);
+}
+
+async function getFreshInspectionTotal(riNo) {
+  try {
+    if (!window.kbAPI?.getInspectionDetail) {
+      return getSavedInspectionTotalFromMainForm();
+    }
+
+    const detail = await window.kbAPI.getInspectionDetail(riNo);
+    const ins = detail?.inspection || {};
+    const levels = ['A', 'B', 'C', 'D', 'E', 'F', 'R'];
+
+    return levels.reduce((sum, lv) => {
+      return sum + num(ins[`RI_${lv}_qty`]);
+    }, 0);
+  } catch (err) {
+    console.warn('[getFreshInspectionTotal]', err);
+    return getSavedInspectionTotalFromMainForm();
+  }
+}
+
+function getAllowedInspectionQty() {
+  const poQty = getRMPOQty();
+
+  if (poQty <= 0) {
+    return {
+      ok: false,
+      poQty: 0,
+      maxAllowed: 0,
+      message: 'Chưa có RM_po_qty, không thể kiểm soát số lượng tem.'
+    };
+  }
+
+  return {
+    ok: true,
+    poQty,
+    maxAllowed: poQty * 1.01
+  };
+}
+
+async function canSaveRIDWithinPOQtyLimit(riNo) {
+  const limit = getAllowedInspectionQty();
+
+  if (!limit.ok) {
+    showToastWarning(limit.message);
+    return false;
+  }
+
+  const savedTotal = await getFreshInspectionTotal(riNo);
+  const draftQty = getRIDDraftQty();
+
+  // Khi sửa lại một RID cũ, cần trừ số lượng gốc của RID đó để tránh bị cộng đôi
+  const originalCurrentRIDQty = num(window.__CURRENT_RID_ORIGINAL_QTY__ || 0);
+
+  const totalAfterSave = savedTotal - originalCurrentRIDQty + draftQty;
+
+  if (totalAfterSave > limit.maxAllowed) {
+    const overQty = totalAfterSave - limit.maxAllowed;
+
+const msg = ti("qc.qty_limit_exceeded", {
+  total: totalAfterSave.toFixed(2),
+  max: limit.maxAllowed.toFixed(2),
+  po: limit.poQty.toFixed(2),
+  over: overQty.toFixed(2),
+});
+
+showToastWarning(
+  msg === "qc.qty_limit_exceeded"
+    ? `⚠️ Cannot save label. Total inspected quantity after saving is ${totalAfterSave.toFixed(2)}, exceeding the allowed limit ${limit.maxAllowed.toFixed(2)} (RM_po_qty ${limit.poQty.toFixed(2)} + 1%). Exceeded by ${overQty.toFixed(2)}.`
+    : msg
+);
+
+    return false;
+  }
+
+  return true;
+}
+
+async function canCreateMoreRID(riNo) {
+  const limit = getAllowedInspectionQty();
+
+  if (!limit.ok) {
+    showToastWarning(limit.message);
+    return false;
+  }
+
+  const savedTotal = await getFreshInspectionTotal(riNo);
+
+  if (savedTotal >= limit.maxAllowed) {
+    showToastWarning(
+      `⚠️ Đã đạt giới hạn kiểm hàng. Tổng đã kiểm ${savedTotal.toFixed(2)} / ` +
+      `${limit.maxAllowed.toFixed(2)}. Không thể tạo thêm tem.`
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
   // ===== Electron: saveRID (thay fetch generate + save + reload detail) =====
   async function saveRID(event) {
 const saveBtn =
@@ -728,7 +874,9 @@ const saveBtn =
         : showToastWarning("Tem QC chưa có số lượng");
       return;
     }
-
+// ✅ CHẶN VƯỢT RM_po_qty + 1%
+const canSave = await canSaveRIDWithinPOQtyLimit(riNo);
+if (!canSave) return;
     // Nếu chưa có RID_no -> generate mới (Electron)
 let finalRID = ridNo;
 
@@ -989,14 +1137,25 @@ idxSpan.textContent = creator ? `${idx} – ${creator}` : idx;
     }
 
     // input -> span
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.replaceWith(span);
-    });
+clone.querySelectorAll("input").forEach((input) => {
+  const span = document.createElement("span");
+  const cs = window.getComputedStyle(input);
+
+  span.textContent = input.value || "—";
+  span.className = "print-qty-span";
+  span.style.display = "inline-block";
+  span.style.width = "100%";
+  span.style.textAlign = "center";
+  span.style.fontSize = cs.fontSize;
+  span.style.fontFamily = cs.fontFamily;
+  span.style.fontWeight = cs.fontWeight;
+  span.style.lineHeight = cs.lineHeight;
+  span.style.letterSpacing = cs.letterSpacing;
+  span.style.whiteSpace = "nowrap";
+  span.style.overflow = "hidden";
+
+  input.replaceWith(span);
+});
 
     return `
   <div class="print-root">
@@ -1138,14 +1297,25 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
       document.getElementById("qc-print-style")?.textContent || "";
     const clone = source.cloneNode(true);
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id")); // thêm
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.parentNode.replaceChild(span, input);
-    });
+clone.querySelectorAll("input").forEach((input) => {
+  const span = document.createElement("span");
+  const cs = window.getComputedStyle(input);
+
+  span.textContent = input.value || "—";
+  span.className = "print-qty-span";
+  span.style.display = "inline-block";
+  span.style.width = "100%";
+  span.style.textAlign = "center";
+  span.style.fontSize = cs.fontSize;
+  span.style.fontFamily = cs.fontFamily;
+  span.style.fontWeight = cs.fontWeight;
+  span.style.lineHeight = cs.lineHeight;
+  span.style.letterSpacing = cs.letterSpacing;
+  span.style.whiteSpace = "nowrap";
+  span.style.overflow = "hidden";
+
+  input.replaceWith(span);
+});
 
     const extraScript = `
   // Hàm xử lý thu nhỏ chữ cho các phần tử
@@ -1180,6 +1350,7 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
   function runFit() {
     document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
     document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+    document.querySelectorAll('.fit-vendor').forEach(el => fitOne(el, 8));
   }
 
   // Chạy script sớm và vài lần để đảm bảo kết quả chính xác khi in
@@ -1244,6 +1415,14 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
       console.log("lỗi ko có RID");
       return;
     }
+
+     // ✅ CHẶN TẠO TEM MỚI KHI ĐÃ VƯỢT / ĐẠT RM_po_qty + 1%
+  const canCreate = await canCreateMoreRID(riNo);
+  if (!canCreate) {
+    window.__CREATING_NEW_RID__ = false;
+    return;
+  }
+
 
     if (hasDraftRID()) {
       showToastWarning(
@@ -1569,7 +1748,7 @@ newBtn.dataset.creator = window.__EMPLOYEE_NAME__ || "";
 
     // lấy RI_date ngay từ đầu (fallback)
     const riDate = toYMD(document.querySelector('[name="RI_date"]')?.value);
-
+window.__CURRENT_RID_ORIGINAL_QTY__ = 0;
     try {
       // fetch trước
       const data = await window.kbAPI.getRidDetail({
@@ -1614,6 +1793,7 @@ newBtn.dataset.creator = window.__EMPLOYEE_NAME__ || "";
         !Array.isArray(data.records) ||
         data.records.length === 0
       ) {
+        window.__CURRENT_RID_ORIGINAL_QTY__ = 0;
         const activeBtn = document.querySelector(
           "#rid-items button.rid-active",
         );
@@ -1625,11 +1805,23 @@ newBtn.dataset.creator = window.__EMPLOYEE_NAME__ || "";
       }
 
       // fill records
-      data.records.forEach((r) => {
-        const seq = parseInt(r.RID_seqno, 10);
-        const input = document.getElementById(`RID_qty${seq}`);
-        if (input) input.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
-      });
+// fill records + lưu lại tổng qty gốc của RID này
+let originalRIDQty = 0;
+
+data.records.forEach((r) => {
+  const seq = parseInt(r.RID_seqno, 10);
+  const qty = Number(r.RID_qty) || 0;
+
+  const input = document.getElementById(`RID_qty${seq}`);
+  if (input) input.value = qty ? qty : "";
+
+  originalRIDQty += qty;
+});
+
+// ✅ dùng để khi sửa RID cũ thì không bị cộng đôi
+window.__CURRENT_RID_ORIGINAL_QTY__ = originalRIDQty;
+
+updateTotalQty?.();
 
       updateTotalQty?.();
 
@@ -1825,8 +2017,9 @@ newBtn.dataset.creator = window.__EMPLOYEE_NAME__ || "";
     JsBarcode(img, text, {
       format: "CODE128",
       displayValue: true,
-      fontSize: 25,
-      textMargin: 4,
+        fontSize: 50,   // tăng từ 25 lên 36
+        fontOptions: "bold",
+  textMargin: 6,  // tăng nhẹ khoảng cách với barcode
       margin: 0,
       width: 3,
       height: 100,
@@ -1861,14 +2054,25 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
 
     const clone = source.cloneNode(true);
     clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id")); // thêm
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.parentNode.replaceChild(span, input);
-    });
+clone.querySelectorAll("input").forEach((input) => {
+  const span = document.createElement("span");
+  const cs = window.getComputedStyle(input);
+
+  span.textContent = input.value || "—";
+  span.className = "print-qty-span";
+  span.style.display = "inline-block";
+  span.style.width = "100%";
+  span.style.textAlign = "center";
+  span.style.fontSize = cs.fontSize;
+  span.style.fontFamily = cs.fontFamily;
+  span.style.fontWeight = cs.fontWeight;
+  span.style.lineHeight = cs.lineHeight;
+  span.style.letterSpacing = cs.letterSpacing;
+  span.style.whiteSpace = "nowrap";
+  span.style.overflow = "hidden";
+
+  input.replaceWith(span);
+});
 
     const css = document.getElementById("qc-print-style")?.textContent || "";
     const extraScript = `
@@ -1904,6 +2108,7 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
   function runFit() {
     document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
     document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+    document.querySelectorAll('.fit-vendor').forEach(el => fitOne(el, 8));
   }
 
   // Chạy script sớm và vài lần để đảm bảo kết quả chính xác khi in

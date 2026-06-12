@@ -8,6 +8,8 @@
   GL4: 'KHRU'
 };
 
+
+
 function formatReleaseNotes(notes){
   if(!notes) return "<em>No release notes</em>";
 
@@ -381,7 +383,7 @@ const oldMatCode = document.querySelector('[name="RI_mat_oldcode"]')?.value.trim
         el.innerHTML = `<div><span class="zhb">${zh}</span><span class="vnb">${other}</span></div>`;
         return;
       }
-      if (key === "po") {
+    if (key === "po") {
         el.innerHTML = `<div><span class="zhbx">${zh}</span><span class="vnbx">${other}</span></div>`;
         return;
       }
@@ -440,6 +442,23 @@ function convertDateString(dateString) {
 }
 
 
+function sumSizeRows(rows, sizeKey = "size", qtyKey = "purchase_qty") {
+  const map = new Map();
+
+  (rows || []).forEach(row => {
+    const size = String(row[sizeKey] || "").trim();
+    const qty = Number(row[qtyKey] || 0);
+
+    if (!size || !Number.isFinite(qty)) return;
+
+    map.set(size, (map.get(size) || 0) + qty);
+  });
+
+  return Array.from(map.entries())
+    .map(([size, qty]) => ({ size, qty }))
+    .sort((a, b) => Number(a.size) - Number(b.size));
+}
+
 async function loadInspectionDetail(ri_no) {
   clearInterval(window.__RI_AUTO_TIMER__);
   DETAIL_MODE = true;
@@ -451,39 +470,50 @@ async function loadInspectionDetail(ri_no) {
       throw new Error("kbAPI.getInspectionDetail chưa được expose trong preload.js");
     }
 
-    const data = await window.kbAPI.getInspectionDetail(ri_no);
-    window.__INSPECTION_DETAIL_CACHE__ = data;
-    DETAIL_MODE = true;
-setRIButtonsEnabled(true);
-    setLoading(false);
-const cbFix = document.querySelector('input[type="checkbox"][name="RI_ischanged"]');
-if (cbFix) {
-  cbFix.checked = Number(data.inspection.RI_ischanged) === 1;
-}
-    if (!data?.inspection) {
+    const detail = await window.kbAPI.getInspectionDetail(ri_no);
+
+    if (!detail?.inspection) {
       toastError("Không tìm thấy dữ liệu");
       return;
     }
-  const riDate = convertDateString(data?.inspection?.RI_date) || '';
-  const riii = document.getElementById("RI_date");
-  if (riii) riii.value = riDate;
 
-    // Fill inputs theo name=""
-    Object.keys(data.inspection).forEach((key) => {
+    // 1) set qty ngoài form trước để summary đọc đúng
+    const poQty = Number(detail.inspection?.RM_po_qty ?? 0);
+    const contQty = Number(detail.inspection?.RM_container_qty ?? 0);
+
+    const poHidden = document.getElementById("po-purchase-qty");
+    const poDisplayQty = document.getElementById("po-purchase-qty-display");
+    if (poHidden) poHidden.value = poQty;
+    if (poDisplayQty) poDisplayQty.value = poQty;
+
+    const cHidden = document.getElementById("container-qty");
+    const cDisplay = document.getElementById("container-qty-display");
+    if (cHidden) cHidden.value = contQty;
+    if (cDisplay) cDisplay.value = contQty;
+
+    // 2) fill các field chung
+    const cbFix = document.querySelector('input[type="checkbox"][name="RI_ischanged"]');
+    if (cbFix) {
+      cbFix.checked = Number(detail.inspection.RI_ischanged) === 1;
+    }
+
+    const riDate = convertDateString(detail?.inspection?.RI_date) || "";
+    const riDateInput = document.getElementById("RI_date");
+    if (riDateInput) riDateInput.value = riDate;
+
+    Object.keys(detail.inspection).forEach((key) => {
+      if (key === "ERP_po_no") return; // xử lý riêng
       const input = document.querySelector(`[name="${key}"]`);
       if (!input) return;
 
-      let val = data.inspection[key] ?? "";
+      let val = detail.inspection[key] ?? "";
 
-      // ✅ 1) Checkbox: chỉ xử lý nếu input hiện tại là checkbox
-      // ✅ 2) Date input: convert format DB -> YYYY-MM-DD
       if (input.type === "date") {
         input.value = convertDateString(val);
         input.dispatchEvent(new Event("change", { bubbles: true }));
         return;
       }
 
-      // ✅ 3) Select
       if (input.tagName === "SELECT") {
         if (val && !Array.from(input.options).some((opt) => opt.value == val)) {
           const opt = document.createElement("option");
@@ -496,89 +526,160 @@ if (cbFix) {
         return;
       }
 
-      // ✅ 4) Default input/textarea
       input.value = val;
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-   // 🔧 FIX RI material name
-if (data.inspection?.RI_mat_fullname) {
-  const cn = document.getElementById("mat_fullname");
-  if (cn) cn.value = data.inspection.RI_mat_fullname;
-}
+    // 3) fix tên material
+    if (detail.inspection?.RI_mat_fullname) {
+      const cn = document.getElementById("mat_fullname");
+      if (cn) cn.value = detail.inspection.RI_mat_fullname;
+    }
 
-if (data.inspection?.RI_mat_oldcode) {
-  const oldcode1 = document.getElementById("mat_oldcode");
-  if (oldcode1) oldcode1.value = data.inspection.RI_mat_oldcode;
-}
+    if (detail.inspection?.RI_mat_oldcode) {
+      const oldcode1 = document.getElementById("mat_oldcode");
+      if (oldcode1) oldcode1.value = detail.inspection.RI_mat_oldcode;
+    }
 
-if (data.inspection?.RI_mat_fullename) {
-  const en = document.getElementById("mat_fullename");
-  if (en) en.value = data.inspection.RI_mat_fullename;
-}
+    if (detail.inspection?.RI_mat_fullename) {
+      const en = document.getElementById("mat_fullename");
+      if (en) en.value = detail.inspection.RI_mat_fullename;
+    }
 
-const vendSelect = document.getElementById('vend_code_select');
-const vendNameInput = document.getElementById('vend_name_input');
+    // 4) rebuild lại list PO
+    const poStr = String(detail.inspection?.ERP_po_no || "").trim();
+    const poCodes = poStr
+      .split(",")
+      .map(x => x.trim())
+      .filter(Boolean);
 
-const vendCode = data.inspection.RI_vend_code;
-const vendName = data.inspection.RI_vend_name;
+    const poWrap = document.getElementById("po-input-list");
+    const poSelect = document.getElementById("bill-code-select");
+    const poDisplay = document.getElementById("po-selected-display");
+    const hiddenPO = document.getElementById("bill-code-hidden");
 
-if (vendSelect && vendCode) {
-  let opt = [...vendSelect.options].find(o => o.value === vendCode);
-  if (!opt) {
-    opt = document.createElement('option');
-    opt.value = vendCode;
-    opt.text = vendName || vendCode;
-    opt.setAttribute('data-vend_name', vendName || '');
-    vendSelect.appendChild(opt);
-  }
-  vendSelect.value = vendCode;
-  if (vendNameInput) vendNameInput.value = vendName || '';
-}
+    if (poWrap) {
+      poWrap.innerHTML = "";
 
+      if (!poCodes.length) {
+        poWrap.appendChild(createPOInputRow(""));
+      } else {
+        poCodes.forEach((po) => {
+          poWrap.appendChild(createPOInputRow(po));
+        });
+      }
+    }
 
+    if (hiddenPO) {
+      hiddenPO.value = poCodes.join(",");
+    }
 
+    if (poDisplay) {
+      poDisplay.textContent = poCodes.join(", ");
+    }
 
-    // ✅ SYNC SIGNATURE PREVIEW
+    if (poSelect) {
+      poSelect.classList.add("hidden");
+    }
+
+    syncMainPOValue();
+
+    // 5) restore manufacturer sau cùng để khỏi bị đè
+    const vendSelect = document.getElementById("vend_code_select");
+    const vendNameInput = document.getElementById("vend_name_input");
+
+    const vendCode = String(detail.inspection?.RI_vend_code || "").trim();
+    const vendName = String(detail.inspection?.RI_vend_name || "").trim();
+
+    if (vendSelect && vendCode) {
+      let opt = [...vendSelect.options].find(o => String(o.value) === vendCode);
+
+      if (!opt) {
+        opt = document.createElement("option");
+        opt.value = vendCode;
+        opt.textContent = vendName || vendCode;
+        opt.setAttribute("data-vend_name", vendName || "");
+        vendSelect.appendChild(opt);
+      }
+
+      vendSelect.value = vendCode;
+      vendSelect.disabled = true;
+    }
+
+    if (vendNameInput) {
+      vendNameInput.value = vendName || "";
+    }
+
+    // 6) sync sign preview
     const signMap = [
-      { key: 'RI_manager_sign',     imgId: 'sign-preview-manager',     hiddenId: 'sign-field-manager' },
-      { key: 'RI_storekeeper_sign', imgId: 'sign-preview-storekeeper', hiddenId: 'sign-field-storekeeper' },
-      { key: 'RI_inspector_sign',   imgId: 'sign-preview-inspector',   hiddenId: 'sign-field-inspector' },
+      { key: "RI_manager_sign", imgId: "sign-preview-manager", hiddenId: "sign-field-manager" },
+      { key: "RI_storekeeper_sign", imgId: "sign-preview-storekeeper", hiddenId: "sign-field-storekeeper" },
+      { key: "RI_inspector_sign", imgId: "sign-preview-inspector", hiddenId: "sign-field-inspector" },
     ];
 
     signMap.forEach(({ key, imgId, hiddenId }) => {
-      const base64 = data.inspection?.[key];
-
-      // hidden
+      const base64 = detail.inspection?.[key];
       const hidden = document.getElementById(hiddenId);
-      if (hidden) hidden.value = base64 || '';
+      if (hidden) hidden.value = base64 || "";
 
-      // preview
       const img = document.getElementById(imgId);
       if (!img) return;
 
-      if (base64 && String(base64).startsWith('data:image')) {
+      if (base64 && String(base64).startsWith("data:image")) {
         img.src = base64;
-        img.style.display = 'block';
+        img.style.display = "block";
       } else {
-        img.src = '';
-        img.style.display = 'none';
+        img.src = "";
+        img.style.display = "none";
       }
     });
 
-    // ✅ SYNC QTY FROM BACKEND
-    const poQty = Number(data.inspection?.RM_po_qty ?? 0);
-    const contQty = Number(data.inspection?.RM_container_qty ?? 0);
+    const poStrForSizeRun = String(detail.inspection?.ERP_po_no || "").trim();
+const matCode = String(detail.inspection?.RI_mat_code || detail.inspection?.RI_mat_codeone || "").trim();
 
-    const poHidden  = document.getElementById('po-purchase-qty');
-    const poDisplay = document.getElementById('po-purchase-qty-display');
-    if (poHidden)  poHidden.value  = poQty;
-    if (poDisplay) poDisplay.value = poQty;
+const purchaseRes = await window.kbAPI.getPurchaseSizeRun({
+  po_list: poStrForSizeRun,
+  mat_code: matCode
+});
 
-    const cHidden  = document.getElementById('container-qty');
-    const cDisplay = document.getElementById('container-qty-display');
-    if (cHidden)  cHidden.value  = contQty;
-    if (cDisplay) cDisplay.value = contQty;
+    // 7) load size run purchase + inspect
+  const purchaseRunsRaw = Array.isArray(purchaseRes?.sizes) ? purchaseRes.sizes : [];
+const inspectSizesRaw = Array.isArray(detail?.sizes) ? detail.sizes : [];
+
+const purchaseRuns = sumSizeRows(purchaseRunsRaw, "size", "purchase_qty");
+const inspectRuns = sumSizeRows(inspectSizesRaw, "size", "qty");
+
+const purchaseMap = new Map(
+  purchaseRuns.map(x => [x.size, x.qty])
+);
+
+const inspectMap = new Map(
+  inspectRuns.map(x => [x.size, x.qty])
+);
+
+const allSizes = [...new Set([
+  ...purchaseRuns.map(x => x.size),
+  ...inspectRuns.map(x => x.size)
+])].sort((a, b) => Number(a) - Number(b));
+
+const merged = allSizes.map(size => ({
+  size,
+  purchase_qty: purchaseMap.get(size) || 0,
+  inspect_qty: inspectMap.get(size) || 0
+}));
+
+const inspectTotal = merged.reduce(
+  (sum, x) => sum + Number(x.inspect_qty || 0),
+  0
+);
+
+window.__CURRENT_SIZE_RUNS__ = merged;
+window.renderSizeRuns?.(merged, {
+  total_purchase: poQty,
+  total_inspect: inspectTotal
+});
+    window.__INSPECTION_DETAIL_CACHE__ = detail;
+    setRIButtonsEnabled(true);
 
     setTimeout(() => {
       updateTotalsAndPercent();
@@ -586,8 +687,9 @@ if (vendSelect && vendCode) {
 
   } catch (err) {
     console.error(err);
-    setLoading(false);
     toastError(err.message || "Load detail failed");
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -623,7 +725,7 @@ updateTotalsAndPercent();      // tính lại
 
 let sidebarInspectionData = [];
 
-async function loadSidebarInspections(rmType = 'B') {
+async function loadSidebarInspections(rmType = 'D') {
   const tbody = document.getElementById('sidebar-inspection-table');
   if (!tbody) return;
 
@@ -859,7 +961,7 @@ const sidebar  = document.getElementById('inspection-sidebar');
 const toggleBtn = document.getElementById('sidebar-toggle');
 const closeBtn  = document.getElementById('sidebar-close');
 
-function openSidebar(rmType = 'B') {
+function openSidebar(rmType = 'D') {
       if (!sidebar) return; // 👈 CHỐT CHẶN
   // reset filter (nếu có)
   const ids = ['filter-ri-no','filter-po','filter-vendor','filter-material','filter-date','filter-created'];
@@ -898,7 +1000,7 @@ function bindSidebarEvents() {
   const closeBtn  = document.getElementById('sidebar-close');
   const tbody     = document.getElementById('sidebar-inspection-table');
 
-  if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('B'));
+  if (toggleBtn) toggleBtn.addEventListener('click', () => openSidebar('D'));
   if (closeBtn)  closeBtn.addEventListener('click', closeSidebar);
 
   if (!tbody) return;
@@ -965,6 +1067,8 @@ async function submitInspectionForm(e) {
 
   const form = document.getElementById('item-check-form');
   if (!form) return;
+   // 🔥 rất quan trọng
+  syncMainPOValue();
 
   // 1️⃣ mở khóa select bị disabled
   const lockedIds = ['brand_name_select', 'mat_codeone', 'vend_code_select'];
@@ -1010,6 +1114,19 @@ async function submitInspectionForm(e) {
     // RI_ischanged: 0 | 1
 
 await window.kbAPI.saveInspection(payload);
+
+if (!DETAIL_MODE && window.__CURRENT_SIZE_RUNS__?.length) {
+
+  const rows = window.__CURRENT_SIZE_RUNS__.map(r => ({
+    RI_no: payload.RI_no,
+    RID_rank: r.size,
+    // RID_qty: r.qty,
+    RID_qty: 0,
+    RID_remark: 1
+  }));
+
+  await window.kbAPI.saveInspectionDetail(rows);
+}
 
 DETAIL_MODE = true;
 setRIButtonsEnabled(true);
@@ -1191,19 +1308,22 @@ window.bindRemarkSignature = bindRemarkSignature;
 
 
 function resetFullMaterialFields() {
-  const poSelect  = document.getElementById('bill-code-select');
-  const poInput   = document.getElementById('bill-code-input');
-  const poDisplay = document.getElementById('po-selected-display');
+  const poWrap = document.getElementById("po-input-list");
+  const poInput = document.getElementById("bill-code-input");
+  const poHidden = document.getElementById("bill-code-hidden");
+  const poDisplay = document.getElementById("po-selected-display");
  renderSizeRuns([]);
-  if (poSelect) {
-    poSelect.innerHTML = "";
-    poSelect.classList.add('hidden');
+ if (poWrap) {
+    poWrap.querySelectorAll(".po-input-row").forEach((row, idx) => {
+      if (idx > 0) row.remove();
+    });
   }
   if (poInput) {
     poInput.classList.remove('hidden');
     poInput.readOnly = false;
     poInput.value = "";
   }
+   if (poHidden) poHidden.value = "";
   if (poDisplay) poDisplay.textContent = "";
 
   const mat = document.getElementById('mat_codeone');
@@ -1298,18 +1418,6 @@ const vendorSelect = document.getElementById('vend_code_select');
 
 window.renderMaterialData = renderMaterialData;
 
-poSelect.addEventListener('mousedown', function (e) {
-  if (e.target.tagName !== 'OPTION') return;
-
-  e.preventDefault();
-  e.target.selected = !e.target.selected;
-
-  // 🔥 FORCE REPAINT
-  poSelect.blur();
-  poSelect.focus();
-
-  poSelect.dispatchEvent(new Event('change'));
-});
 
 
 async function fetchTCInfo() {
@@ -1409,7 +1517,12 @@ async function updateMaterialNamesAndVendor() {
     {};
 
   // gọi qty (fake IPC)
-  try { await fetchPoQtyForRow(item); } catch (e) { console.warn(e); }
+try {
+  await fetchPoQtyForRow(item);
+  syncSizeRunByMaterial();   // ✅ render lại size run bằng đúng __poRows
+} catch (e) {
+  console.warn(e);
+}
 
   // fill material fields
   const matFull = document.getElementById('RI_mat_name');
@@ -1655,6 +1768,7 @@ renderMaterialData(materialData);
       selectBrand.dispatchEvent(new Event('change'));
       syncSizeRunByMaterial();
     }
+    await fetchPoQtyCurrentSelection();
 
   } catch (err) {
     console.error('fetchPOInfo error:', err);
@@ -1726,9 +1840,8 @@ function syncTC_PO() {
   if (!tcInput || !poInput) return;
 
   const tcVal = tcInput.value.trim();
-  const poVal = poInput.value.trim();
+  const poVal = getAllPOCodes().join(',').trim();
 
-  // ===== CASE 1: có TC → khóa PO =====
   if (tcVal.length > 0) {
     poInput.readOnly = true;
     poInput.classList.add('bg-gray-100', 'cursor-not-allowed');
@@ -1736,14 +1849,12 @@ function syncTC_PO() {
     return;
   }
 
-  // ===== CASE 2: có PO → khóa TC =====
   if (poVal.length > 0) {
     tcInput.readOnly = true;
     tcInput.classList.add('bg-gray-100', 'cursor-not-allowed');
     return;
   }
 
-  // ===== CASE 3: cả 2 rỗng → mở cả 2 =====
   poInput.readOnly = false;
   poInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
 
@@ -1861,14 +1972,22 @@ document
 async function fetchPoQtyCurrentSelection() {
   if (DETAIL_MODE) return;
 
-  const poList = document.getElementById('bill-code-input')?.value?.trim() || "";
+  const poList =
+    document.getElementById('bill-code-hidden')?.value?.trim() ||
+    getAllPOCodes().join(',').trim() ||
+    "";
+
   const matCode = document.getElementById('mat_codeone')?.value?.trim() || "";
   const tcCode  = document.getElementById('tc-code-input')?.value?.trim() || "";
 
   if (!poList || !matCode) return;
 
   try {
-    const json = await window.kbAPI.getPoQtyCombined({ po_list: poList, mat_code: matCode, tc: tcCode });
+    const json = await window.kbAPI.getPoQtyCombined({
+      po_list: poList,
+      mat_code: matCode,
+      tc: tcCode
+    });
 
     const purchaseQty  = Number(json?.original?.purchase_qty ?? 0);
     const containerQty = Number(json?.original?.container_qty ?? 0);
@@ -1882,8 +2001,8 @@ async function fetchPoQtyCurrentSelection() {
     const cDisplay = document.getElementById('container-qty-display');
     if (cHidden)  cHidden.value  = containerQty;
     if (cDisplay) cDisplay.value = containerQty;
-     const row = json?.original || json || {};
-    renderSizeRuns(buildSizeRunsFromRow(row));
+
+    // ✅ KHÔNG render size run ở đây
   } catch (err) {
     console.error("fetchPoQtyCurrentSelection error:", err);
   }
@@ -1892,14 +2011,23 @@ window.fetchPoQtyCurrentSelection = fetchPoQtyCurrentSelection;
 async function fetchPoQtyForRow(row) {
   if (DETAIL_MODE) return;
 
-  const poList = row?.polist || document.getElementById('bill-code-input')?.value?.trim() || "";
+  const poList =
+    document.getElementById('bill-code-hidden')?.value?.trim() ||
+    getAllPOCodes().join(',').trim() ||
+    row?.polist ||
+    "";
+
   const matCode = row?.mat_code || row?.mat_codeone || "";
   const tcCode  = document.getElementById('tc-code-input')?.value?.trim() || "";
 
   if (!poList || !matCode) return;
 
   try {
-    const json = await window.kbAPI.getPoQtyCombined({ po_list: poList, mat_code: matCode, tc: tcCode });
+    const json = await window.kbAPI.getPoQtyCombined({
+      po_list: poList,
+      mat_code: matCode,
+      tc: tcCode
+    });
 
     const purchaseQty  = Number(json?.original?.purchase_qty ?? 0);
     const containerQty = Number(json?.original?.container_qty ?? 0);
@@ -1913,9 +2041,8 @@ async function fetchPoQtyForRow(row) {
     const cDisplay = document.getElementById('container-qty-display');
     if (cHidden)  cHidden.value  = containerQty;
     if (cDisplay) cDisplay.value = containerQty;
-        const row2 = json?.original || json || {};
-    renderSizeRuns(buildSizeRunsFromRow(row2));
 
+    // ✅ KHÔNG render size run ở đây
   } catch (e) {
     console.error("fetchPoQtyForRow error:", e);
   }
@@ -2297,72 +2424,139 @@ const escapeHtml = (s) =>
     { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]
   ));
 
-function renderSizeRuns(sizeRuns){
-  if (!Array.isArray(sizeRuns) || sizeRuns.length === 0) return;
-
+function renderSizeRuns(sizeRuns, summary = {}){
   const sec  = document.querySelector("#size-run-section");
   const grid = sec?.querySelector("#size-run-grid");
   if (!grid) return;
+
+  const totalPurchaseEl = document.getElementById("sr-total-purchase");
+  const totalInspectEl  = document.getElementById("sr-total-inspect");
+
+  const totalPurchase =
+    Number(summary.total_purchase ?? 0);
+
+  const totalInspect =
+    Number(summary.total_inspect ?? 0);
+
+  if (!Array.isArray(sizeRuns) || sizeRuns.length === 0) {
+    grid.innerHTML = "";
+    if (totalPurchaseEl) totalPurchaseEl.textContent = totalPurchase.toFixed(0);
+    if (totalInspectEl) totalInspectEl.textContent = totalInspect.toFixed(0);
+    return;
+  }
 
   grid.innerHTML = `
     <div class="sr-table-wrap">
       <table class="sr-table sr-horizontal">
         <tbody>
           <tr class="sr-size-row">
-            ${sizeRuns.map(it =>
-              `<th>${escapeHtml(it.size)}</th>`
-            ).join("")}
+            <th data-i18n="size"></th>
+            ${sizeRuns.map(it => `<th>${escapeHtml(it.size)}</th>`).join("")}
           </tr>
-          <tr class="sr-qty-row">
+          <tr class="sr-purchase-row">
+            <th data-i18n="procurement_quantity">採購數量</th>
             ${sizeRuns.map(it => {
-              const q = Number(it.qty);
-              return `<td>${Number.isFinite(q) ? q.toFixed(0) : q}</td>`;
+              const q = Number(it.purchase_qty || 0);
+              return `<td>${Number.isFinite(q) ? q.toFixed(0) : "0"}</td>`;
+            }).join("")}
+          </tr>
+                    <tr class="sr-inspect-row">
+            <th data-i18n="inspection_quantity">驗貨數量</th>
+            ${sizeRuns.map(it => {
+              const q = Number(it.inspect_qty || 0);
+              return `<td>${Number.isFinite(q) ? q.toFixed(0) : "0"}</td>`;
             }).join("")}
           </tr>
         </tbody>
       </table>
     </div>
   `;
+ applyLanguage?.(localStorage.getItem("app_lang") || "en");
+  if (totalPurchaseEl) totalPurchaseEl.textContent = totalPurchase.toFixed(0);
+  if (totalInspectEl) totalInspectEl.textContent = totalInspect.toFixed(0);
 }
-
+window.renderSizeRuns = renderSizeRuns;
 
 
 function buildSizeRunsFromRow(row){
   if (!row || typeof row !== "object") return [];
 
   const idx = [];
-  for (const k of Object.keys(row)){
-    const m = k.match(/^size_qty(\d{1,2})$/i);
+
+  // lấy tất cả index có size_numcode
+  for (const k of Object.keys(row)) {
+    const m = k.match(/^size_numcode(\d{1,2})$/i);
     if (m) idx.push(m[1]);
   }
 
-  idx.sort((a,b)=>Number(a)-Number(b));
+  idx.sort((a, b) => Number(a) - Number(b));
 
   const out = [];
-  for (const i of idx){
-    const qty = Number(row[`size_qty${i}`]);
-    if (!(qty > 0)) continue;
 
-    const size = row[`size_numcode${i}`];
+  for (const i of idx) {
+    const size = String(row[`size_numcode${i}`] || "").trim();
     if (!size) continue;
 
-    out.push({ size: String(size), qty });
+    const purchaseQty = Number(row[`size_qty${i}`] ?? 0);
+
+    // ✅ chỉ ẩn khi purchase_qty = 0
+    if (!Number.isFinite(purchaseQty) || purchaseQty <= 0) continue;
+
+    out.push({
+      size,
+      purchase_qty: purchaseQty,
+      inspect_qty: 0
+    });
   }
+
   return out;
 }
 
 
-function syncSizeRunByMaterial(){
-  const mat = document.getElementById("mat_codeone")?.value || "";
-  const row = __poRows.find(r => String(r.mat_codeone || "") === String(mat));
-  console.log(row,'row')
-  console.log(__poRows,'__poRows')
-  renderSizeRuns(row?.size_runs || []);
-  window.__CURRENT_SIZE_RUNS__ = row.size_runs;
+function syncSizeRunByMaterial() {
+  const mat = String(document.getElementById("mat_codeone")?.value || "").trim();
+  if (!mat) {
+    renderSizeRuns([], { total_purchase: 0, total_inspect: 0 });
+    window.__CURRENT_SIZE_RUNS__ = [];
+    return;
+  }
 
+  // Lấy tất cả row cùng mat_codeone
+  const rows = __poRows.filter(
+    r => String(r.mat_codeone || "").trim() === mat
+  );
+
+  const sizeMap = new Map();
+
+  rows.forEach(row => {
+    for (let i = 1; i <= 40; i++) {
+      const idx = String(i).padStart(2, "0");
+      const size = String(row[`size_numcode${idx}`] || "").trim();
+      const qty = Number(row[`size_qty${idx}`] ?? 0);
+
+      if (!size || !Number.isFinite(qty) || qty <= 0) continue;
+
+      sizeMap.set(size, (sizeMap.get(size) || 0) + qty);
+    }
+  });
+
+  const merged = Array.from(sizeMap.entries())
+    .map(([size, purchase_qty]) => ({
+      size,
+      purchase_qty,
+      inspect_qty: 0
+    }))
+    .sort((a, b) => Number(a.size) - Number(b.size));
+
+  const supplierTotal = merged.reduce((sum, r) => sum + Number(r.purchase_qty || 0), 0);
+
+  renderSizeRuns(merged, {
+    total_purchase: supplierTotal,
+    total_inspect: 0
+  });
+
+  window.__CURRENT_SIZE_RUNS__ = merged;
 }
-
-
 window.addEventListener("app:ready", async() => {
   document.getElementById("mat_codeone")?.addEventListener("change", syncSizeRunByMaterial);
   renderUserFactory();
@@ -2430,12 +2624,11 @@ themeToggle.addEventListener('change', () => {
 
 
 if (poInput) {
-  poInput.addEventListener('blur', fetchPOInfo);
+  poInput.addEventListener('blur', fetchPOInfoMulti);
   poInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') fetchPOInfo();
+    if (e.key === 'Enter') fetchPOInfoMulti();
   });
 }
-
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('#btn-open-printer-settings');
   if (!btn) return;
@@ -2592,6 +2785,122 @@ btn.classList.remove("opacity-60","pointer-events-none");
     }
   });
 
-  
+function createPOInputRow(value = "") {
+  const row = document.createElement("div");
+  row.className = "po-input-row flex gap-2";
+
+  row.innerHTML = `
+    <div class="input-wrap relative flex-1 mt-2">
+      <input
+        type="text"
+        placeholder="_"
+        autocomplete="off"
+        value="${String(value).replace(/"/g, '&quot;')}"
+        class="po-code-input block w-full h-11 md:h-12 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-base uppercase shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+      />
+    </div>
+
+    <button
+      type="button"
+      class="btn-remove-po inline-flex h-11 md:h-12 w-11 items-center justify-center rounded-xl border border-red-300 bg-white hover:bg-red-50 text-red-600 text-lg font-bold shadow-sm px-2 mt-2"
+    >−</button>
+  `;
+
+  const input = row.querySelector(".po-code-input");
+
+  input.addEventListener("blur", fetchPOInfoMulti);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") fetchPOInfoMulti();
+  });
+
+  row.querySelector(".btn-remove-po")?.addEventListener("click", () => {
+    const rows = document.querySelectorAll(".po-input-row");
+    if (rows.length === 1) {
+      input.value = "";
+    } else {
+      row.remove();
+    }
+    syncMainPOValue();
+    fetchPOInfoMulti();
+  });
+
+  return row;
+}
+
+function getAllPOCodes() {
+  return Array.from(document.querySelectorAll(".po-code-input"))
+    .map(el => el.value.trim())
+    .filter(Boolean);
+}
+
+function syncMainPOValue() {
+  const allPO = getAllPOCodes();
+  const hidden = document.getElementById("bill-code-hidden");
+  if (hidden) {
+    hidden.value = allPO.join(",");
+  }
+}
+
+async function fetchPOInfoMulti() {
+  const tcInput = document.getElementById("tc-code-input");
+  const tcVal = tcInput?.value?.trim() || "";
+  if (tcVal.length > 0) return;
+
+  const poCodes = getAllPOCodes();
+
+  syncMainPOValue();
+
+  if (!poCodes.length) {
+    lastFetchKey = "";
+    resetFullMaterialFields();
+    return;
+  }
+
+  const poCode = poCodes.join(",");
+  const fetchKey = `${poCode}|${tcVal}`;
+  if (fetchKey === lastFetchKey) return;
+  lastFetchKey = fetchKey;
+
+  const loader = document.querySelector(".loader-po");
+  loader?.classList.remove("hidden");
+
+  try {
+    const data = await window.kbAPI.searchPOSole(poCode);
+
+    materialData = Array.isArray(data) ? data : [];
+    __poRows = materialData.map(r => ({ ...r, size_runs: buildSizeRunsFromRow(r) }));
+
+    renderMaterialData(materialData);
+
+    
+
+    const selectBrand = document.getElementById("brand_name_select");
+    const brands = [...new Set(materialData.map(item => item.brand_name).filter(Boolean))];
+
+    if (selectBrand) {
+      selectBrand.innerHTML =
+        '<option value="">-- Brand --</option>' +
+        brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+
+    if (brands.length === 1 && selectBrand) {
+      selectBrand.value = brands[0];
+      selectBrand.dispatchEvent(new Event("change"));
+      syncSizeRunByMaterial();
+    }
+  } catch (err) {
+    console.error("fetchPOInfoMulti error:", err);
+  } finally {
+    loader?.classList.add("hidden");
+  }
+}
+
+const btnAddPO = document.getElementById("btn-add-po");
+const poList = document.getElementById("po-input-list");
+
+btnAddPO?.addEventListener("click", () => {
+  if (!poList) return;
+  poList.appendChild(createPOInputRow());
+});
 
 })();

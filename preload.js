@@ -78,6 +78,8 @@ searchPOSole: (poNo) => ipcRenderer.invoke('kb:search-po-sole', poNo),
 
   searchTC: (tcCode) => ipcRenderer.invoke("kb:searchTC", tcCode),
 saveRid: (payload) => ipcRenderer.invoke("kb:saveRid", payload),
+saveRidSole: (payload) => ipcRenderer.invoke("kb:saveRidSole", payload),
+
   // lất qty công và hàng về
   getPoQtyCombined: (params) =>
     ipcRenderer.invoke("get-po-qty-combined", params),
@@ -95,7 +97,11 @@ saveRid: (payload) => ipcRenderer.invoke("kb:saveRid", payload),
     ipcRenderer.invoke('inspection:delete', ri_no),
   getRidDetail: (params) => ipcRenderer.invoke("kb:getRidDetail", params),
 
+  saveInspectionDetail: (rows) =>
+  ipcRenderer.invoke('kb:save-inspection-detail', rows),
 
+getSizeRunByRI: (data) =>
+  ipcRenderer.invoke("kb:getSizeRunByRI", data),
   //excelllll checkUpdate: () => ipcRenderer.invoke("app:check-update"),
   checkUpdate: () => ipcRenderer.invoke("app:check-update"),
   doUpdate: () => ipcRenderer.invoke("app:do-update"),
@@ -103,7 +109,10 @@ saveRid: (payload) => ipcRenderer.invoke("kb:saveRid", payload),
     ipcRenderer.on("app:update-event", (_, data) => cb(data)),
 exportExcel: (payload) =>
     ipcRenderer.invoke('kb:exportExcel', payload),
-  getVersion: () => ipcRenderer.invoke("app:get-version")
+  getVersion: () => ipcRenderer.invoke("app:get-version"),
+ openSoleExcelTemplate: (payload) => ipcRenderer.invoke("excel:open-sole-template", payload),
+saveExcelAs: (sourcePath) => ipcRenderer.invoke("excel:save-as", sourcePath),
+getPurchaseSizeRun: (payload) => ipcRenderer.invoke('kb:getPurchaseSizeRun', payload)
   //tem QC
 });
 

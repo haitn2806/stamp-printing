@@ -10,7 +10,7 @@ const {
   getMainPool,
   closeAllPools
 } = require('./db');
-
+const os = require("os");
 const ExcelJS = require('exceljs');
 
 autoUpdater.autoDownload = false;
@@ -32,6 +32,12 @@ require("dotenv").config({
     ? path.join(process.resourcesPath, ".env")
     : path.join(__dirname, ".env"),
 });
+
+function getTemplateDir() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "./renderer/assets/templates")
+    : path.join(__dirname, "./renderer/assets/templates");
+}
 // Lấy thông tin cấu hình từ biến môi trường
 function getMainDbConfigByFactory(factory) {
   const base = {
@@ -154,31 +160,56 @@ async function getSidebarInspections(rmType = 'A', limit = 500) {
   try {
     const pool = await getMainDb();
 
-
-    // Kiểm tra rmType và xử lý giá trị hợp lệ
     if (rmType && typeof rmType !== 'string') {
       throw new Error('Invalid rmType: must be a string');
     }
 
-    let query = `
-      SELECT TOP (@limit) RI_no, ERP_po_no, RI_vend_name, RI_mat_code, RI_date, created
-      FROM dv_RM_inspection
-      WHERE isactive = 'Y'`;
+    const shouldSumInspectionQty = ['B', 'C'].includes(String(rmType || '').toUpperCase());
 
-    // Nếu rmType có giá trị, thêm điều kiện lọc vào truy vấn
+    let query = `
+      SELECT TOP (@limit)
+        m.RI_no,
+        m.ERP_po_no,
+        m.RI_vend_name,
+        m.RI_mat_code,
+        m.RI_date,
+        m.created,
+        ISNULL(m.RM_po_qty, 0) AS RM_po_qty,
+        ${shouldSumInspectionQty ? `ISNULL(d.total_inspection_qty, 0)` : `CAST(0 AS DECIMAL(18,2))`} AS total_inspection_qty
+      FROM DV_DATA_LAKE.dbo.dv_RM_inspection m
+      ${
+        shouldSumInspectionQty
+          ? `
+      LEFT JOIN (
+        SELECT
+          RI_no,
+          SUM(ISNULL(RID_qty, 0)) AS total_inspection_qty
+        FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+        WHERE isactive = 'Y'
+        GROUP BY RI_no
+      ) d ON d.RI_no = m.RI_no
+          `
+          : ``
+      }
+      WHERE m.isactive = 'Y'
+    `;
+
     if (rmType) {
-      query += ` AND RM_type = @rmType`;
+      query += ` AND m.RM_type = @rmType`;
     }
 
-    query += ` ORDER BY created DESC`; // Giữ ORDER BY để đảm bảo kết quả theo thứ tự mong muốn
+    query += ` ORDER BY m.created DESC`;
 
-    const result = await pool.request()
-      .input('rmType', sql.NVarChar, rmType)  // Truyền tham số rmType vào truy vấn
-      .input('limit', sql.Int, limit)       // Truyền tham số limit vào truy vấn
-      .query(query);
+    const request = pool.request()
+      .input('limit', sql.Int, Number(limit) || 500);
 
-    return result.recordset;  // Trả lại dữ liệu
+    if (rmType) {
+      request.input('rmType', sql.NVarChar, rmType);
+    }
 
+    const result = await request.query(query);
+
+    return result.recordset;
   } catch (err) {
     console.error('Error fetching sidebar inspections:', err);
     throw err;
@@ -192,6 +223,7 @@ let splashWin=null;
 let preLoginWin=null;
 let loginWin=null;
 let mainWin=null;
+
 
 
 
@@ -391,6 +423,8 @@ ipcMain.on('kb:logout', async () => {
 
 // lấy màu sắc
 ipcMain.handle('kb:getColor', async (e, { ri_no, mat_code }) => {
+  console.log(ri_no,'ri_no');
+  console.log(mat_code,'mat_code');
   try {
     if (!ri_no || !mat_code) {
       throw new Error('Missing ri_no or mat_code');
@@ -657,42 +691,61 @@ ORDER BY CAST(MAX(RID_remark) AS INT)
 
 
 // lấy data detail theo RI_no
+// lấy data detail theo RI_no
 ipcMain.handle('get-inspection-detail', async (event, riNo) => {
   try {
-    // Kiểm tra riNo
+
     if (!riNo || typeof riNo !== 'string') {
       throw new Error('Invalid RI_no');
     }
 
     const pool = await getMainDb();
 
-    // Lấy thông tin bản kiểm tra từ bảng dv_RM_inspection
-    const inspectionQuery = `
-      SELECT * FROM dv_RM_inspection
-      WHERE RI_no = @riNo AND isactive = 'Y'
-    `;
+    // ===== 1. MASTER =====
     const inspectionResult = await pool.request()
       .input('riNo', sql.NVarChar, riNo)
-      .query(inspectionQuery);
+      .query(`
+        SELECT *
+        FROM dv_RM_inspection
+        WHERE RI_no = @riNo
+          AND isactive = 'Y'
+      `);
 
-    const inspection = inspectionResult.recordset[0]; // Chỉ lấy bản ghi đầu tiên (nếu có)
+    const inspection = inspectionResult.recordset[0];
 
-    // Lấy các bản ghi liên quan từ bảng dv_RM_InspectionRecord
-    const recordsQuery = `
-      SELECT * FROM dv_RM_InspectionRecord
-      WHERE ri_no = @riNo
-      ORDER BY ri_sliceNO
-    `;
+    // ===== 2. HISTORY RECORD =====
     const recordsResult = await pool.request()
       .input('riNo', sql.NVarChar, riNo)
-      .query(recordsQuery);
+      .query(`
+        SELECT *
+        FROM dv_RM_InspectionRecord
+        WHERE ri_no = @riNo
+        ORDER BY ri_sliceNO
+      `);
 
     const records = recordsResult.recordset;
 
-    // Trả về dữ liệu cho renderer
+    // ===== 3. SIZE SUMMARY (NEW) =====
+   const sizeResult = await pool.request()
+  .input('riNo', sql.NVarChar, riNo)
+  .query(`
+    SELECT
+      RID_rank AS size,
+      SUM(RID_qty) AS qty
+    FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+    WHERE RI_no = @riNo
+      AND isactive = 'Y'
+    GROUP BY RID_rank
+    ORDER BY RID_rank
+  `);
+
+    const sizes = sizeResult.recordset;
+
+    // ===== RETURN =====
     return {
       inspection,
-      records
+      records,
+      sizes   // 👈 thêm cái này
     };
 
   } catch (err) {
@@ -1004,7 +1057,7 @@ FROM OPENQUERY([DV_SERVER_ERP], '
         ON e.mat_code = a.mat_code AND e.isactive = ''Y''
     LEFT JOIN wuerp_vnrd.dbo.ta_materialbrand f
         ON f.mat_code = e.mat_code AND f.isactive = ''Y''
-    INNER JOIN wuerp_vnrd.dbo.ta_brand g
+LEFT JOIN wuerp_vnrd.dbo.ta_brand g
         ON g.custbrand_id = f.custbrand_id AND g.isactive = ''Y''
     INNER JOIN wuerp_vnrd.dbo.ta_vendacceptdet h
         ON h.ved_templink = a.ved_templink AND h.isactive = ''Y''
@@ -1167,7 +1220,6 @@ ipcMain.handle('kb:deleteRid', async (e, { RI_no, RID_no }) => {
 
 
 ipcMain.handle('kb:saveRid', async (e, { records }) => {
-  let isNewRID = false;
   if (!Array.isArray(records) || !records.length) {
     return { success: true };
   }
@@ -1179,109 +1231,107 @@ ipcMain.handle('kb:saveRid', async (e, { records }) => {
     await tx.begin();
 
     const riNo = records[0].RI_no;
-// 🔥 map RID_no -> RID_remark hiện có
-const remarkMapRs = await new sql.Request(tx)
-  .input('RI_no', sql.NVarChar, riNo)
-  .query(`
-    SELECT DISTINCT RID_no, RID_remark
-    FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
-    WHERE RI_no=@RI_no
-      AND isactive='Y'
-  `);
+    const ridNo = records[0].RID_no;
 
-const remarkMap = {};
-remarkMapRs.recordset.forEach(r => {
-  if (r.RID_no && r.RID_remark != null) {
-    remarkMap[r.RID_no] = String(r.RID_remark);
-  }
-});
-const remarkRs = await new sql.Request(tx)
-  .input('RI_no', sql.NVarChar, riNo)
-  .query(`
-    SELECT ISNULL(MAX(CAST(RID_remark AS INT)), 0) AS max_remark
-    FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
-    WHERE RI_no = @RI_no
-      AND isactive = 'Y'
-  `);
-
-let nextRemark = Number(remarkRs.recordset[0].max_remark) + 1;
-
-    
     const { code: userCode, name: userName } = getCurrentUser();
 
     // ===============================
-    // 1) UPSERT DETAIL
-    
+    // 0) CHECK RID ĐÃ TỒN TẠI CHƯA
     // ===============================
-    for (const r of records) {
-      const keyReq = new sql.Request(tx);
-      keyReq
-        .input('RI_no', sql.NVarChar, r.RI_no)
-        .input('RID_no', sql.NVarChar, r.RID_no)
-        .input('RID_seqno', sql.Int, r.RID_seqno);
-
-      const old = await keyReq.query(`
-        SELECT 1
+    const ridExistRs = await new sql.Request(tx)
+      .input('RI_no', sql.NVarChar, riNo)
+      .input('RID_no', sql.NVarChar, ridNo)
+      .query(`
+        SELECT TOP 1 RID_no, RID_remark
         FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
-        WHERE RI_no=@RI_no
-          AND RID_no=@RID_no
-          AND RID_seqno=@RID_seqno
-          AND isactive='Y'
+        WHERE RI_no = @RI_no
+          AND RID_no = @RID_no
+          AND isactive = 'Y'
       `);
 
-const ridRemark =
-  remarkMap[r.RID_no] ?? String(nextRemark);
+    const isUpdateRID = ridExistRs.recordset.length > 0;
+    const isNewRID = !isUpdateRID;
+
+    // ===============================
+    // 1) LẤY RID_remark
+    // ===============================
+    let ridRemark = null;
+
+    if (isUpdateRID) {
+      // RID cũ => giữ nguyên remark cũ
+      ridRemark = String(ridExistRs.recordset[0].RID_remark || '');
+    } else {
+      // RID mới => lấy max remark + 1
+      const remarkRs = await new sql.Request(tx)
+        .input('RI_no', sql.NVarChar, riNo)
+        .query(`
+          SELECT ISNULL(MAX(CAST(RID_remark AS INT)), 0) AS max_remark
+          FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+          WHERE RI_no = @RI_no
+            AND isactive = 'Y'
+        `);
+
+      ridRemark = String(Number(remarkRs.recordset[0].max_remark || 0) + 1);
+    }
+
+    // ===============================
+    // 2) NẾU LÀ UPDATE => XÓA MỀM TOÀN BỘ DETAIL CŨ CỦA RID
+    // ===============================
+    if (isUpdateRID) {
+      await new sql.Request(tx)
+        .input('RI_no', sql.NVarChar, riNo)
+        .input('RID_no', sql.NVarChar, ridNo)
+        .input('user_name', sql.NVarChar, userName)
+        .query(`
+          UPDATE DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+          SET
+            isactive = 'N',
+            updated = GETDATE(),
+            user_name_updated = @user_name
+          WHERE RI_no = @RI_no
+            AND RID_no = @RID_no
+            AND isactive = 'Y'
+        `);
+    }
+
+    // ===============================
+    // 3) INSERT LẠI TOÀN BỘ RECORDS MỚI
+    // ===============================
+    for (const r of records) {
+      const qty = Number(r.RID_qty || 0);
+
+      // nếu muốn an toàn hơn thì bỏ qua dòng <= 0
+      if (!Number.isFinite(qty) || qty <= 0) continue;
 
       const req = new sql.Request(tx);
       req
         .input('RI_no', sql.NVarChar, r.RI_no)
         .input('RID_no', sql.NVarChar, r.RID_no)
         .input('RID_seqno', sql.Int, r.RID_seqno)
-        .input('RID_qty', sql.Decimal(18, 2), r.RID_qty || 0)
+        .input('RID_qty', sql.Decimal(18, 2), qty)
         .input('RID_rank', sql.NVarChar, r.RID_rank || null)
         .input('RID_color', sql.NVarChar, r.RID_color || null)
         .input('RID_Failtype', sql.NVarChar, r.RID_Failtype || null)
         .input('RID_LabDate', sql.Date, r.RID_LabDate || null)
         .input('RID_remark', sql.NVarChar, ridRemark)
-        .input('user_code', sql.NVarChar, userCode)
         .input('user_name', sql.NVarChar, userName);
 
-      if (old.recordset.length) {
-        await req.query(`
-          UPDATE DV_DATA_LAKE.dbo.dv_RM_inspectiondet
-          SET
-            RID_qty=@RID_qty,
-            RID_rank=@RID_rank,
-            RID_color=@RID_color,
-            RID_Failtype=@RID_Failtype,
-            RID_LabDate=@RID_LabDate,
-            RID_remark=@RID_remark,
-            updated=GETDATE(),
-            user_name_updated=@user_name
-          WHERE RI_no=@RI_no
-            AND RID_no=@RID_no
-            AND RID_seqno=@RID_seqno
-            AND isactive='Y'
-        `);
-      } else {
-          isNewRID = true; 
-        await req.query(`
-          INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspectiondet (
-            RI_no, RID_no, RID_seqno,
-            RID_qty, RID_rank, RID_color, RID_Failtype, RID_LabDate, RID_remark,
-            isactive, created, user_name_created
-          )
-          VALUES (
-            @RI_no, @RID_no, @RID_seqno,
-            @RID_qty, @RID_rank, @RID_color, @RID_Failtype, @RID_LabDate, @RID_remark,
-            'Y', GETDATE(), @user_name
-          )
-        `);
-      }
+      await req.query(`
+        INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspectiondet (
+          RI_no, RID_no, RID_seqno,
+          RID_qty, RID_rank, RID_color, RID_Failtype, RID_LabDate, RID_remark,
+          isactive, created, user_name_created
+        )
+        VALUES (
+          @RI_no, @RID_no, @RID_seqno,
+          @RID_qty, @RID_rank, @RID_color, @RID_Failtype, @RID_LabDate, @RID_remark,
+          'Y', GETDATE(), @user_name
+        )
+      `);
     }
 
     // ===============================
-    // 2) TÍNH TỔNG THEO RANK
+    // 4) TÍNH TỔNG THEO RANK
     // ===============================
     const sumReq = new sql.Request(tx);
     sumReq.input('RI_no', sql.NVarChar, riNo);
@@ -1312,7 +1362,7 @@ const ridRemark =
     });
 
     // ===============================
-    // 3) UPDATE MASTER + AUDIT
+    // 5) UPDATE MASTER + AUDIT
     // ===============================
     const updReq = new sql.Request(tx);
     updReq
@@ -1342,13 +1392,13 @@ const ridRemark =
     `);
 
     await tx.commit();
-return {
-  success: true,
-  totals,
-  isNewRID,              // 🔥 backend quyết định
-  reloadRidList: isNewRID
-};
 
+    return {
+      success: true,
+      totals,
+      isNewRID,
+      reloadRidList: isNewRID
+    };
 
   } catch (err) {
     await tx.rollback();
@@ -1357,7 +1407,124 @@ return {
   }
 });
 
+ipcMain.handle('kb:saveRidSole', async (e, { records }) => {
 
+  if (!Array.isArray(records) || !records.length) {
+    return { success: true };
+  }
+
+  const pool = await getMainDb();
+  const tx = new sql.Transaction(pool);
+
+  try {
+
+    await tx.begin();
+
+    const { name: userName } = getCurrentUser();
+
+    for (const r of records) {
+
+      const check = new sql.Request(tx);
+      check
+        .input('RI_no', sql.NVarChar, r.RI_no)
+        .input('RID_no', sql.NVarChar, r.RID_no)
+        .input('RID_seqno', sql.Int, r.RID_seqno);
+
+      const exist = await check.query(`
+        SELECT 1
+        FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+        WHERE RI_no=@RI_no
+          AND RID_no=@RID_no
+          AND RID_seqno=@RID_seqno
+          AND isactive='Y'
+      `);
+
+      const req = new sql.Request(tx);
+      req
+        .input('RI_no', sql.NVarChar, r.RI_no)
+        .input('RID_no', sql.NVarChar, r.RID_no)
+        .input('RID_seqno', sql.Int, r.RID_seqno)
+        .input('RID_qty', sql.Decimal(18,2), r.RID_qty || 0)
+        .input('RID_rank', sql.NVarChar, r.RID_rank || null)
+        .input('RID_color', sql.NVarChar, r.RID_color || null)
+        .input('RID_Failtype', sql.NVarChar, r.RID_Failtype || null)
+        .input('RID_LabDate', sql.Date, r.RID_LabDate || null)
+        .input('RID_remark', sql.NVarChar, r.RID_remark || null)
+        .input('user_name', sql.NVarChar, userName);
+
+      if (exist.recordset.length) {
+
+        await req.query(`
+          UPDATE DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+          SET
+            RID_qty=@RID_qty,
+            RID_rank=@RID_rank,
+            RID_color=@RID_color,
+            RID_Failtype=@RID_Failtype,
+            RID_LabDate=@RID_LabDate,
+            RID_remark=@RID_remark,
+            updated=GETDATE(),
+            user_name_updated=@user_name
+          WHERE RI_no=@RI_no
+            AND RID_no=@RID_no
+            AND RID_seqno=@RID_seqno
+            AND isactive='Y'
+        `);
+
+      } else {
+
+        await req.query(`
+          INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspectiondet (
+            RI_no,
+            RID_no,
+            RID_seqno,
+            RID_qty,
+            RID_rank,
+            RID_color,
+            RID_Failtype,
+            RID_LabDate,
+            RID_remark,
+            isactive,
+            created,
+            user_name_created
+          )
+          VALUES (
+            @RI_no,
+            @RID_no,
+            @RID_seqno,
+            @RID_qty,
+            @RID_rank,
+            @RID_color,
+            @RID_Failtype,
+            @RID_LabDate,
+            @RID_remark,
+            'Y',
+            GETDATE(),
+            @user_name
+          )
+        `);
+
+      }
+
+    }
+
+    await tx.commit();
+
+    return { success: true };
+
+  } catch (err) {
+
+    await tx.rollback();
+    console.error('[kb:saveRidSole]', err);
+
+    return {
+      success: false,
+      error: err.message || String(err)
+    };
+
+  }
+
+});
 
 
 
@@ -1485,90 +1652,93 @@ ipcMain.handle('kb:open-printer-settings', async () => {
   return { success: false, message: 'Not supported on this OS' };
 });
 
-ipcMain.handle('kb:saveHistory', async (e, { ri_no, records }) => {
-  if (!ri_no || !Array.isArray(records)) {
-    throw new Error('Invalid history payload');
-  }
-
-  const pool = await getMainDb();
-  const tx = new sql.Transaction(pool);
-
-  try {
-    await tx.begin();
-
-    const userName = rememberedUser || 'SYSTEM';
-
-    for (const r of records) {
-      if (!r.ri_sliceNO) continue;
-
-      const check = await new sql.Request(tx)
-        .input('ri_no', sql.NVarChar, ri_no)
-        .input('ri_sliceNO', sql.Int, r.ri_sliceNO)
-        .query(`
-          SELECT 1
-          FROM DV_DATA_LAKE.dbo.dv_RM_InspectionRecord
-          WHERE ri_no=@ri_no
-            AND ri_sliceNO=@ri_sliceNO
-            AND isactive='Y'
-        `);
-
-      const req = new sql.Request(tx)
-        .input('ri_no', sql.NVarChar, ri_no)
-        .input('ri_sliceNO', sql.Int, r.ri_sliceNO)
-        .input('ri_type', sql.NVarChar, r.ri_type || 'A')
-        .input('ri_leather_org', sql.Decimal(18,2), r.ri_leather_org || null)
-        .input('ri_leather_width', sql.Decimal(18,2), r.ri_leather_width || null)
-        .input('ri_leather_diff', sql.Decimal(18,2), r.ri_leather_diff || null)
-        .input('ri_thick_neck', sql.Decimal(18,2), r.ri_thick_neck || null)
-        .input('ri_thick_back', sql.Decimal(18,2), r.ri_thick_back || null)
-        .input('ri_thick_bottom', sql.Decimal(18,2), r.ri_thick_bottom || null)
-        .input('user', sql.NVarChar, userName);
-
-      if (check.recordset.length) {
-        // UPDATE
-        await req.query(`
-          UPDATE DV_DATA_LAKE.dbo.dv_RM_InspectionRecord
-          SET
-            ri_type=@ri_type,
-            ri_leather_org=@ri_leather_org,
-            ri_leather_width=@ri_leather_width,
-            ri_leather_diff=@ri_leather_diff,
-            ri_thick_neck=@ri_thick_neck,
-            ri_thick_back=@ri_thick_back,
-            ri_thick_bottom=@ri_thick_bottom,
-            updated=GETDATE()
-          WHERE ri_no=@ri_no
-            AND ri_sliceNO=@ri_sliceNO
-            AND isactive='Y'
-        `);
-      } else {
-        // INSERT
-        await req.query(`
-          INSERT INTO DV_DATA_LAKE.dbo.dv_RM_InspectionRecord (
-            ri_no, ri_sliceNO, ri_type,
-            ri_leather_org, ri_leather_width, ri_leather_diff,
-            ri_thick_neck, ri_thick_back, ri_thick_bottom,
-            isactive, created, user_name_created
-          )
-          VALUES (
-            @ri_no, @ri_sliceNO, @ri_type,
-            @ri_leather_org, @ri_leather_width, @ri_leather_diff,
-            @ri_thick_neck, @ri_thick_back, @ri_thick_bottom,
-            'Y', GETDATE(), @user
-          )
-        `);
-      }
+ ipcMain.handle('kb:saveHistory', async (e, { ri_no, records, hardness }) => {  
+    if (!ri_no || !Array.isArray(records)) {
+      throw new Error('Invalid history payload');
     }
 
-    await tx.commit();
-    return { success: true };
+    const pool = await getMainDb();
+    const tx = new sql.Transaction(pool);
 
-  } catch (err) {
-    await tx.rollback();
-    console.error('[kb:saveHistory]', err);
-    throw err;
-  }
-});
+    try {
+      await tx.begin();
+
+      const userName = rememberedUser || 'SYSTEM';
+
+      for (const r of records) {
+        if (!r.ri_sliceNO) continue;
+
+        const check = await new sql.Request(tx)
+          .input('ri_no', sql.NVarChar, ri_no)
+          .input('ri_sliceNO', sql.Int, r.ri_sliceNO)
+          .query(`
+            SELECT 1
+            FROM DV_DATA_LAKE.dbo.dv_RM_InspectionRecord
+            WHERE ri_no=@ri_no
+              AND ri_sliceNO=@ri_sliceNO
+              AND isactive='Y'
+          `);
+
+        const req = new sql.Request(tx)
+          .input('ri_no', sql.NVarChar, ri_no)
+          .input('ri_sliceNO', sql.Int, r.ri_sliceNO)
+          .input('ri_type', sql.NVarChar, r.ri_type || 'A')
+          .input('ri_leather_org', sql.Decimal(18,2), r.ri_leather_org || null)
+          .input('ri_leather_width', sql.Decimal(18,2), r.ri_leather_width || null)
+          .input('ri_leather_diff', sql.Decimal(18,2), r.ri_leather_diff || null)
+          .input('ri_thick_neck', sql.Decimal(18,2), r.ri_thick_neck || null)
+          .input('ri_thick_back', sql.Decimal(18,2), r.ri_thick_back || null)
+          .input('ri_thick_bottom', sql.Decimal(18,2), r.ri_thick_bottom || null)
+          .input('ri_hardness', sql.Decimal(18,2), hardness || null)
+          .input('user', sql.NVarChar, userName);
+          
+
+        if (check.recordset.length) {
+          // UPDATE
+          await req.query(`
+            UPDATE DV_DATA_LAKE.dbo.dv_RM_InspectionRecord
+            SET
+              ri_type=@ri_type,
+              ri_leather_org=@ri_leather_org,
+              ri_leather_width=@ri_leather_width,
+              ri_leather_diff=@ri_leather_diff,
+              ri_thick_neck=@ri_thick_neck,
+              ri_thick_back=@ri_thick_back,
+              ri_thick_bottom=@ri_thick_bottom,
+               ri_hardness=@ri_hardness,
+              updated=GETDATE()
+            WHERE ri_no=@ri_no
+              AND ri_sliceNO=@ri_sliceNO
+              AND isactive='Y'
+          `);
+        } else {
+          // INSERT
+          await req.query(`
+            INSERT INTO DV_DATA_LAKE.dbo.dv_RM_InspectionRecord (
+              ri_no, ri_sliceNO, ri_type,
+              ri_leather_org, ri_leather_width, ri_leather_diff,
+              ri_thick_neck, ri_thick_back, ri_thick_bottom,ri_hardness,
+              isactive, created, user_name_created
+            )
+            VALUES (
+              @ri_no, @ri_sliceNO, @ri_type,
+              @ri_leather_org, @ri_leather_width, @ri_leather_diff,
+              @ri_thick_neck, @ri_thick_back, @ri_thick_bottom,@ri_hardness,
+              'Y', GETDATE(), @user
+            )
+          `);
+        }
+      }
+
+      await tx.commit();
+      return { success: true };
+
+    } catch (err) {
+      await tx.rollback();
+      console.error('[kb:saveHistory]', err);
+      throw err;
+    }
+  });
 ipcMain.handle('kb:search-po', async (event, poNo) => {
   if (!poNo) return [];
   const pool = await getMainDb();
@@ -1598,7 +1768,7 @@ FROM OPENQUERY([DV_SERVER_ERP], '
         ON e.mat_code = a.mat_code AND e.isactive = ''Y''
     LEFT JOIN wuerp_vnrd.dbo.ta_materialbrand f
         ON f.mat_code = e.mat_code AND f.isactive = ''Y''
-    INNER JOIN wuerp_vnrd.dbo.ta_brand g
+    LEFT JOIN wuerp_vnrd.dbo.ta_brand g
         ON g.custbrand_id = f.custbrand_id AND g.isactive = ''Y''
     INNER JOIN wuerp_vnrd.dbo.ta_vendmast j
         ON b.vend_code = j.vend_code AND j.isactive = ''Y''
@@ -1646,20 +1816,33 @@ const buildSizeRuns = (row) => {
   }
   return out;
 };
-ipcMain.handle('kb:search-po-sole', async (event, poNo) => {
+
+
+async function getSearchPoSoleRows(poNo) {
   if (!poNo) return [];
 
   const pool = await getMainDb();
   const factory = mustFactory();
   const companyCode = getCompanyCodeByFactory(factory);
 
-  const po = poNo.replace(/'/g, "''");
+  const poList = String(poNo)
+    .split(',')
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  if (!poList.length) return [];
+
+  const poIn = poList
+    .map(p => `''${p.replace(/'/g, "''")}''`)
+    .join(',');
+
   const cc = companyCode.replace(/'/g, "''");
 
   const query = `
 SELECT *
 FROM OPENQUERY([DV_SERVER_ERP], '
   SELECT 
+    a.pod_templink,
     e.mat_codeone,
     e.mat_fullname,
     e.mat_fullename,
@@ -1722,7 +1905,7 @@ FROM OPENQUERY([DV_SERVER_ERP], '
     ON e.mat_code = a.mat_code AND e.isactive = ''Y''
   LEFT JOIN wuerp_vnrd.dbo.ta_materialbrand f
     ON f.mat_code = e.mat_code AND f.isactive = ''Y''
-  INNER JOIN wuerp_vnrd.dbo.ta_brand g
+  LEFT JOIN wuerp_vnrd.dbo.ta_brand g
     ON g.custbrand_id = f.custbrand_id AND g.isactive = ''Y''
   INNER JOIN wuerp_vnrd.dbo.ta_vendmast j
     ON b.vend_code = j.vend_code AND j.isactive = ''Y''
@@ -1736,9 +1919,9 @@ FROM OPENQUERY([DV_SERVER_ERP], '
    AND m.cofactory_code = ''${cc}''
    AND RIGHT(m.mat_code, LEN(m.mat_code) - 1) = e.mat_codeone
   WHERE a.isactive = ''Y''
-    AND a.po_no = ''${po}''
+    AND a.po_no IN (${poIn})
   GROUP BY
-    e.mat_codeone, e.mat_fullname, e.mat_fullename,
+    a.pod_templink, e.mat_codeone, e.mat_fullname, e.mat_fullename,
     f.custbrand_id, g.brand_code, g.brand_name,
     j.vend_code, j.vend_simplename, k.referdetails_name,
     asize.size_numcode01, asize.size_qty01,
@@ -1785,14 +1968,73 @@ FROM OPENQUERY([DV_SERVER_ERP], '
 `;
 
   const result = await pool.request().query(query);
-  return (result.recordset || []).map(r => ({
+  return result.recordset || [];
+}
+ipcMain.handle('kb:search-po-sole', async (event, poNo) => {
+  const rows = await getSearchPoSoleRows(poNo);
+  console.log(rows,'rows')
+  return rows.map(r => ({
     ...r,
-    size_runs: buildSizeRuns(r),   // ✅ NEW: chỉ size qty>0
+    size_runs: buildSizeRuns(r),
   }));
 });
 
 
+// lưu cái size và value vào
+ipcMain.handle("kb:save-inspection-detail", async (e, rows) => {
 
+  const pool = await getMainDb();
+  const { name: userName } = getCurrentUser();
+
+  const RID_no = genRid();   // 🔥 tạo RID 1 lần
+
+  for (let i = 0; i < rows.length; i++) {
+
+    const r = rows[i];
+
+    await pool.request()
+      .input("RI_no", sql.NVarChar, r.RI_no)
+      .input("RID_no", sql.NVarChar, RID_no)
+      .input("RID_seqno", sql.Int, i + 1)
+      .input("RID_rank", sql.NVarChar, r.RID_rank)
+      .input("RID_qty", sql.Decimal(18,2), r.RID_qty)
+      .input("RID_remark", sql.Int, r.RID_remark)
+      .input("user_name", sql.NVarChar, userName)
+      .query(`
+        INSERT INTO DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+        (
+          RI_no,
+          RID_no,
+          RID_seqno,
+          RID_rank,
+          RID_qty,
+          RID_remark,
+          isactive,
+          created,
+          user_name_created
+        )
+        VALUES
+        (
+          @RI_no,
+          @RID_no,
+          @RID_seqno,
+          @RID_rank,
+          @RID_qty,
+          @RID_remark,
+          'Y',
+          GETDATE(),
+          @user_name
+        )
+      `);
+
+  }
+
+  return {
+    success: true,
+    RID_no
+  };
+
+});
 
 async function deactivateInspection(ri_no, userName) {
   const pool = await getMainDb();
@@ -1874,6 +2116,44 @@ async function deactivateInspection(ri_no, userName) {
   }
 }
 
+
+ipcMain.handle('kb:getSizeRunByRI', async (e, { ri_no, remark }) => {
+  try {
+
+    ri_no = String(ri_no || "").trim();
+    remark = String(remark || "").trim();
+
+    if (!ri_no) {
+      return { success: false, sizes: [] };
+    }
+
+    const pool = await getMainDb();
+
+    const result = await pool.request()
+      .input('ri_no', sql.NVarChar, ri_no)
+      .input('remark', sql.NVarChar, remark)
+      .query(`
+        SELECT
+            RID_rank AS size,
+            SUM(RID_qty) AS qty
+        FROM dv_RM_inspectiondet
+        WHERE RI_no = @ri_no
+        AND RID_remark = @remark
+        AND isactive = 'Y'
+        GROUP BY RID_rank
+        ORDER BY RID_rank
+      `);
+
+    return {
+      success: true,
+      sizes: result.recordset
+    };
+
+  } catch (err) {
+    console.error('[kb:getSizeRunByRI]', err);
+    return { success: false, sizes: [] };
+  }
+});
 
 
 ipcMain.handle('inspection:delete', async (e, ri_no) => {
@@ -2019,30 +2299,35 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
       defaultPath: `QC_Summary_${ri_no}_${Date.now()}.xlsx`,
       filters: [{ name: "Excel", extensions: ["xlsx"] }],
     });
-    if (canceled || !filePath) return { success: false, canceled: true };
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
 
     const pool = await getMainDb();
 
-    // ===== 0) lấy info header (Material/OldCode/Method/Date) =====
+    // ===== header info =====
     const infoRs = await pool.request()
       .input("ri_no", sql.NVarChar, ri_no)
       .query(`
         SELECT TOP 1
-          ISNULL(RI_mat_code,'')     AS RI_mat_code,
-          ISNULL(RI_mat_oldcode,'')  AS RI_mat_oldcode,
-          ISNULL(RI_shippingway,'')  AS RI_shippingway,
+          ISNULL(RI_mat_code,'') AS RI_mat_code,
+          ISNULL(RI_mat_oldcode,'') AS RI_mat_oldcode,
+          ISNULL(RI_shippingway,'') AS RI_shippingway,
           ISNULL(CONVERT(varchar(10), RI_date, 23),'') AS RI_date
         FROM DV_DATA_LAKE.dbo.dv_RM_inspection
-        WHERE RI_no = @ri_no AND isactive='Y'
+        WHERE RI_no = @ri_no
+          AND isactive = 'Y'
       `);
 
     const info = infoRs.recordset?.[0] || {};
+
     const matCode = String(info.RI_mat_code || "").trim();
     const oldCode = String(info.RI_mat_oldcode || "").trim();
-    const method  = String(info.RI_shippingway || "").trim();
+    const method = String(info.RI_shippingway || "").trim();
     const delDate = String(info.RI_date || "").trim();
 
-    // ===== 1) group theo tem + key(rank+color+failtype) =====
+    // ===== detail rows =====
     const rs = await pool.request()
       .input("ri_no", sql.NVarChar, ri_no)
       .query(`
@@ -2051,12 +2336,22 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
           ISNULL(RID_rank,'')     AS RID_rank,
           ISNULL(RID_color,'')    AS RID_color,
           ISNULL(RID_Failtype,'') AS RID_Failtype,
+          MAX(RID_remark)         AS RID_remark,
           SUM(ISNULL(RID_qty,0))  AS qty
         FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
         WHERE RI_no = @ri_no
           AND isactive = 'Y'
-        GROUP BY RID_no, RID_rank, RID_color, RID_Failtype
-        ORDER BY RID_no, RID_rank, RID_color, RID_Failtype
+        GROUP BY
+          RID_no,
+          RID_rank,
+          RID_color,
+          RID_Failtype
+        ORDER BY
+          TRY_CAST(MAX(RID_remark) AS INT),
+          RID_no,
+          RID_rank,
+          RID_color,
+          RID_Failtype
       `);
 
     const rows = rs.recordset || [];
@@ -2073,32 +2368,55 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
 
     const keyLabel = (r) => {
       const rank = String(r.RID_rank || "").trim().toUpperCase();
-      const ft   = String(r.RID_Failtype || "").trim();
-      const col  = String(r.RID_color || "").trim();
+      const ft = String(r.RID_Failtype || "").trim();
+      const col = String(r.RID_color || "").trim();
 
       const base = RANK_MAP[rank] || (rank || "EMPTY");
+
       let s = base;
-      if (ft)  s += ft;        // E(C/V)4
-      if (col) s += ` ${col}`; // ... VET/IT/NHIEU
+      if (ft) s += ft;
+      if (col) s += ` ${col}`;
+
       return s;
     };
 
+    // ===== build columns + RID order =====
     const colSet = new Set();
-    const ridSet = new Set();
+    const ridOrder = new Map();
 
     for (const r of rows) {
-      if (r.RID_no) ridSet.add(r.RID_no);
+      if (r.RID_no && !ridOrder.has(r.RID_no)) {
+        ridOrder.set(r.RID_no, true);
+      }
+
       colSet.add(keyLabel(r));
     }
 
     const cols = Array.from(colSet).sort((a, b) => a.localeCompare(b));
-    const ridList = Array.from(ridSet).sort((a, b) => String(a).localeCompare(String(b)));
+    const ridList = Array.from(ridOrder.keys());
 
-    // ===== 2) workbook =====
+    // ===== data map =====
+    const dataMap = new Map();
+
+    for (const r of rows) {
+      const rid = r.RID_no;
+      const col = keyLabel(r);
+      const qty = Number(r.qty) || 0;
+
+      if (!dataMap.has(rid)) {
+        dataMap.set(rid, new Map());
+      }
+
+      dataMap.get(rid).set(
+        col,
+        (dataMap.get(rid).get(col) || 0) + qty
+      );
+    }
+
+    // ===== workbook =====
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("QC Summary");
 
-    // ===== helpers + theme =====
     const colToLetter = (n) => {
       let s = "";
       while (n > 0) {
@@ -2109,69 +2427,92 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
       return s;
     };
 
-    // ExcelJS argb nên dùng 8 ký tự (FF + RGB)
     const PAL = {
-      navy:     "FF0F172A",
-      blue:     "FF2563EB",
-      skyLite:  "FFDBEAFE",
-      slateLite:"FFF1F5F9",
-      zebra:    "FFF8FAFC",
-      border:   "FFCBD5E1",
-      text:     "FF0F172A",
-      white:    "FFFFFFFF",
-      total:    "FFFEF3C7",
+      navy: "FF0F172A",
+      blue: "FF2563EB",
+      skyLite: "FFDBEAFE",
+      slateLite: "FFF1F5F9",
+      zebra: "FFF8FAFC",
+      border: "FFCBD5E1",
+      text: "FF0F172A",
+      white: "FFFFFFFF",
+      total: "FFFEF3C7",
     };
 
     const setBorderAll = (cell, color = PAL.border) => {
       cell.border = {
-        top:    { style: "thin", color: { argb: color } },
-        left:   { style: "thin", color: { argb: color } },
+        top: { style: "thin", color: { argb: color } },
+        left: { style: "thin", color: { argb: color } },
         bottom: { style: "thin", color: { argb: color } },
-        right:  { style: "thin", color: { argb: color } },
+        right: { style: "thin", color: { argb: color } },
       };
     };
 
-    // ✅ STT + RID_no + dynamic cols
     const totalCols = 2 + cols.length;
     const lastCol = colToLetter(totalCols);
 
-    // ===== 3) TITLE BLOCK (rows 1-4) =====
+    // ===== title =====
     ws.mergeCells(`A1:${lastCol}1`);
     ws.getCell("A1").value = "QC TEM SUMMARY";
     ws.getRow(1).height = 28;
     Object.assign(ws.getCell("A1"), {
-      font: { name: "Calibri", size: 16, bold: true, color: { argb: PAL.white } },
-      alignment: { vertical: "middle", horizontal: "center" },
-      fill: { type: "pattern", pattern: "solid", fgColor: { argb: PAL.navy } },
+      font: {
+        name: "Calibri",
+        size: 16,
+        bold: true,
+        color: { argb: PAL.white },
+      },
+      alignment: {
+        vertical: "middle",
+        horizontal: "center",
+      },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: PAL.navy },
+      },
     });
 
     ws.mergeCells(`A2:${lastCol}2`);
-    ws.getCell("A2").value = `Material: ${matCode || "-"}  -  Material Old Code: ${oldCode || "-"}`;
+    ws.getCell("A2").value =
+      `Material: ${matCode || "-"}  -  Material Old Code: ${oldCode || "-"}`;
+
     ws.getRow(2).height = 20;
     Object.assign(ws.getCell("A2"), {
-      font: { name: "Calibri", size: 11, bold: true, color: { argb: PAL.text } },
-      alignment: { vertical: "middle", horizontal: "center" }, // ✅ center
-      fill: { type: "pattern", pattern: "solid", fgColor: { argb: PAL.slateLite } },
+      font: { name: "Calibri", size: 11, bold: true },
+      alignment: { vertical: "middle", horizontal: "center" },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: PAL.slateLite },
+      },
     });
 
     ws.mergeCells(`A3:${lastCol}3`);
-    ws.getCell("A3").value = `Method: ${method || "-"}  -  Delivery Date: ${delDate || "-"}`;
+    ws.getCell("A3").value =
+      `Method: ${method || "-"}  -  Delivery Date: ${delDate || "-"}`;
+
     ws.getRow(3).height = 20;
     Object.assign(ws.getCell("A3"), {
-      font: { name: "Calibri", size: 11, bold: true, color: { argb: PAL.text } },
-      alignment: { vertical: "middle", horizontal: "center" }, // ✅ center
-      fill: { type: "pattern", pattern: "solid", fgColor: { argb: PAL.skyLite } },
+      font: { name: "Calibri", size: 11, bold: true },
+      alignment: { vertical: "middle", horizontal: "center" },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: PAL.skyLite },
+      },
     });
 
     ws.mergeCells(`A4:${lastCol}4`);
     ws.getRow(4).height = 6;
 
-    // border cho 1-3
     for (let r = 1; r <= 3; r++) {
-      for (let c = 1; c <= totalCols; c++) setBorderAll(ws.getCell(r, c));
+      for (let c = 1; c <= totalCols; c++) {
+        setBorderAll(ws.getCell(r, c));
+      }
     }
 
-    // ===== 4) HEADER TABLE (row 5) =====
+    // ===== header =====
     const HEADER_ROW = 5;
     const DATA_START = 6;
 
@@ -2180,182 +2521,275 @@ ipcMain.handle("kb:exportQcSummaryExcel", async (event, { ri_no }) => {
 
     for (let c = 1; c <= totalCols; c++) {
       const cell = ws.getCell(HEADER_ROW, c);
-      cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: PAL.white } };
-      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PAL.blue } };
+
+      cell.font = {
+        name: "Calibri",
+        size: 11,
+        bold: true,
+        color: { argb: PAL.white },
+      };
+
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: PAL.blue },
+      };
+
       setBorderAll(cell);
     }
 
-    // ✅ freeze: title+header, cố định 2 cột (STT + RID_no)
-    ws.views = [{ state: "frozen", xSplit: 2, ySplit: HEADER_ROW }];
+    ws.views = [{
+      state: "frozen",
+      xSplit: 2,
+      ySplit: HEADER_ROW,
+    }];
 
-    // filter
-    ws.autoFilter = { from: `A${HEADER_ROW}`, to: `${lastCol}${HEADER_ROW}` };
+    ws.autoFilter = {
+      from: `A${HEADER_ROW}`,
+      to: `${lastCol}${HEADER_ROW}`,
+    };
 
-    // width + number format
-    ws.getColumn(1).width = 6;    // STT
-    ws.getColumn(2).width = 18;   // RID_no
+    ws.getColumn(1).width = 6;
+    ws.getColumn(2).width = 18;
+
     for (let i = 0; i < cols.length; i++) {
-      const colIdx = 3 + i;       // ✅ shift
-      ws.getColumn(colIdx).width = 14;
-      ws.getColumn(colIdx).numFmt = "0.00";
+      const idx = 3 + i;
+      ws.getColumn(idx).width = 14;
+      ws.getColumn(idx).numFmt = "0.00";
     }
 
-    // ===== 5) map rid -> col -> qty =====
-    const map = new Map();
-    for (const r of rows) {
-      const rid = r.RID_no;
-      const col = keyLabel(r);
-      const qty = Number(r.qty) || 0;
-      if (!map.has(rid)) map.set(rid, new Map());
-      map.get(rid).set(col, (map.get(rid).get(col) || 0) + qty);
-    }
-
-    // ===== 6) write data + zebra =====
+    // ===== data rows =====
     let currentRow = DATA_START;
     let stt = 1;
 
-for (const rid of ridList) {
-  const m = map.get(rid) || new Map();
+    for (const rid of ridList) {
+      const m = dataMap.get(rid) || new Map();
 
-  // set STT + RID trước
-  ws.getCell(currentRow, 1).value = stt++;
-  ws.getCell(currentRow, 2).value = rid;
+      ws.getCell(currentRow, 1).value = stt++;
+      ws.getCell(currentRow, 2).value = rid;
 
-  // set từng cột qty: có thì ghi số, không thì null (trống)
-  for (let i = 0; i < cols.length; i++) {
-    const v = m.get(cols[i]);
-    ws.getCell(currentRow, 3 + i).value = (v == null || v === 0) ? null : v;
-  }
+      for (let i = 0; i < cols.length; i++) {
+        const v = m.get(cols[i]);
+        ws.getCell(currentRow, 3 + i).value =
+          v == null || v === 0 ? null : v;
+      }
 
-  ws.getRow(currentRow).height = 18;
+      const zebra = (currentRow - DATA_START) % 2 === 1;
 
-  const zebra = (currentRow - DATA_START) % 2 === 1;
-  for (let c = 1; c <= totalCols; c++) {
-    const cell = ws.getCell(currentRow, c);
-    cell.font = { name: "Calibri", size: 11, color: { argb: PAL.text } };
-    cell.alignment = {
-      vertical: "middle",
-      horizontal: c === 1 ? "center" : (c === 2 ? "left" : "right"),
-    };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: zebra ? PAL.zebra : PAL.white } };
-    setBorderAll(cell);
-  }
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = ws.getCell(currentRow, c);
 
-  currentRow++;
-}
+        cell.font = {
+          name: "Calibri",
+          size: 11,
+          color: { argb: PAL.text },
+        };
 
+        cell.alignment = {
+          vertical: "middle",
+          horizontal:
+            c === 1 ? "center" :
+            c === 2 ? "left" : "right",
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: zebra ? PAL.zebra : PAL.white,
+          },
+        };
+
+        setBorderAll(cell);
+      }
+
+      currentRow++;
+    }
 
     const lastDataRow = currentRow - 1;
 
-    // ===== 7) TOTAL ROW =====
-    const totalRowIndex = currentRow;
-    ws.getCell(`A${totalRowIndex}`).value = "";       // ✅ STT trống
-    ws.getCell(`B${totalRowIndex}`).value = "TOTAL";  // ✅ TOTAL nằm cột RID_no
+    // ===== total =====
+    const totalRow = currentRow;
+
+    ws.getCell(`B${totalRow}`).value = "TOTAL";
 
     for (let i = 0; i < cols.length; i++) {
-      let s = 0;
+      let sum = 0;
+
       for (let r = DATA_START; r <= lastDataRow; r++) {
-        s += Number(ws.getCell(r, 3 + i).value || 0); // ✅ shift
+        sum += Number(ws.getCell(r, 3 + i).value || 0);
       }
-      ws.getCell(totalRowIndex, 3 + i).value = s;     // ✅ shift
+
+      ws.getCell(totalRow, 3 + i).value = sum;
     }
 
-    ws.getRow(totalRowIndex).height = 20;
-
     for (let c = 1; c <= totalCols; c++) {
-      const cell = ws.getCell(totalRowIndex, c);
-      cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: PAL.text } };
+      const cell = ws.getCell(totalRow, c);
+
+      cell.font = {
+        name: "Calibri",
+        size: 11,
+        bold: true,
+      };
+
       cell.alignment = {
         vertical: "middle",
-        horizontal: c === 1 ? "center" : (c === 2 ? "left" : "right"),
+        horizontal:
+          c === 1 ? "center" :
+          c === 2 ? "left" : "right",
       };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PAL.total } };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: PAL.total },
+      };
+
       setBorderAll(cell);
     }
 
-    // print setup
-    ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    ws.pageSetup = {
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+    };
 
     await wb.xlsx.writeFile(filePath);
+
     return {
-  success: true,
-  filePath,
-  message: `Xuất QC Summary Excel thành công!\n${filePath}`
-};
+      success: true,
+      filePath,
+      message: `Xuất QC Summary Excel thành công!\n${filePath}`,
+    };
 
   } catch (err) {
     console.error("[kb:exportQcSummaryExcel]", err);
+
     return {
-  success: false,
-  message: `Xuất QC Summary Excel thất bại!\n${err?.message || "Export fail"}`
-};
+      success: false,
+      message: `Xuất QC Summary Excel thất bại!\n${err?.message || "Export fail"}`,
+    };
   }
 });
 
 
 // ===== QC TEM CHECK =====
 ipcMain.handle("kb:checkTem", async (e, { ri_no }) => {
-  if (!ri_no) return { success: false, message: "Missing RI_no" };
+  try {
+    if (!ri_no) {
+      return {
+        success: false,
+        message: "Missing RI_no",
+      };
+    }
 
-  const pool = await getMainDb();
+    const pool = await getMainDb();
 
-  const rs = await pool.request()
-    .input("ri_no", sql.NVarChar, ri_no)
-    .query(`
-      ;WITH base AS (
-        SELECT
-          RID_no,
-          COUNT(*) AS lines_total,
-          SUM(CASE WHEN ISNULL(RID_qty,0) > 0 THEN 1 ELSE 0 END) AS lines_qty_gt0,
-          SUM(CASE WHEN ISNULL(RID_qty,0) > 0 THEN ISNULL(RID_qty,0) ELSE 0 END) AS qty_sum  -- sum chỉ >0
-        FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
-        WHERE RI_no = @ri_no
-          AND isactive = 'Y'
-        GROUP BY RID_no
-      ),
-      defect AS (
-        SELECT
-          RID_no,
-          STRING_AGG(defect, ', ') AS defect
-        FROM (
-          SELECT DISTINCT
+    const rs = await pool.request()
+      .input("ri_no", sql.NVarChar, ri_no)
+      .query(`
+        ;WITH base AS (
+          SELECT
             RID_no,
-            CONCAT_WS(' / ',
-              NULLIF(LTRIM(RTRIM(RID_rank)), ''),
-              NULLIF(LTRIM(RTRIM(RID_color)), ''),
-              NULLIF(LTRIM(RTRIM(RID_Failtype)), '')
-            ) AS defect
+            MAX(RID_remark) AS RID_remark,
+            COUNT(*) AS lines_total,
+            SUM(
+              CASE
+                WHEN ISNULL(RID_qty, 0) > 0 THEN 1
+                ELSE 0
+              END
+            ) AS lines_qty_gt0,
+            SUM(
+              CASE
+                WHEN ISNULL(RID_qty, 0) > 0 THEN ISNULL(RID_qty, 0)
+                ELSE 0
+              END
+            ) AS qty_sum
           FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
           WHERE RI_no = @ri_no
             AND isactive = 'Y'
-            AND ISNULL(RID_qty,0) > 0
-        ) x
-        WHERE defect IS NOT NULL
-        GROUP BY RID_no
-      )
-      SELECT
-        b.RID_no,
-        b.lines_total,
-        b.lines_qty_gt0,
-        b.qty_sum,
-        ISNULL(d.defect, '—') AS defect
-      FROM base b
-      LEFT JOIN defect d ON d.RID_no = b.RID_no
-      ORDER BY b.RID_no;
-    `);
+          GROUP BY RID_no
+        ),
+        defect AS (
+          SELECT
+            RID_no,
+            STRING_AGG(defect, ', ') AS defect
+          FROM (
+            SELECT DISTINCT
+              RID_no,
+              CONCAT_WS(
+                ' / ',
+                NULLIF(LTRIM(RTRIM(RID_rank)), ''),
+                NULLIF(LTRIM(RTRIM(RID_color)), ''),
+                NULLIF(LTRIM(RTRIM(RID_Failtype)), '')
+              ) AS defect
+            FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+            WHERE RI_no = @ri_no
+              AND isactive = 'Y'
+              AND ISNULL(RID_qty, 0) > 0
+          ) x
+          WHERE defect IS NOT NULL
+          GROUP BY RID_no
+        )
+        SELECT
+          b.RID_no,
+          b.RID_remark,
+          b.lines_total,
+          b.lines_qty_gt0,
+          b.qty_sum,
+          ISNULL(d.defect, '—') AS defect
+        FROM base b
+        LEFT JOIN defect d
+          ON d.RID_no = b.RID_no
+        ORDER BY
+          TRY_CAST(b.RID_remark AS INT),
+          b.RID_no
+      `);
 
-  const rows = rs.recordset || [];
-  const total_tem = rows.length;
+    const rows = rs.recordset || [];
+    const total_tem = rows.length;
 
-  const totals = rows.reduce((a, r) => {
-    a.lines_total   += Number(r.lines_total || 0);
-    a.lines_qty_gt0 += Number(r.lines_qty_gt0 || 0);
-    a.qty_sum       += Number(r.qty_sum || 0);
-    return a;
-  }, { lines_total: 0, lines_qty_gt0: 0, qty_sum: 0 });
+    const totals = rows.reduce((acc, r) => {
+      acc.lines_total += Number(r.lines_total || 0);
+      acc.lines_qty_gt0 += Number(r.lines_qty_gt0 || 0);
+      acc.qty_sum += Number(r.qty_sum || 0);
+      return acc;
+    }, {
+      lines_total: 0,
+      lines_qty_gt0: 0,
+      qty_sum: 0,
+    });
 
-  return { success: true, ri_no, total_tem, totals, rows };
+    return {
+      success: true,
+      ri_no,
+      total_tem,
+      totals,
+      rows,
+    };
+
+  } catch (err) {
+    console.error("[kb:checkTem]", err);
+
+    return {
+      success: false,
+      message: err?.message || "Check tem failed",
+      rows: [],
+      total_tem: 0,
+      totals: {
+        lines_total: 0,
+        lines_qty_gt0: 0,
+        qty_sum: 0,
+      },
+    };
+  }
 });
 
 ipcMain.handle("app:check-update", async () => {
@@ -2432,4 +2866,264 @@ function genRid() {
 
 ipcMain.handle("kb:generateRid", async () => {
   return { rid_no: genRid() };
+});
+
+ipcMain.handle("excel:open-sole-template", async (e, payload) => {
+  try {
+    const ri_no = String(payload?.ri_no || "").trim();
+    if (!ri_no) {
+      throw new Error("Missing RI_no");
+    }
+
+    const templatePath = path.join(getTemplateDir(), "sole_template.xlsx");
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`Template not found: ${templatePath}`);
+    }
+
+    const pool = await getMainDb();
+
+    // 1) lấy dữ liệu master từ DB
+    const rs = await pool.request()
+      .input("ri_no", sql.NVarChar, ri_no)
+      .query(`
+        SELECT TOP 1
+          RI_no,
+          created,
+          ISNULL(ERP_po_no, '') AS ERP_po_no,
+          ISNULL(RM_po_qty, 0) AS RM_po_qty,
+          ISNULL(RI_thickness_spec, '') AS RI_thickness_spec,
+          ISNULL(RI_hardness_spec, '') AS RI_hardness_spec,
+          ISNULL(RI_vend_name, '') AS RI_vend_name,
+          ISNULL(RI_mat_code, '') AS RI_mat_code,
+          ISNULL(RI_mat_name, '') AS RI_mat_name,
+          ISNULL(RI_mat_ename, '') AS RI_mat_ename,
+          ISNULL(RI_brand_name, '') AS RI_brand_name,
+          ISNULL(RI_inspector_sign, '') AS RI_inspector_sign,
+          ISNULL(CONVERT(varchar(10), RI_date, 23), '') AS RI_date
+        FROM DV_DATA_LAKE.dbo.dv_RM_inspection
+        WHERE RI_no = @ri_no
+          AND isactive = 'Y'
+      `);
+
+    if (!rs.recordset.length) {
+      throw new Error(`Không tìm thấy RI_no: ${ri_no}`);
+    }
+
+    const info = rs.recordset[0];
+
+    const qtyRs = await pool.request()
+  .input("ri_no", sql.NVarChar, ri_no)
+  .query(`
+    SELECT ISNULL(SUM(RID_qty), 0) AS total_qty
+    FROM DV_DATA_LAKE.dbo.dv_RM_inspectiondet
+    WHERE RI_no = @ri_no
+      AND isactive = 'Y'
+  `);
+
+const totalQty = qtyRs.recordset[0]?.total_qty || 0;
+
+    // 2) tách PO list
+    const poList = String(info.ERP_po_no || "")
+      .split(",")
+      .map(x => x.trim().toUpperCase())
+      .filter(Boolean);
+
+    // 3) lấy mo_no theo từng PO
+    const moRows = [];
+
+   const matCode = String(info.RI_mat_code || "").trim().toUpperCase();
+
+for (const po of poList) {
+  const poEsc = po.replace(/'/g, "''");
+  const matCodeEsc = matCode.replace(/'/g, "''");
+
+  const moRs = await pool.request().query(`
+    SELECT *
+    FROM OPENQUERY([DV_SERVER_ERP], '
+      SELECT
+        STRING_AGG(po_source_no, '','') AS mo_no
+      FROM wuerp_vnrd.dbo.ta_purchasedet
+      WHERE isactive = ''Y''
+        AND po_no = ''${poEsc}''
+        AND RIGHT(mat_code, 8) = ''${matCodeEsc}''
+    ')
+  `);
+
+  moRows.push({
+    po_no: po,
+    mat_code: matCode,
+    mo_no: moRs.recordset?.[0]?.mo_no || ""
+  });
+}
+
+    // 4) gom tất cả mono thành list phẳng
+ const monoSet = new Set();
+
+for (const row of moRows) {
+  const arr = String(row.mo_no || "")
+    .split(",")
+    .map(x => x.trim().toUpperCase())
+    .filter(Boolean);
+
+  arr.forEach(mono => monoSet.add(mono));
+}
+
+const monoList = Array.from(monoSet);
+
+    // 5) tạo file temp
+    const tempDir = path.join(os.tmpdir(), "qc-excel");
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const workingFilePath = path.join(
+      tempDir,
+      `sole_template_${ri_no}_${Date.now()}.xlsx`
+    );
+
+    // 6) load template
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(templatePath);
+
+    const sheet = workbook.worksheets[0];
+    if (!sheet) {
+      throw new Error("No worksheet found in template");
+    }
+
+    // format data
+    const formatted = new Date(info.created)
+      .toISOString()
+      .slice(0, 10)
+      .replace(/-/g, "/");
+
+    const val = String(info.RI_mat_name || "")
+      .trim()
+      .split(/\s+/)[0];
+
+    const raw = String(info.RI_mat_name || "");
+    const afterSpace = raw.split(" ").slice(1).join(" ");
+    const match = afterSpace.match(/.*?色/);
+    const result = match ? match[0] : afterSpace;
+
+
+const signBase64 = String(info.RI_inspector_sign || "").trim();
+
+if (signBase64) {
+  const cleanBase64 = signBase64.replace(/^data:image\/\w+;base64,/, "");
+  const imageBuffer = Buffer.from(cleanBase64, "base64");
+
+  const imageId = workbook.addImage({
+    buffer: imageBuffer,
+    extension: "png",
+  });
+
+  sheet.addImage(imageId, "V28:X31");
+}
+    // 7) fill dữ liệu
+    sheet.getCell("B4").value = formatted;
+    sheet.getCell("C4").value = info.RI_vend_name;
+    sheet.getCell("D4").value = val;
+    sheet.getCell("E4").value = result;
+    sheet.getCell("F4").value = Number(info.RM_po_qty) || 0;
+    sheet.getCell("H4").value = info.RI_hardness_spec;
+    sheet.getCell("I4").value = info.RI_thickness_spec;
+    sheet.getCell("G4").value = Number(totalQty) || 0;
+    // đổ mono từ C4 xuống
+    monoList.forEach((mono, index) => {
+      const r = 5 + index;
+      sheet.getCell(`C${r}`).value = mono.toUpperCase();
+    });
+
+    await workbook.xlsx.writeFile(workingFilePath);
+
+    // 8) mở file
+    await shell.openPath(workingFilePath);
+
+    return {
+      success: true,
+      filePath: workingFilePath
+    };
+
+  } catch (err) {
+    console.error("[excel:open-sole-template]", err);
+    return {
+      success: false,
+      message: err.message || "Open Excel failed"
+    };
+  }
+});
+
+ipcMain.handle("excel:save-as", async (e, sourcePath) => {
+  try {
+    if (!sourcePath || !fs.existsSync(sourcePath)) {
+      throw new Error("Edited Excel file not found");
+    }
+
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Save Excel File",
+      defaultPath: `QC_Sole_${Date.now()}.xlsx`,
+      filters: [{ name: "Excel", extensions: ["xlsx"] }]
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+
+    fs.copyFileSync(sourcePath, filePath);
+
+    return {
+      success: true,
+      filePath
+    };
+  } catch (err) {
+    console.error("[excel:save-as]", err);
+    return {
+      success: false,
+      message: err.message || "Save As failed"
+    };
+  }
+});
+
+
+ipcMain.handle('kb:getPurchaseSizeRun', async (event, { po_list, mat_code }) => {
+  if (!po_list || !mat_code) {
+    return { success: true, sizes: [] };
+  }
+
+  const rows = await getSearchPoSoleRows(po_list);
+
+  const matchedRows = rows.filter(
+    r => String(r.mat_codeone || '').trim() === String(mat_code || '').trim()
+  );
+
+  if (!matchedRows.length) {
+    return { success: true, sizes: [] };
+  }
+
+  const sizeMap = new Map();
+
+  for (const row of matchedRows) {
+    const runs = buildSizeRuns(row); // [{ size, qty }]
+
+    for (const item of runs) {
+      const size = String(item.size || '').trim();
+      const qty = Number(item.qty || 0);
+
+      if (!size || !Number.isFinite(qty) || qty <= 0) continue;
+
+      sizeMap.set(size, (sizeMap.get(size) || 0) + qty);
+    }
+  }
+
+  const sizes = Array.from(sizeMap.entries())
+    .map(([size, purchase_qty]) => ({
+      size,
+      purchase_qty
+    }))
+    .sort((a, b) => Number(a.size) - Number(b.size));
+
+  return {
+    success: true,
+    sizes
+  };
 });

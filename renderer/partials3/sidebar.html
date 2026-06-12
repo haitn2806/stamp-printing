@@ -1,6 +1,92 @@
 <!-- Inspection Sidebar (Electron) -->
+ <style>
+  /* ===== SIDEBAR QTY COLUMNS ===== */
+
+.defect-table th.sidebar-poqty-head {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  border-left: 2px solid #b45309;
+  border-right: 1px solid #fbbf24;
+  white-space: nowrap;
+}
+
+.defect-table th.sidebar-checkedqty-head {
+  background: linear-gradient(180deg, #10b981, #059669);
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  border-left: 2px solid #047857;
+  border-right: 2px solid #047857;
+  white-space: nowrap;
+}
+
+.defect-table th.sidebar-poqty-filter {
+  background: #fffbeb;
+  border-left: 2px solid #f59e0b;
+}
+
+.defect-table th.sidebar-checkedqty-filter {
+  background: #ecfdf5;
+  border-right: 2px solid #10b981;
+}
+
+/* PO Qty data */
+.defect-table td.sidebar-poqty-cell {
+  background: #fffbeb;
+  text-align: right;
+  padding: 6px 8px;
+  border-left: 2px solid #f59e0b;
+  border-right: 1px solid #fde68a;
+}
+
+/* Checked Qty data */
+.defect-table td.sidebar-checkedqty-cell {
+  background: #ecfdf5;
+  text-align: right;
+  padding: 6px 8px;
+  border-left: 1px solid #a7f3d0;
+  border-right: 2px solid #10b981;
+}
+
+.sidebar-qty-pill {
+  display: inline-flex;
+  min-width: 92px;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.sidebar-poqty-pill {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.sidebar-checkedqty-pill {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+/* Hover vẫn giữ nổi bật */
+.defect-table tbody tr:hover td.sidebar-poqty-cell {
+  background: #fde68a;
+}
+
+.defect-table tbody tr:hover td.sidebar-checkedqty-cell {
+  background: #a7f3d0;
+}
+ </style>
 <div id="inspection-sidebar"
-     class="fixed top-0 left-0 h-full w-full sm:w-[650px] md:w-[1100px]
+     class="fixed top-0 left-0 h-full w-full sm:w-[750px] md:w-[1300px]
             bg-white border-r border-gray-200 shadow-2xl rounded-r-2xl
             transform -translate-x-full transition-transform duration-300
             z-[1050] flex flex-col">
@@ -67,8 +153,10 @@
             <th class="px-3 py-2 text-center font-bold">PO</th>
             <th class="px-3 py-2 text-center font-bold" data-i18n="material">Vendor</th>
             <th class="px-3 py-2 text-center font-bold" data-i18n="manufacturer">Material</th>
-            <th class="px-3 py-2 text-center font-bold" data-i18n="delivery.date">Delivery Date</th>
-            <th class="px-3 py-2 text-center font-bold w-16" data-i18n="table.action">Action</th>
+<th class="px-3 py-2 text-center font-bold" data-i18n="delivery.date">Delivery Date</th>
+<th class="px-3 py-2 text-center font-bold sidebar-poqty-head">PO Qty</th>
+<th class="px-3 py-2 text-center font-bold sidebar-checkedqty-head">Checked Qty</th>
+<th class="px-3 py-2 text-center font-bold w-16" data-i18n="table.action">Action</th>
           </tr>
 
           <tr class="defect-total">
@@ -96,6 +184,8 @@
               <input type="date" id="filter-date"
                 class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-sky-300 focus:ring-2 focus:ring-sky-500" />
             </th>
+            <th></th>
+            <th></th>
             <th></th>
           </tr>
         </thead>

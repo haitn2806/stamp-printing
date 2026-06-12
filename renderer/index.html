@@ -9,14 +9,23 @@
   <link rel="stylesheet" href="../renderer/dist/style.css" />
 <link rel="stylesheet" href="./assets/toastify.min.css">
 <script src="./assets/toastify.min.js"></script>
-  <title>Material Warehouse Application - v.1.2.1 阿海</title>
+  <title>Material Warehouse Application - v.1.4.8 阿海</title>
 <style id="qc-print-style" type="text/x-print-css">
   /* ===== MULTI PAGE PRINT FIX ===== */
 .print-root {
     page-break-inside: avoid;
     break-inside: avoid;
 }
-
+.print-qty-span {
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1;
+}
 .fit-color {
   width: 100%;                    /* Chiếm toàn bộ chiều rộng */
   height: 10px;                   /* Cố định chiều cao */
@@ -72,6 +81,7 @@
 
     html,
     body {
+     font-family: Tahoma, Arial, sans-serif;
           width: 100%;
     margin: 0;
     padding: 0;

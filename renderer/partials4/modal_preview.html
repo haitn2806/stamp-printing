@@ -5,6 +5,14 @@
   z-index: 99999 !important;
 }
 
+#preview-content .block-qty .cell.r1.rs input{
+  background: #e8f0fe;   /* xanh nhạt dễ phân biệt */
+  font-weight: 700;
+  text-align: center;
+}
+
+
+
 .preview-header {
   background: linear-gradient(
     135deg,
@@ -399,6 +407,9 @@
   min-height: 0;     /* ✅ cực quan trọng để overflow bên trong chạy */
 }
 
+#preview-content.soft {
+    height: 528px !important;
+}
 #rid-items{
   flex: 1;
   min-height: 0;     /* ✅ cực quan trọng */
@@ -409,8 +420,14 @@
 
 #modal-wrap{
   max-height: 92vh;
-  height: 736px;      /* hoặc height:auto + max-height, nhưng nên set height để scroll ổn định */
+  height: 770px;      /* hoặc height:auto + max-height, nhưng nên set height để scroll ổn định */
 }
+
+#preview-content .cell {
+    min-height: 52px !important;
+}
+
+
 
 .header-index {
   margin-left: 10px;
@@ -457,6 +474,71 @@
   border:none;
   pointer-events:none;
 }
+#preview-content select[id^="RID_size"]{
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+
+  background: #f8fafc;
+  border-radius: 8px;
+
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#preview-content select[id^="RID_size"]{
+  width: 100%;
+  height: 100%;
+  padding-right: 18px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+#preview-content .rid-size-wrap{
+  position: relative;
+}
+
+#preview-content select[id^="RID_size"]{
+  padding-right: 20px;
+}
+
+#preview-content .rid-size-wrap::after{
+  content: "▼";
+  position: absolute;
+  right: 23px;
+  top: 52%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+#preview-content .block-qty input[id^="RID_qty"] {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+
+  background: #ffffff;
+  color: #0f172a;
+}
+
+
 </style>
 <div id="modal-loading"
      class="fixed inset-0  flex items-center justify-center
@@ -571,25 +653,26 @@
         </div>
 
         <!-- qty block -->
-        <div class="qc-block block-qty">
+         <div class="qc-block block-qty">
           <div class="cell left-label passsobigi qty-label " data-label="qty">數量: Số lượng</div>
 
-          <div class="cell r1"><input id="RID_size1" type="text" disabled></div>
-          <div class="cell r1"><input id="RID_size2" type="text" disabled></div>
-          <div class="cell r1"><input id="RID_size3" type="text" disabled></div>
-          <div class="cell r1"><input id="RID_size4" type="text" disabled></div>
-          <div class="cell r1"><input id="RID_size5" type="text" disabled></div>
-          <div class="cell r1"><input id="RID_size6" type="text" disabled></div>
-          <div class="cell r1" style="border-right:none;"><input id="RID_size7" type="text" disabled></div>
+        <div class="cell r1 rid-size-wrap"><select id="RID_size1" class="rid-size-select"></select></div>
+<div class="cell r1 rid-size-wrap"><select id="RID_size2" class="rid-size-select">--</select></div>
+<div class="cell r1 rid-size-wrap" ><select id="RID_size3" class="rid-size-select"></select></div>
+<div class="cell r1 rid-size-wrap"><select id="RID_size4" class="rid-size-select"></select></div>
+<div class="cell r1 rid-size-wrap"><select id="RID_size5" class="rid-size-select"></select></div>
+<div class="cell r1 rid-size-wrap"><select id="RID_size6" class="rid-size-select"></select></div>
+<div class="cell r1 rid-size-wrap" style="border-right:none;"><select id="RID_size7" class="rid-size-select"></select></div>
 
-          <div class="cell"><input id="RID_qty8" type="text"></div>
-          <div class="cell"><input id="RID_qty9" type="text"></div>
-          <div class="cell"><input id="RID_qty10" type="text"></div>
-          <div class="cell"><input id="RID_qty11" type="text"></div>
-          <div class="cell"><input id="RID_qty12" type="text"></div>
-          <div class="cell"><input id="RID_qty13" type="text"></div>
-          <div class="cell"><input id="RID_qty14" type="text"></div>
+          <div class="cell"><input id="RID_qty1" type="text"></div>
+          <div class="cell"><input id="RID_qty2" type="text"></div>
+          <div class="cell"><input id="RID_qty3" type="text"></div>
+          <div class="cell"><input id="RID_qty4" type="text"></div>
+          <div class="cell"><input id="RID_qty5" type="text"></div>
+          <div class="cell"><input id="RID_qty6" type="text"></div>
+          <div class="cell"><input id="RID_qty7" type="text"></div>
         </div>
+
 
         <!-- vendor + barcode -->
         <div class="qc-block block-vendor">
@@ -610,12 +693,12 @@
           <div class="cell c-span-7 text-lg bold passsobigi" id="preview-date">—</div>
         </div>
 
-        <div class="block-8 ">
-          <div class="cell left-label passfail " data-label="check">
+       <div class="block-8 ">
+          <div class="cell left-label passfail fa-print2" data-label="check">
             要完成試驗貨才放在合格區<br>Kiểm tra trước khi nhập kho
           </div>
-          <div class="cell small passbig" data-label="qualified">&gt;合格: đạt</div>
-          <div class="cell small" data-label="unqualified"></div>
+          <div class="cell small passbig fa-print2" data-label="qualified">&gt;合格: đạt</div>
+          <div class="cell small fa-print2" data-label="unqualified"></div>
 
           <div class="col-4">
             <div class="month-title" data-label="month">月份 Tem tháng</div>
@@ -623,34 +706,34 @@
             <div class="seal-box"></div>
           </div>
 
-          <div class="cell left-label passbig " data-label="lab">試驗結果 ： kết quả thử nghiệm</div>
-          <div class="cell"></div>
-          <div class="cell"></div>
+          <div class="cell left-label passbig fa-print2" data-label="lab">試驗結果 ： kết quả thử nghiệm</div>
+          <div class="cell fa-print2"></div>
+          <div class="cell fa-print2"></div>
 
-          <div class="cell left-label passbig " data-label="visual">目視结果： kết quả kiểm</div>
-          <div class="cell">✓</div>
-          <div class="cell"></div>
+          <div class="cell left-label passbig fa-print2" data-label="visual">目視结果： kết quả kiểm</div>
+          <div class="cell fa-print2"></div>
+          <div class="cell fa-print2"></div>
 
-          <div class="cell left-label passbig no-print" data-label="send">送测日期 / Ngày gửi</div>
-          <div class="cell no-print" style="grid-column: span 2;">
+          <div class="cell left-label passbig no-print fa-print2" data-label="send">送测日期 / Ngày gửi</div>
+          <div class="cell no-print fa-print2" style="grid-column: span 2;">
             <input id="RID_LabDate" type="date"  class="mt-1 h-11 w-[80%] rounded-xl border border-slate-300 px-4 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 bg-white">             
            </div>
 
-          <div class="cell left-label passbig" data-label="dim">尺寸面積: Quy cách</div>
-          <div class="cell" id="preview-spec">—</div>
-          <div class="cell"></div>
+          <div class="cell left-label passbig fa-print2" data-label="dim">尺寸面積: Quy cách</div>
+          <div class="cell fa-print2" id="preview-spec">—</div>
+          <div class="cell fa-print2"></div>
 
-          <div class="cell left-label passbig" data-label="defect">不良&等級： lỗi và phân cấp</div>
+          <!-- <div class="cell left-label passbig" data-label="defect">不良&等級： lỗi và phân cấp</div>
           <div class="cell"><input id="RID_rankcolor" type="text"></div>
-          <div class="cell"></div>
+          <div class="cell"></div> -->
 
-          <div class="cell left-label passbig " data-label="pack">包裝: Đóng gói</div>
-          <div class="cell">✓</div>
-          <div class="cell"></div>
+          <div class="cell left-label passbig fa-print2" data-label="pack">包裝: Đóng gói</div>
+          <div class="cell fa-print2 ">✓</div>
+          <div class="cell fa-print2"></div>
 
-          <div class="cell left-label passbig no-bb" data-label="checker">查驗員: Chữ ký QC</div>
-          <div class="cell no-bb"><img class="sign-inspector" id="preview-sign-inspector" src="" alt="None"></div>
-          <div class="cell no-bb"></div>
+          <div class="cell left-label passbig no-bb fa-print2" data-label="checker">查驗員: Chữ ký QC</div>
+          <div class="cell no-bb fa-print2"><img class="sign-inspector" id="preview-sign-inspector" src="" alt="None"></div>
+          <div class="cell no-bb fa-print2"></div>
         </div>
 
         <div class="qc-row row-footer">

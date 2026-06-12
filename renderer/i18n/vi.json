@@ -163,8 +163,16 @@
    "update_a":"Có bản cập nhật mới",
    "update_p":"Đang cập nhật...",
    "update_c":"Kiểm tra cập nhật",
-  "update_new":"Đã là phiên bản mới nhất rồi !"
+  "update_new":"Đã là phiên bản mới nhất rồi !",
+  "record_hardness":"Ghi chép độ cứng",
+  "fix2": "Rút kiểm",
+          "size":"Size",
+  "inspection_quantity":"SL hàng kiểm",
+  "procurement_quantity":"SL mua",
+  "total_purchase_quantity":"Tổng SL mua:",
+  "total_inspected_quantity":"Tổng SL kiểm hàng:"
 
 
 
 }
+  

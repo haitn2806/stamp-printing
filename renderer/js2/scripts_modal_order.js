@@ -1635,8 +1635,9 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
     JsBarcode(img, text, {
       format: "CODE128",
       displayValue: true,
-      fontSize: 25,
-      textMargin: 4,
+ fontSize: 50,   // tăng từ 25 lên 36
+ fontOptions: "bold",
+  textMargin: 6,  // tăng nhẹ khoảng cách với barcode
       margin: 0,
       width: 3,
       height: 100,

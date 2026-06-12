@@ -162,6 +162,16 @@ window.dragEvent = window.dragEvent || function dragEvent(e) {
   if (el) el.value = value ?? "";
 }
 
+function setRidTotalQty(value) {
+  const el = document.getElementById('rid-qty-display');
+  if (!el) return;
+
+  const qty = Number(value || 0);
+  el.value = qty.toFixed(2);
+}
+
+window.setRidTotalQty = setRidTotalQty;
+
   function toastError(msg) {
     // Nếu bạn chưa tích hợp Swal trong Electron thì dùng alert cho chắc
     alert(msg);
@@ -464,6 +474,12 @@ if (cbFix) {
       toastError("Không tìm thấy dữ liệu");
       return;
     }
+    // ✅ Tổng số lượng hàng kiểm = tổng RID_qty trong bảng det
+const totalRidQty = Array.isArray(data?.sizes)
+  ? data.sizes.reduce((sum, row) => sum + (Number(row.qty) || 0), 0)
+  : 0;
+
+setRidTotalQty(totalRidQty);
   const riDate = convertDateString(data?.inspection?.RI_date) || '';
   const riii = document.getElementById("RI_date");
   if (riii) riii.value = riDate;
@@ -636,12 +652,15 @@ async function loadSidebarInspections(rmType = 'B') {
 
 function renderSidebarTable(data) {
   const tbody = document.getElementById('sidebar-inspection-table');
+  
   if (!tbody) return;
+
+  
 
   if (!data.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="text-center p-2 text-gray-500">
+        <td colspan="9" class="text-center p-2 text-gray-500">
           Không có dữ liệu
         </td>
       </tr>`;
@@ -649,6 +668,19 @@ function renderSidebarTable(data) {
   }
 
   tbody.innerHTML = data.map(row => {
+
+const poQty = Number(row.RM_po_qty || 0);
+const checkedQty = Number(row.total_inspection_qty || 0);
+
+const poQtyText = poQty.toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+const checkedQtyText = checkedQty.toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 const created = fmtYMDSlash(row.created);
     const riDate  = fmtYMDSlash(row.RI_date);
 const po = String(row.ERP_po_no || '').toUpperCase();
@@ -668,7 +700,17 @@ const esc = s => String(s).replace(/[&<>"']/g, m => ({
         <td class="px-2 py-1">${row.RI_vend_name || ''}</td>
         <td class="px-2 py-1">${row.RI_mat_code || ''}</td>
         <td class="px-2 py-1">${riDate}</td>
+  <td class="sidebar-poqty-cell">
+      <span class="sidebar-qty-pill sidebar-poqty-pill">
+        ${poQtyText}
+      </span>
+    </td>
 
+    <td class="sidebar-checkedqty-cell">
+      <span class="sidebar-qty-pill sidebar-checkedqty-pill">
+        ${checkedQtyText}
+      </span>
+    </td>
         <!-- ✅ ACTION: DELETE ICON -->
         <td class="px-2 py-1 text-center">
           <button

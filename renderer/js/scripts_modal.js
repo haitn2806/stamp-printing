@@ -221,12 +221,12 @@
   });
 
   // OPEN
-  window.openHistoryModal = function () {
-    const modal = document.getElementById('history-modal');
-    modal?.classList.remove('hidden');
-    renderEmptyHistoryRows();
-    calcTotal();
-  };
+  // window.openHistoryModal = function () {
+  //   const modal = document.getElementById('history-modal');
+  //   modal?.classList.remove('hidden');
+  //   renderEmptyHistoryRows();
+  //   calcTotal();
+  // };
 
   // CLOSE (overlay + button)
   document.addEventListener('click', e => {
@@ -260,29 +260,39 @@ function fillHistoryRows(records = []) {
 }
 
 
-function openHistoryModal() {
+async function openHistoryModal() {
   const modal = document.getElementById('history-modal');
   if (!modal) return;
 
+  const riNo = document.querySelector('[name="RI_no"]')?.value;
+  if (!riNo) return;
+
   modal.classList.remove('hidden');
 
-  // 1. render form
   renderEmptyHistoryRows();
 
-  // 2. fill data
-  const cached = window.__INSPECTION_DETAIL_CACHE__;
-  if (cached?.records?.length) {
-    fillHistoryRows(cached.records);
+  // reset hardness trước
+  const hardnessInput = document.getElementById("hardness-input");
+  if (hardnessInput) hardnessInput.value = "";
+
+  const detail = await window.kbAPI.getInspectionDetail(riNo);
+
+  if (!detail) return;
+
+  if (detail.records?.length) {
+    fillHistoryRows(detail.records);
+
+    if (hardnessInput) {
+      hardnessInput.value = detail.records[0]?.ri_hardness ?? "";
+    }
   }
 
-  // 3. 🔥 BẮT BUỘC: tính lại diff + total
   for (let i = 1; i <= 10; i++) {
     calcDiff(i);
   }
+
   calcTotal();
 }
-
-
 // expose
 window.openHistoryModal = openHistoryModal;
 
@@ -299,6 +309,7 @@ async function saveHistoryRecords() {
   isSavingHistory = true;
 
   try {
+    const hardness = document.getElementById("hardness-input")?.value || null;  
     const ri_no = document.querySelector('[name="RI_no"]')?.value;
     if (!ri_no) throw new Error('Missing RI_no');
 
@@ -322,12 +333,12 @@ async function saveHistoryRecords() {
       });
     }
 
-    if (!records.length) {
-      showToastSuccess('Không có dòng nào để lưu');
-      return;
-    }
+    // if (!records.length) {
+    //   showToastSuccess('Không có dòng nào để lưu');
+    //   return;
+    // }
 
-    await window.kbAPI.saveHistory({ ri_no, records });
+  await window.kbAPI.saveHistory({ ri_no, records, hardness });     
     // ✅ UPDATE CACHE SAU KHI SAVE
 if (window.__INSPECTION_DETAIL_CACHE__) {
   window.__INSPECTION_DETAIL_CACHE__.records = records.map(r => ({
@@ -337,6 +348,7 @@ if (window.__INSPECTION_DETAIL_CACHE__) {
     ri_thick_neck: r.ri_thick_neck,
     ri_thick_back: r.ri_thick_back,
     ri_thick_bottom: r.ri_thick_bottom,
+     ri_hardness: hardness
   }));
 }
 
@@ -434,5 +446,82 @@ document.getElementById('btn-export-excel')?.addEventListener('click', async () 
   }
 });
 
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
 
+  const input = e.target;
+
+  if (!input.closest("#history-rows")) return;
+
+  e.preventDefault();
+
+  const name = input.name; 
+  const match = name.match(/history\[(\d+)\]\[(.+)\]/);
+  if (!match) return;
+
+  const row = parseInt(match[1]);
+  const field = match[2];
+
+  const next = document.querySelector(
+    `[name="history[${row + 1}][${field}]"]`
+  );
+
+  if (next) {
+    next.focus();
+    next.select?.();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "+") return;
+
+  const input = e.target;
+  if (!input.closest("#history-rows")) return;
+
+  e.preventDefault();
+
+  const m = input.name.match(/history\[(\d+)\]\[(.+)\]/);
+  if (!m) return;
+
+  const row = parseInt(m[1]);
+  const field = m[2];
+
+  const order = ["origin","actual","neck","back","hip"];
+  const idx = order.indexOf(field);
+  if (idx === -1) return;
+
+  let next;
+
+  // ➜ còn cột kế
+  if (idx < order.length - 1) {
+    const nextField = order[idx + 1];
+    next = document.querySelector(
+      `[name="history[${row}][${nextField}]"]`
+    );
+  }
+  // ➜ cột cuối → xuống dòng
+  else {
+    const nextRow = row + 1;
+
+    next = document.querySelector(
+      `[name="history[${nextRow}][origin]"]`
+    );
+  }
+
+  if (next) {
+    next.focus();
+    next.select?.();
+  }
+});
+
+document.addEventListener("blur", (e) => {
+  const input = e.target;
+
+  if (!input.closest("#history-rows")) return;
+  if (input.type !== "number") return;
+
+  if (input.value.trim() === "") {
+    input.value = 0;
+  }
+}, true);
 })();

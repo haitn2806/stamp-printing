@@ -12,30 +12,96 @@ function beginPrintLoading() {
   showFormLoading();          // dùng overlay hiện có
 }
 
-function getCurrentSizeRuns() {
-  // ưu tiên cache chung nếu có
-  if (Array.isArray(window.__CURRENT_SIZE_RUNS__) && window.__CURRENT_SIZE_RUNS__.length) {
-    return window.__CURRENT_SIZE_RUNS__;
-  }
-  return [];
+// function getCurrentSizeRuns() {
+//   return window.__CURRENT_SIZE_RUNS__ || [];
+// }
+function replaceFormControlsForPrint(clone, sourceRoot = document) {
+  if (!clone) return;
+
+  // input
+  clone.querySelectorAll("input").forEach((input) => {
+    const span = document.createElement("span");
+
+    const original = input.id
+      ? sourceRoot.querySelector(`#${CSS.escape(input.id)}`)
+      : null;
+
+    span.textContent = original?.value || input.value || "—";
+    span.style.display = "inline-block";
+    span.style.width = "100%";
+    span.style.textAlign = "center";
+
+    input.replaceWith(span);
+  });
+
+  // select
+  clone.querySelectorAll("select").forEach((sel) => {
+    const span = document.createElement("span");
+
+    const original = sel.id
+      ? sourceRoot.querySelector(`#${CSS.escape(sel.id)}`)
+      : null;
+
+    let text = "—";
+
+    if (original && original.tagName === "SELECT") {
+      const idx = original.selectedIndex;
+      text =
+        idx >= 0 && original.options[idx]
+          ? original.options[idx].textContent
+          : (original.value || "—");
+    } else {
+      const idx = sel.selectedIndex;
+      text =
+        idx >= 0 && sel.options[idx]
+          ? sel.options[idx].textContent
+          : (sel.value || "—");
+    }
+
+    span.textContent = text || "—";
+    span.style.display = "inline-block";
+    span.style.width = "100%";
+    span.style.textAlign = "center";
+
+    sel.replaceWith(span);
+  });
 }
-function renderQtySizes(sizeRuns = []) {
+function renderQtySizes(sizeRuns = [], opts = {}) {
+  const { fillQty = true, defaultQty = "" } = opts;
+
+  const allSizes = (window.__CURRENT_SIZE_RUNS__ || [])
+    .map(x => String(x.size || "").trim())
+    .filter(Boolean);
+
   for (let i = 1; i <= 7; i++) {
-    const input = document.getElementById(`RID_size${i}`);
-    if (!input) continue;
+    const sizeEl = document.getElementById(`RID_size${i}`);
+    const qtyEl  = document.getElementById(`RID_qty${i}`);
+    const item   = sizeRuns[i - 1] || {};
 
-    input.value = sizeRuns[i - 1]?.size || "";
-    input.readOnly = true;      // khóa không cho gõ
+    if (sizeEl) {
+      if (sizeEl.tagName === "SELECT") {
+        const selectedSize = item.size ? String(item.size).trim() : "";
+        sizeEl.innerHTML =
+          `<option value="">--</option>` +
+          allSizes.map(sz =>
+            `<option value="${sz}" ${sz === selectedSize ? "selected" : ""}>${sz}#</option>`
+          ).join("");
+      } else {
+        sizeEl.value = item.size ? `${item.size}#` : "";
+      }
+    }
+
+    if (qtyEl) {
+      qtyEl.value = fillQty ? (item.qty || "") : defaultQty;
+    }
   }
 }
-
-
 function ensureRankBeforePrint() {
   const v = document.getElementById("RID_rankcolor")?.value?.trim();
-  if (!v) {
-    showToastWarning(ti("not_rank"));
-    return false;
-  }
+  // if (!v) {
+  //   showToastWarning(ti("not_rank"));
+  //   return false;
+  // }
   return true;
 }
 
@@ -76,7 +142,7 @@ function endPrintLoading() {
 const QC_FIT_SCRIPT = `
   window.__QC_FIT_DONE__ = false;
 
-  function fitOne(el, min=8) {
+  function fitOne(el, min = 8) {
     if (!el) return;
     const cell = el.closest('.cell') || el.parentElement;
     if (!cell) return;
@@ -87,15 +153,13 @@ const QC_FIT_SCRIPT = `
     if (!maxH || !maxW) return;
 
     const oldAlign = cell.style.alignItems;
-    cell.style.alignItems = 'center';  // Căn giữa dọc
+    cell.style.alignItems = 'center';
 
-    // Đảm bảo cho phép xuống dòng
     el.style.whiteSpace = 'normal';
     el.style.display = 'block';
     el.style.minWidth = '0';
     el.style.overflow = 'hidden';
 
-    // Giảm font-size cho đến khi vừa vặn
     while ((el.scrollHeight > maxH || el.scrollWidth > maxW) && fontSize > min) {
       fontSize -= 0.5;
       el.style.fontSize = fontSize + 'px';
@@ -104,12 +168,44 @@ const QC_FIT_SCRIPT = `
     cell.style.alignItems = oldAlign || '';
   }
 
+  function fitQtySpan(el, min = 6, max = 14) {
+    if (!el) return;
+
+    const cell = el.closest('.cell');
+    if (!cell) return;
+
+    el.style.display = 'inline-block';
+    el.style.width = '100%';
+    el.style.maxWidth = '100%';
+    el.style.textAlign = 'center';
+    el.style.whiteSpace = 'nowrap';
+    el.style.overflow = 'hidden';
+    el.style.lineHeight = '1';
+    el.style.fontWeight = '700';
+
+    let fontSize = max;
+    el.style.fontSize = fontSize + 'px';
+
+    const maxW = cell.getBoundingClientRect().width - 2;
+    const maxH = cell.getBoundingClientRect().height - 2;
+
+    if (!maxW || !maxH) return;
+
+    while ((el.scrollWidth > maxW || el.scrollHeight > maxH) && fontSize > min) {
+      fontSize -= 0.5;
+      el.style.fontSize = fontSize + 'px';
+    }
+  }
+
   function runFit() {
     document.querySelectorAll('.fit-matname').forEach(el => fitOne(el, 14));
     document.querySelectorAll('.fit-color').forEach(el => fitOne(el, 8));
+
+    document
+      .querySelectorAll('.block-qty .cell:not(.r1):not(.qty-label) span')
+      .forEach(el => fitQtySpan(el, 6, 14));
   }
 
-  // Chạy sớm và vài lần để tránh sự cố in nhanh
   const raf2 = () => requestAnimationFrame(() => requestAnimationFrame(runFit));
   document.addEventListener('DOMContentLoaded', raf2);
   window.addEventListener('beforeprint', runFit);
@@ -175,7 +271,7 @@ async function silentPrintCurrentRID() {
   let currentRINo = null;
   let hasUnsavedRID = false; // nếu bạn có dùng
   let isCreatingRID = false; // bạn có dùng ở openPreviewModal
-  window.__FAST_MODE__ = false; // bạn có dùng trong saveRID
+  window.__FAST_MODE__ = false; // bạn có dùng trong saveRidSole
 
 function syncRidIndexes() {
   const buttons = Array.from(
@@ -195,6 +291,8 @@ function syncRidIndexes() {
     }
   });
 }
+
+
 
 
   function toYMD(v) {
@@ -237,21 +335,16 @@ function buildPrintableHtmlSnapshot() {
   if (!source) return null;
 
   const clone = source.cloneNode(true);
+    // ✅ input -> span (lấy đúng current value)
+replaceFormControlsForPrint(clone, source);
 
   // (optional) remove ids nếu muốn sạch
   clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
-  // ✅ input -> span (lấy đúng current value)
-  clone.querySelectorAll('input').forEach((input) => {
-    const span = document.createElement('span');
-    span.textContent = input.value || '—';
-    span.style.display = 'inline-block';
-    span.style.width = '100%';
-    span.style.textAlign = 'center';
-    input.replaceWith(span);
-  });
 
-  const css = document.getElementById('qc-print-style')?.textContent || '';
+
+
+  const css = document.getElementById('qc-print-style4')?.textContent || '';
 
   return `<!DOCTYPE html>
 <html>
@@ -317,10 +410,13 @@ function getSavedPrinterName() {
   }
 
 function lockAllInputs(lock) {
-  const inputs = document.querySelectorAll("#preview-content input:not(#RID_LabDate)");
-  inputs.forEach((i) => {
-    i.disabled = lock;
-    i.classList.toggle("input-disabled", !!lock);
+  const fields = document.querySelectorAll(
+    "#preview-content input:not(#RID_LabDate), #preview-content select"
+  );
+
+  fields.forEach((el) => {
+    el.disabled = lock;
+    el.classList.toggle("input-disabled", !!lock);
   });
 }
 
@@ -473,10 +569,10 @@ if (footer) {
 
   function updateTotalQty() {
     let total = 0;
-    for (let i = 1; i <= 14; i++) {
-      const v = parseFloat(document.getElementById(`RID_qty${i}`)?.value || 0);
-      if (!isNaN(v)) total += v;
-    }
+for (let i = 1; i <= 7; i++) {
+  const v = parseFloat(document.getElementById(`RID_qty${i}`)?.value || 0);
+  if (!isNaN(v)) total += v;
+}
     const elTotal = document.getElementById("preview-total");
     if (elTotal) elTotal.textContent = total.toFixed(1);
 
@@ -495,7 +591,7 @@ if (footer) {
       return;
     }
 
-renderQtySizes(getCurrentSizeRuns());
+
 
 
     // Chạy hàm mở modal nếu có giá trị RI_no hợp lệ.
@@ -563,6 +659,25 @@ renderQtySizes(getCurrentSizeRuns());
     }
 
     currentRINo = riNo;
+    // ===== LOAD SIZE RUN ONCE =====
+try {
+
+  const sizeRes = await window.kbAPI.getSizeRunByRI({
+    ri_no: riNo,
+    remark: 1
+  });
+
+  if (sizeRes?.success) {
+
+    window.__CURRENT_SIZE_RUNS__ = sizeRes.sizes || [];
+
+    renderQtySizes(window.__CURRENT_SIZE_RUNS__);
+
+  }
+
+} catch (err) {
+  console.warn("Load size run failed:", err);
+}
 
     try {
       // reset inputs
@@ -695,18 +810,15 @@ renderQtySizes(getCurrentSizeRuns());
   }
   window.closePreviewModal = closePreviewModal;
 
-  // ===== Electron: saveRID (thay fetch generate + save + reload detail) =====
-  async function saveRID(event) {
+  // ===== Electron: saveRidSole (thay fetch generate + save + reload detail) =====
+  async function saveRidSole(event) {
     const autoPrint = document.getElementById("mode-print")?.checked;
 
 
     const rankColorVal =
   document.getElementById("RID_rankcolor")?.value?.trim() || "";
 
-if (!rankColorVal) {
-  showToastWarning(ti("not_rank"));
-  return;
-}
+
     // chặn khi đang loading
     if (
       document.getElementById("modal-loading")?.classList.contains("hidden") ===
@@ -803,47 +915,104 @@ if (rid_rank && !rid_color && rid_rank !== "R") {
   const activeBtn = document.querySelector("#rid-items button.rid-active");
 const remarkIndex = activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
 
-      const records = [];
 
-      for (let i = 1; i <= 14; i++) {
-        const raw = document.getElementById(`RID_qty${i}`)?.value;
-        const val = parseFloat(raw);
 
-        // ❌ bỏ qua nếu rỗng, NaN hoặc <= 0
-        if (!val || isNaN(val) || val <= 0) continue;
+    const records = [];
 
-        records.push({
-          RI_no: riNo,
-          RID_no: finalRID,
-          RID_seqno: i,
-          RID_qty: val,
-          RID_date: new Date().toISOString(),
-          RID_rank: rid_rank,
-          RID_color: rid_color,
-            RID_Failtype: rid_failtype,   // NEW
-         RID_LabDate: finalLabDate || null,
-          RID_remark: String(remarkIndex  || ""),
-        });
-      }
+for (let i = 1; i <= 7; i++) {
+  const qtyEl = document.getElementById(`RID_qty${i}`);
+  const sizeEl = document.getElementById(`RID_size${i}`);
+
+  const val = parseFloat(qtyEl?.value || "");
+  const size = String(sizeEl?.value || "").replace("#", "").trim();
+
+  // bỏ qua nếu chưa chọn size hoặc qty rỗng
+  if (!size || isNaN(val)) continue;
+
+  records.push({
+    RI_no: riNo,
+    RID_no: finalRID,
+    RID_seqno: i,
+    RID_qty: val,
+    RID_date: new Date().toISOString(),
+    RID_rank: size,
+    RID_color: rid_color,
+    RID_Failtype: rid_failtype,
+    RID_LabDate: finalLabDate || null,
+    RID_remark: String(remarkIndex || ""),
+  });
+}
+      console.log(records,'records')
 
       showFormLoading();
 
-      // ===== Electron: saveRID =====
-      if (!window.kbAPI?.saveRid) throw new Error("kbAPI.saveRid chưa có");
-      const result = await window.kbAPI.saveRid({ records });
+      // ===== Electron: saveRidSole =====
+      if (!window.kbAPI?.saveRidSole) throw new Error("kbAPI.saveRidSole chưa có");
+      const result = await window.kbAPI.saveRidSole({ records });
 
       if (!result?.success) {
         showToastError("Lưu thất bại");
         return;
       }
+try {
+  const detail = await window.kbAPI.getInspectionDetail(riNo);
 
+  const sizes = Array.isArray(detail?.sizes) ? detail.sizes : [];
+  const inspectMap = new Map(
+    sizes.map(s => [String(s.size).trim(), Number(s.qty || 0)])
+  );
 
+  const poStr = String(detail?.inspection?.ERP_po_no || "").trim();
+  const matCode = String(detail?.inspection?.RI_mat_code || "").trim();
+
+  // ✅ lấy lại purchase size run chuẩn từ backend
+  const purchaseRes = await window.kbAPI.getPurchaseSizeRun({
+    po_list: poStr,
+    mat_code: matCode
+  });
+
+  const purchaseRuns = Array.isArray(purchaseRes?.sizes) ? purchaseRes.sizes : [];
+  const purchaseMap = new Map(
+    purchaseRuns.map(x => [String(x.size).trim(), Number(x.purchase_qty || 0)])
+  );
+
+  const allSizes = purchaseRuns
+    .map(x => String(x.size).trim())
+    .sort((a, b) => Number(a) - Number(b));
+
+  const merged = allSizes.map(size => ({
+    size,
+    purchase_qty: purchaseMap.get(size) || 0,
+    inspect_qty: inspectMap.get(size) || 0
+  }));
+
+  const inspectTotal = sizes.reduce(
+    (sum, s) => sum + Number(s.qty || 0),
+    0
+  );
+
+  const supplierTotal = Number(
+    detail?.inspection?.RM_po_qty ??
+    document.getElementById("po-purchase-qty")?.value ??
+    document.getElementById("po-purchase-qty-display")?.value ??
+    0
+  );
+
+  window.__CURRENT_SIZE_RUNS__ = merged;
+  window.renderSizeRuns?.(merged, {
+    total_purchase: supplierTotal,
+    total_inspect: inspectTotal
+  });
+} catch (e) {
+  console.warn("Reload inspection sizes failed:", e);
+}
       if (result?.totals) {
         Object.entries(result.totals).forEach(([k, v]) => {
           const input = document.querySelector(`[name="${k}"]`);
           if (input) input.value = Number(v).toFixed(2);
         });
       }
+      
 
       hasUnsavedRID = false;
       const btn = document.getElementById(`rid-btn-${finalRID}`);
@@ -959,7 +1128,7 @@ window.applyLanguage?.(localStorage.getItem("app_lang") || "en");
     }
   }
 
-  window.saveRID = saveRID;
+  window.saveRidSole = saveRidSole;
 
   // =========================
   // 1) Helper build printable html
@@ -968,7 +1137,6 @@ function clonePreviewToPrintable(btn, i, isLast = false) {
   const source = document.getElementById("preview-content");
   if (!source) return "";
   const clone = source.cloneNode(true);
-clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
   // ❌ XÓA TOÀN BỘ ID (CỰC KỲ QUAN TRỌNG)
 
 
@@ -981,15 +1149,8 @@ if (idxSpan) {
     : idx;
 }
 
-  // input -> span
-  clone.querySelectorAll("input").forEach((input) => {
-    const span = document.createElement("span");
-    span.textContent = input.value || "—";
-    span.style.display = "inline-block";
-    span.style.width = "100%";
-    span.style.textAlign = "center";
-    input.replaceWith(span);
-  });
+replaceFormControlsForPrint(clone, source);
+clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
 
   return `
   <div class="print-root">
@@ -1078,7 +1239,7 @@ async function printAllLabels() {
       return Swal.fire("⚠️ Chưa có tem RID nào để in!", "", "warning");
 
     const qcStyle =
-      document.getElementById("qc-print-style")?.textContent || "";
+      document.getElementById("qc-print-style4")?.textContent || "";
 
     const nextFrame = (n = 1) =>
       new Promise((res) => {
@@ -1130,17 +1291,10 @@ async function printAllLabels() {
     if (!source) return;
 
     const qcStyle =
-      document.getElementById("qc-print-style")?.textContent || "";
+      document.getElementById("qc-print-style4")?.textContent || "";
     const clone = source.cloneNode(true);
+replaceFormControlsForPrint(clone, source);
 clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.parentNode.replaceChild(span, input);
-    });
 
 const extraScript = `
   // Hàm xử lý thu nhỏ chữ cho các phần tử
@@ -1247,7 +1401,10 @@ if (hasDraftRID()) {
 
     isCreatingRID = true;
     window.__CREATING_NEW_RID__ = true;
-
+    renderQtySizes(window.__CURRENT_SIZE_RUNS__ || [], {
+  fillQty: false,
+  defaultQty: null
+});
     const btn = event?.target || document.getElementById("btn-create-rid");
     if (btn && !btn.dataset._oldHtml) {
   btn.dataset._oldHtml = btn.innerHTML;
@@ -1439,7 +1596,7 @@ newBtn.dataset.remarkIndex ||= newBtn.dataset.index;
       .sort((a, b) => a - b);
 
     const qcStyle =
-      document.getElementById("qc-print-style")?.textContent || "";
+      document.getElementById("qc-print-style4")?.textContent || "";
     let pagesHtml = "";
 
     const nextFrame = (n = 1) =>
@@ -1544,10 +1701,13 @@ async function loadRIDDetail(ridNo, riNo) {
 
   // lấy RI_date ngay từ đầu (fallback)
   const riDate = toYMD(document.querySelector('[name="RI_date"]')?.value);
-
+const activeBtn = document.querySelector("#rid-items button.rid-active");
+const remarkIndex =
+  activeBtn?.dataset?.remarkIndex || activeBtn?.dataset?.index || "";
   try {
     // fetch trước
     const data = await window.kbAPI.getRidDetail({ rid_no: ridNo, ri_no: riNo });
+
 
     // disable tabs while loading
     document.querySelectorAll("#rid-items button").forEach((btn) => {
@@ -1557,10 +1717,19 @@ async function loadRIDDetail(ridNo, riNo) {
     lockAllInputs(true);
 
     // reset qty + rank
-    for (let i = 1; i <= 14; i++) {
-      const input = document.getElementById(`RID_qty${i}`);
-      if (input) input.value = "";
+for (let i = 1; i <= 14; i++) {
+  const qtyInput = document.getElementById(`RID_qty${i}`);
+  if (qtyInput) qtyInput.value = "";
+
+  const sizeEl = document.getElementById(`RID_size${i}`);
+  if (sizeEl) {
+    if (sizeEl.tagName === "SELECT") {
+      sizeEl.value = "";
+    } else {
+      sizeEl.value = "";
     }
+  }
+}
     const rankEl = document.getElementById("RID_rankcolor");
     if (rankEl) rankEl.value = "";
 
@@ -1589,15 +1758,52 @@ async function loadRIDDetail(ridNo, riNo) {
 if (!activeBtn?.dataset?.draft) {
   hasUnsavedRID = false;
 }
-      return;
-    }
+for (let i = 1; i <= 14; i++) {
+  const qtyInput = document.getElementById(`RID_qty${i}`);
+  if (qtyInput) qtyInput.value = "";
+
+  const sizeEl = document.getElementById(`RID_size${i}`);
+  if (sizeEl) sizeEl.value = "";
+}
+  renderQtySizes(window.__CURRENT_SIZE_RUNS__ || [], {
+  fillQty: false,
+  defaultQty: null
+});
+
+  return;    }
+
 
     // fill records
-    data.records.forEach((r) => {
-      const seq = parseInt(r.RID_seqno, 10);
-      const input = document.getElementById(`RID_qty${seq}`);
-      if (input) input.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
-    });
+data.records.forEach((r) => {
+  const seq = parseInt(r.RID_seqno, 10);
+
+  const qtyInput = document.getElementById(`RID_qty${seq}`);
+  if (qtyInput) {
+    qtyInput.value = Number(r.RID_qty) ? Number(r.RID_qty) : "";
+  }
+
+  const sizeEl = document.getElementById(`RID_size${seq}`);
+  const savedSize = String(r.RID_rank || "").trim();
+
+  if (sizeEl) {
+    if (sizeEl.tagName === "SELECT") {
+      // nếu option chưa có thì add tạm
+      if (
+        savedSize &&
+        !Array.from(sizeEl.options).some(opt => String(opt.value) === savedSize)
+      ) {
+        const opt = document.createElement("option");
+        opt.value = savedSize;
+        opt.textContent = `${savedSize}#`;
+        sizeEl.appendChild(opt);
+      }
+
+      sizeEl.value = savedSize;
+    } else {
+      sizeEl.value = savedSize ? `${savedSize} #` : "";
+    }
+  }
+});
 
     updateTotalQty?.();
 
@@ -1790,8 +1996,9 @@ rankEl.value = formatRankColor(data?.RID_rank, data?.RID_color, data?.RID_Failty
     JsBarcode(img, text, {
       format: "CODE128",
       displayValue: true,
-      fontSize: 25,
-      textMargin: 4,
+ fontSize: 50,   // tăng từ 25 lên 36
+ fontOptions: "bold",
+  textMargin: 6,  // tăng nhẹ khoảng cách với barcode
       margin: 0,
       width: 3,
       height: 100,
@@ -1825,17 +2032,10 @@ ${QC_FIT_SCRIPT ? `<script>${QC_FIT_SCRIPT}<\/script>` : ""}
 const deviceName = silent ? getSavedPrinterName() : null;
 
     const clone = source.cloneNode(true);
+replaceFormControlsForPrint(clone, source);
 clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id')); // thêm
-    clone.querySelectorAll("input").forEach((input) => {
-      const span = document.createElement("span");
-      span.textContent = input.value || "—";
-      span.style.display = "inline-block";
-      span.style.width = "100%";
-      span.style.textAlign = "center";
-      input.parentNode.replaceChild(span, input);
-    });
 
-    const css = document.getElementById("qc-print-style")?.textContent || "";
+    const css = document.getElementById("qc-print-style4")?.textContent || "";
 const extraScript = `
   // Hàm xử lý thu nhỏ chữ cho các phần tử
   function fitOne(el, min = 8) {
@@ -1918,7 +2118,7 @@ await window.kbAPI.printHtml({
     setTimeout(enableEditMode, 300);
   }
   window.printCurrentLabelDirect = printCurrentLabelDirect;
-  function openPickModal() {
+ function openPickModal() {
     document.getElementById("pick-input").value = "";
     document.getElementById("pick-modal").classList.remove("hidden");
   }
@@ -1926,6 +2126,7 @@ await window.kbAPI.printHtml({
   function closePickModal() {
     document.getElementById("pick-modal").classList.add("hidden");
   }
+
 
 window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
   const ok = await confirmBox({
@@ -2157,8 +2358,8 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
 
     console.log("[QC] btn-save-rid clicked");
 
-    if (typeof window.saveRID !== "function") {
-      console.error("❌ saveRID chưa tồn tại");
+    if (typeof window.saveRidSole !== "function") {
+      console.error("❌ saveRidSole chưa tồn tại");
       return;
     }
 
@@ -2167,7 +2368,7 @@ window.confirmDeleteRID = async function ({ ri_no, rid_no }) {
       return;
     }
 
-    window.saveRID(e);
+    window.saveRidSole(e);
   });
 
 document.addEventListener("click", (e) => {
@@ -2374,7 +2575,7 @@ el.value += String(activeDisplayMap[e.key] || ""); // ✅ không space
     // bind các nút cần DOM sẵn
     bindQcToolButtons?.();
     bindPickPrintButton?.();
-bindMonthStamp();
+     bindMonthStamp();
     // sync sign preview (lúc partial đã gắn)
     const srcImg = document.getElementById("sign-preview-inspector");
     const destImg = document.getElementById("preview-sign-inspector");

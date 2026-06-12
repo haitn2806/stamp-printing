@@ -433,6 +433,102 @@ document.getElementById('btn-export-excel')?.addEventListener('click', async () 
     showToastError?.('Export error');
   }
 });
+let currentExcelWorkingFile = null;
 
+document.getElementById("excel-sole")?.addEventListener("click", async () => {
+  try {
+    const ri_no = document.querySelector('[name="RI_no"]')?.value?.trim();
+
+    if (!ri_no) {
+      showToastWarning?.("Chưa có RI_no");
+      return;
+    }
+
+    const res = await window.kbAPI.openSoleExcelTemplate({ ri_no });
+
+    if (!res?.success) {
+      showToastError?.(res?.message || "Không mở được file Excel");
+      return;
+    }
+
+    currentExcelWorkingFile = res.filePath;
+    showToastSuccess?.("Đã mở file Excel");
+  } catch (err) {
+    console.error(err);
+    showToastError?.("Mở Excel thất bại");
+  }
+});
+
+document.getElementById("excel-sole-save")?.addEventListener("click", async () => {
+  try {
+    if (!currentExcelWorkingFile) {
+      showToastWarning?.("Chưa mở file Excel");
+      return;
+    }
+
+    const res = await window.kbAPI.saveExcelAs(currentExcelWorkingFile);
+
+    if (res?.canceled) return;
+
+    if (!res?.success) {
+      showToastError?.(res?.message || "Lưu file thất bại");
+      return;
+    }
+
+    showToastSuccess?.("Đã lưu file Excel");
+  } catch (err) {
+    console.error(err);
+    showToastError?.("Download Excel thất bại");
+  }
+});
+
+(function () {
+  const btnOpen = document.getElementById("btn-export-excel-sole");
+  const modal = document.getElementById("excel-sole-modal");
+  const btnClose = document.getElementById("excel-sole-modal-close");
+  const input = document.getElementById("excel-sole-search-input");
+  const btnSearch = document.getElementById("excel-sole-search-btn");
+
+  if (!btnOpen || !modal) return;
+
+  function openModal() {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    setTimeout(() => input?.focus(), 0);
+  }
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  btnOpen.addEventListener("click", openModal);
+  btnClose?.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  input?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      btnSearch?.click();
+    }
+    if (e.key === "Escape") {
+      closeModal();
+    }
+  });
+
+  btnSearch?.addEventListener("click", () => {
+    const keyword = input?.value?.trim() || "";
+    console.log("search keyword:", keyword);
+
+    // TODO: gọi API search ở đây
+    // vd:
+    // window.kbAPI.searchSomething(keyword)
+
+    // closeModal(); // muốn search xong đóng thì mở dòng này
+  });
+})();
 
 })();

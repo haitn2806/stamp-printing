@@ -1,6 +1,6 @@
 {
   "name": "inspection-warehouse",
-  "version": "1.2.2",
+  "version": "1.4.8",
   "main": "main.js",
   "author": "阿海",
   "type": "commonjs",
@@ -30,7 +30,11 @@
       {
         "from": "assets",
         "to": "assets"
-      }
+      },
+       {
+    "from": "./renderer/assets/templates",
+    "to": "./renderer/assets/templates"
+  }
     ],
     "files": [
       "main.js",
@@ -46,7 +50,7 @@
       "target": "nsis",
       "icon": "./renderer/assets/icon.ico",
       "artifactName": "Inspection-Warehouse-Setup-${version}.${ext}"
-
+ 
     },
     "nsis": {
       "oneClick": true,

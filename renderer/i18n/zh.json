@@ -130,11 +130,11 @@
    "prelogin.subtitle": "选择语言和工厂",
     "common.continue": "继续",
     "prelogin.factory":"公司",
-          "prelogin.type1":"皮料入庫品檢",
+  "prelogin.type1":"皮料入庫品檢",
    "prelogin.type2":"布料&合皮入庫品檢",
    "prelogin.type3":"輔料入庫品檢",
    "prelogin.type4":"大底入庫品檢",
-     "confirm.delete.title": "刪除檢驗單",
+  "confirm.delete.title": "刪除檢驗單",
   "confirm.delete.message": "確定要刪除 RI：{{ri}} 嗎？",
   "confirm.delete.ok": "刪除",
   "confirm.delete.cancel": "取消",
@@ -161,6 +161,15 @@
   "update_a": "有新的更新",
   "update_p": "正在更新...",
   "update_c":"检查更新",
-  "update_new":"已是最新版本"
+  "update_new":"已是最新版本",
+    "record_hardness":"硬度记录",
+    "fix2": "抽检",
+      "size":"尺碼",
+  "inspection_quantity":"驗貨數量",
+  "procurement_quantity":"採購數量",
+  "total_purchase_quantity":"采购数量合计:",
+  "total_inspected_quantity":"验货数量合计:",
+  "qc.qty_limit_exceeded":
+      "⚠️ 無法儲存標籤。儲存後檢驗總數為 {{total}}，超過允許上限 {{max}}（RM_po_qty {{po}} + 1%）。超出 {{over}}。"
   
 }
